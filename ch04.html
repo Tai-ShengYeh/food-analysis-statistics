@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ch04 標準曲線與線性迴歸</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar"><div class="inner">
+<a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
+<nav class="topnav">
+<a href="index.html">首頁</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a>
+</nav></div></header>
+
+<main>
+<div class="crumbs">Part 1 數據品管統計（Nielsen's Food Analysis 第4章）／第 4 章</div>
+<h1>標準曲線與線性迴歸
+<span class="en">Curve Fitting: Linear Regression, r &amp; r², Inverse Prediction</span></h1>
+
+<div class="goals"><b>學習目標</b>
+<ul>
+<li>會用 R 的 lm() 建立標準曲線 y = ax + b</li>
+<li>會解讀相關係數 r 與判定係數 r²，知道 r ≥ 0.997 的經驗法則</li>
+<li>會看殘差圖與信賴帶，判斷直線假設是否成立</li>
+<li>會由未知樣品訊號反推濃度，並知道外插的危險</li>
+</ul></div>
+
+<h2>4.1 標準曲線：儀器分析的靈魂</h2>
+<p>儀器（HPLC、AA、光譜儀…）量到的是<strong>訊號</strong>（波峰面積、吸光度），
+我們要的是<strong>濃度</strong>。做法：配一組已知濃度標準品 → 測訊號 → 擬合直線 →
+未知樣品的訊號反推濃度。</p>
+<div class="callout"><span class="t">📐 慣例</span>
+濃度放 <strong>x 軸</strong>（獨立變數，假設誤差極小）、訊號放 <strong>y 軸</strong>（依變數，含量測誤差）。
+迴歸線「y 對 x」的意義就是建立在這個假設上。</div>
+
+<h2>4.2 最小平方迴歸：lm()</h2>
+<div class="formula">
+斜率 <i>a</i> = <span class="frac"><span class="num">Σ(<i>x<sub>i</sub></i> − <i>x̄</i>)(<i>y<sub>i</sub></i> − <i>ȳ</i>)</span><span class="den">Σ(<i>x<sub>i</sub></i> − <i>x̄</i>)²</span></span>
+　　截距 <i>b</i> = <i>ȳ</i> − <i>a</i><i>x̄</i>
+<span class="note">Nielsen 式 (4.20)–(4.21)：讓所有點的「垂直距離平方和」最小的直線</span>
+</div>
+<p><strong>Nielsen 章末習題 4（鈉標準曲線 Group A）</strong>：
+濃度 x = 1, 3, 5, 10, 20 μg/mL，發射值 y = 0.050, 0.140, 0.242, 0.521, 0.998。
+迴歸結果 <strong>y = 0.0504x − 0.0029，r² = 0.9990</strong>（與課本解答一致）。</p>
+
+<div class="figure">
+<img src="assets/img/fig_calib_ci.png" alt="標準曲線與信賴帶">
+<div class="cap">圖 4-1 鈉標準曲線與 95% 信賴帶：中間最窄、兩端變寬</div>
+</div>
+
+<h2>4.3 r 與 r²：直線有多「直」？</h2>
+<ul>
+<li><strong>相關係數 r</strong>（−1 ~ +1）：r=+1 完美正相關。分析化學經驗法則：<strong>r ≥ 0.997</strong> 才算理想標準曲線（生物數據除外）</li>
+<li><strong>判定係數 r²</strong>：y 變異中能被 x 線性解釋的比例。r²=0.9990 → 0.10% 的變異來自隨機因素（Nielsen 4.4.2）</li>
+</ul>
+<div class="callout warn"><span class="t">⚠️ r 高不等於直線！</span>
+r 只衡量「假設是直線時 fit 得多好」。彎曲的數據硬配直線，r 也可能很高。
+<strong>永遠先畫圖、看殘差</strong>——這是 Nielsen 特別強調的第一步。</div>
+
+<div class="figure">
+<img src="assets/img/fig_residual.png" alt="殘差圖">
+<div class="cap">圖 4-2 殘差圖：橘圓＝直線資料（隨機散布，好）；紫三角＝曲線資料硬配直線（呈現彎曲趨勢，壞）</div>
+</div>
+
+<h2>4.4 反推未知濃度與外插危機</h2>
+<div class="formula">
+<i>x</i><sub>pred</sub> = <span class="frac"><span class="num"><i>y</i><sub>obs</sub> − b</span><span class="den">a</span></span>
+<span class="note">Nielsen 式 (4.23)：咖啡因例子 (4000 − 90.727)/89.994 = 43.44 ppm</span>
+</div>
+<p>Nielsen 的咖啡因 HPLC 曲線：y = 89.994x + 90.727（r²=0.9989），未知咖啡樣品波峰面積 4000 →
+<strong>43.44 ppm 咖啡因</strong>。鈉曲線的未知樣品 y=0.555 → (0.555+0.0029)/0.0504 = <strong>11.1 μg/mL</strong>。</p>
+<div class="callout danger"><span class="t">🚫 不要外插（Nielsen Fig 4.8）</span>
+高濃度端可能進入<strong>飽和平台</strong>，低濃度端可能偏離原點。
+未知樣品濃度必須落在標準曲線<strong>線性範圍內</strong>，最好在中段（信賴帶最窄處）。
+太濃就稀釋，太淡就濃縮或增加進樣量。</div>
+
+<pre class="rcode" data-file="ch04_ex1.R">x &lt;- c(1, 3, 5, 10, 20)                    # Na 濃度 ug/mL
+y &lt;- c(.050, .140, .242, .521, .998)       # 發射值
+
+fit &lt;- lm(y ~ x)                            # 線性迴歸
+coef(fit)          #&gt; (Intercept) -0.00292 | x 0.05040
+summary(fit)$r.squared   #&gt; 0.9990
+cor(x, y)                #&gt; 0.9995
+
+# 反推未知樣品 (y_obs = 0.555)
+y_obs &lt;- 0.555
+(y_obs - coef(fit)[1]) / coef(fit)[2]   #&gt; 11.1 ug/mL
+
+# 殘差檢查
+residuals(fit)
+#&gt;      1        2        3        4        5
+#&gt;  0.0025 -0.0083 -0.0071  0.0199 -0.0071   (隨機散布，OK)
+
+# 95% 信賴帶畫法
+nx &lt;- seq(1, 20, length.out = 100)
+ci &lt;- predict(fit, data.frame(x = nx), interval = "confidence")
+matplot(nx, ci[, c("lwr","upr")], type="l", lty=2, col="grey40")
+abline(fit, col="red"); points(x, y, pch=19)</pre>
+
+<div class="callout ok"><span class="t">🔗 通往 Part 2</span>
+「反推濃度」本身就有不確定度（斜率、截距、殘差都會傳播進去）。
+QUAM 附錄 E.4 給了完整公式，我們在第 11 章綜合案例會用 R 實作它。</div>
+
+<div class="quiz" id="quiz"></div>
+<script>
+const QUIZ = [
+ { q: "標準曲線中，濃度通常放在哪一軸？為什麼？",
+   opts: ["y 軸，因為濃度是結果", "x 軸，因為濃度視為誤差極小的獨立變數", "任意軸，結果相同", "x 軸，法規規定"], ans: 1,
+   exp: "迴歸假設 x 無誤差、誤差在 y 方向。標準品濃度是「我們配的」，放 x 軸；儀器訊號含量測誤差，放 y 軸。（Nielsen 4.4.1）" },
+ { q: "迴歸得到 y = 0.0504x − 0.0029，未知樣品訊號 0.555，濃度為：",
+   opts: ["10.8 μg/mL", "11.1 μg/mL", "11.5 μg/mL", "0.025 μg/mL"], ans: 1,
+   exp: "(0.555−(−0.0029))/0.0504 = 0.5579/0.0504 ≈ 11.1 μg/mL（Nielsen 習題解答）。注意截距是 −0.0029，減去負號等於加。" },
+ { q: "標準曲線 A 的 r = 0.9970；曲線 B 的 r² = 0.9950。哪一條直線性較好？",
+   opts: ["A", "B", "一樣好", "無法比較"], ans: 1,
+   exp: "換算後比較：B 的 r = √0.9950 = 0.9975 &gt; A 的 0.9970，B 較好。這是 Nielsen 章末習題 8——比較前必須先換算成同一個指標！" },
+ { q: "殘差圖呈現明顯的 U 形曲線，代表：",
+   opts: ["數據非常完美", "應該改用曲線擬合（直線假設錯誤）", "有異常值要刪除", "斜率算錯了"], ans: 1,
+   exp: "殘差應隨機散布在 0 附近。系統性 U 形＝真實關係是曲線，硬用直線會在兩端高估/低估。" },
+ { q: "未知樣品訊號超出最高濃度標準品，正確做法是：",
+   opts: ["直接外插濃度", "把直線延伸讀值", "稀釋樣品後重測，讓訊號落在線性範圍內", "報告最高濃度"], ans: 2,
+   exp: "外插違反線性假設（高濃度常飽和）。稀釋後重測是唯一專業做法（Nielsen Fig 4.8 討論）。" },
+ { q: "關於 r² = 0.9989 的解讀，正確的是：",
+   opts: ["有 99.89% 的樣品測對了", "y 變異的 99.89% 可由 x 的線性關係解釋，其餘 0.11% 來自隨機變異", "誤差是 0.11%", "斜率可靠度 99.89%"], ans: 1,
+   exp: "r² 是「被解釋變異比例」。Nielsen 4.4.2：0.11% 的變異不隨 x 改變，屬於正常的隨機（不確定/indeterminate）變異。" }
+];
+</script>
+<script src="assets/app.js"></script>
+
+<nav class="pager">
+<a href="ch03.html"><small>上一章</small>Ch3 LOD、LOQ 與品質管制圖</a>
+<a href="ch05.html"><small>下一章</small>Ch5 有效數字與異常值檢定</a>
+</nav>
+</main>
+<footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫</footer>
+</body>
+</html>

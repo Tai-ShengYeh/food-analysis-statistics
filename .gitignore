@@ -1,0 +1,7 @@
+# R 暫存輸出
+Rplots.pdf
+.Rhistory
+.RData
+# 系統檔
+Thumbs.db
+.DS_Store

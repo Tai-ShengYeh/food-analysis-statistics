@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ch10 實戰案例：滴定與 HPLC 的量測不確定度</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar"><div class="inner">
+<a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
+<nav class="topnav">
+<a href="index.html">首頁</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a>
+</nav></div></header>
+
+<main>
+<div class="crumbs">Part 2 量測不確定度／第 10 章（QUAM Example A2 與 A4 完整重現）</div>
+<h1>實戰案例②滴定 ③HPLC
+<span class="en">Case Study: NaOH Standardisation &amp; Pesticide Residue by HPLC/GC</span></h1>
+
+<div class="goals"><b>學習目標</b>
+<ul>
+<li>走完滴定標定的 GUM 四步驟，重現 QUAM Example A2 的每一個數字</li>
+<li>學會「內部驗證數據法」：HPLC/GC 農藥分析的三大成分（精密度、偏倚、均勻性）</li>
+<li>能對自己的實驗數據套用這兩套流程</li>
+</ul></div>
+
+<!-- ============ 案例② 滴定 ============ -->
+<h2>10.1 案例②：NaOH 標定滴定（QUAM Example A2）</h2>
+<p><strong>情境</strong>：以一級標準物 KHP（鄰苯二甲酸氫鉀，純度由證書保證）標定約 0.1 M 的 NaOH，
+自動滴定儀以 pH 電極判定終點，滴定體積 V<sub>T</sub> ≈ 18.6 mL。</p>
+
+<h3>Step 1　量測模型</h3>
+<div class="formula">
+c<sub>NaOH</sub> = <span class="frac"><span class="num">1000 × m<sub>KHP</sub> × P<sub>KHP</sub></span><span class="den">M<sub>KHP</sub> × V<sub>T</sub></span></span>
+= <span class="frac"><span class="num">1000 × 0.3888 × 1.0</span><span class="den">204.2212 × 18.64</span></span>
+= <strong>0.10214 mol/L</strong>
+<span class="note">m=KHP 質量(g)、P=純度、M=莫耳質量(g/mol)、V_T=滴定體積(mL)</span>
+</div>
+
+<h3>Step 2　魚骨圖找來源</h3>
+<p>見第 6 章圖 6-1。乘除模型 → 每個參數以<strong>相對不確定度</strong>參戰。</p>
+
+<h3>Step 3　量化（QUAM Table A2.1/A2.2）</h3>
+<table>
+<tr><th>成分</th><th>值</th><th>標準不確定度 u</th><th>相對 u(x)/x</th><th>評估方式</th></tr>
+<tr><td>重複性 rep</td><td>1.0</td><td class="num">0.0005</td><td class="num">0.0005</td><td>過往滴定的重複變異（合併所有操作）</td></tr>
+<tr><td>質量 m<sub>KHP</sub></td><td>0.3888 g</td><td class="num">0.00013 g</td><td class="num">0.00033</td><td>第 7 章天平案例：解析度+校正+重複，皮毛兩次</td></tr>
+<tr><td>純度 P<sub>KHP</sub></td><td>1.0</td><td class="num">0.00029</td><td class="num">0.00029</td><td>證書 ±0.0005 → 矩形 0.0005/√3</td></tr>
+<tr><td>莫耳質量 M<sub>KHP</sub></td><td>204.2212 g/mol</td><td class="num">0.0038 g/mol</td><td class="num">0.000019</td><td>IUPAC 原子量不確定度表（貢獻極小）</td></tr>
+<tr class="hl"><td>滴定體積 V<sub>T</sub></td><td>18.64 mL</td><td class="num">0.013 mL</td><td class="num">0.0007</td><td>校正+溫度+終點判讀（見下）</td></tr>
+</table>
+<div class="callout"><span class="t">🔬 u(V<sub>T</sub>) 的解剖——滴定最重要的技術細節</span>
+① <strong>滴定管校正</strong>：A 級 ±0.01 mL，三角形 → 0.01/√6 = 0.004 mL<br>
+② <strong>溫度</strong>：實驗室 ±4 ℃，水體積膨脹係數 2.1×10⁻⁴/℃ →
+18.64 × 2.1e−4 × 4/√3 = 0.009 mL<br>
+③ <strong>終點判讀</strong>：pH 曲線轉折與理論當量點的偏差，約 ±0.003 mL（矩形）→ 0.0017 mL<br>
+合成：√(0.004² + 0.009² + 0.0017²) ≈ 0.010 mL；QUAM 保守取 <strong>0.013 mL</strong></div>
+
+<h3>Step 4　合成與報告</h3>
+<div class="formula">
+<span class="frac"><span class="num">u<sub>c</sub>(c)</span><span class="den">c</span></span> = √(0.0005² + 0.00033² + 0.00029² + 0.000019² + 0.0007²) = <strong>0.00097</strong>
+<br><br>u<sub>c</sub> = 0.10214 × 0.00097 = <strong>0.00010 mol/L</strong>
+　報告：<strong>c(NaOH) = (0.10214 ± 0.00020) mol/L（k=2）</strong>
+</div>
+
+<pre class="rcode" data-file="case_titration.R"># ====== 案例② NaOH 標定滴定 (QUAM Example A2 完整重現) ======
+m_KHP &lt;- 0.3888;  P_KHP &lt;- 1.0
+M_KHP &lt;- 204.2212; V_T &lt;- 18.64
+
+c_NaOH &lt;- 1000 * m_KHP * P_KHP / (M_KHP * V_T)
+round(c_NaOH, 5)          #&gt; 0.10214 mol/L
+
+# 各成分相對標準不確定度 (QUAM Table A2.1)
+rel &lt;- c(rep = 0.0005, m = 0.00013/0.3888, P = 0.00029,
+         M = 0.0038/204.2212, V = 0.013/18.64)
+round(rel, 5)
+#&gt;    rep     m     P     M     V
+#&gt; 0.0005 3e-04 3e-04 2e-05 7e-04
+
+rel_uc &lt;- sqrt(sum(rel^2))
+uc &lt;- c_NaOH * rel_uc
+round(c(rel_uc, uc), 5)   #&gt; 0.00097  0.0001  <- 與 QUAM 完全一致
+
+U &lt;- 2 * uc
+sprintf("c(NaOH) = (%.5f ± %.5f) mol/L (k=2)", c_NaOH, round(U,5))
+#&gt; "c(NaOH) = (0.10214 ± 0.00020) mol/L (k=2)"
+
+# 預算：誰是老大？
+pct &lt;- rel^2 / sum(rel^2) * 100
+round(sort(pct, decreasing = TRUE), 1)
+#&gt;    V   rep    m    P    M
+#&gt; 52.2  26.8 12.0  9.0  0.0
+
+# 改善實驗：讓滴定體積接近 50 mL (KHP 加倍以上)
+rel2 &lt;- c(0.0005, 0.00013/(0.3888*2.6), 0.00029,
+          0.0038/204.2212, 0.013/49)
+round(c_NaOH * sqrt(sum(rel2^2)), 6)
+#&gt; 0.000066  <- uc 從 0.00010 降到 0.000066 (改善 34%)!</pre>
+
+<div class="callout ok"><span class="t">🎯 滴定案例的工程啟示</span>
+① V<sub>T</sub> 貢獻 52%——<strong>滴定體積越大、相對誤差越小</strong>，把滴定體積設計到接近滴定管滿管程<br>
+② 重複性 27%——平行滴定取平均直接受益<br>
+③ 莫耳質量幾乎 0%——<strong>不必浪費時間糾結原子量</strong>，力氣花在刀口上</div>
+
+<!-- ============ 案例③ HPLC ============ -->
+<hr>
+<h2>10.2 案例③：HPLC/GC 農藥殘留分析（QUAM Example A4）</h2>
+<p><strong>情境</strong>：以萃取 + 層析（原文 GC，流程同樣適用 HPLC）測麵包中有機磷農藥殘留。
+這個案例示範<strong>內部驗證數據法</strong>——不用逐項拆儀器，直接用方法驗證時的
+精密度、回收率、樣品均勻性數據合成。</p>
+
+<h3>Step 1　量測模型</h3>
+<div class="formula">
+P<sub>op</sub> = <span class="frac"><span class="num">I<sub>op</sub> × c<sub>ref</sub> × V</span><span class="den">I<sub>ref</sub> × Rec × m<sub>sample</sub></span></span> × F<sub>hom</sub> [mg/kg]
+<span class="note">I=波峰面積、c_ref=標準品濃度、V=萃取液終體積、Rec=回收率、F_hom=均勻性因子</span>
+</div>
+<div class="callout"><span class="t">💡 為什麼儀器校正不見了？</span>
+訊號<strong>比值 I<sub>op</sub>/I<sub>ref</sub></strong> 已抵銷大部分儀器因素（同機、同日、同方法）。
+於是主導不確定度的不再是儀器，而是<strong>方法的整體表現</strong>——
+這就是「內部驗證法」的立足點。</div>
+
+<h3>Step 3　三大成分（QUAM Table A4.4）</h3>
+<table>
+<tr><th>成分</th><th>值</th><th>相對標準不確定度</th><th>數據來源</th></tr>
+<tr class="hl"><td><strong>精密度 Precision</strong></td><td>1.0</td><td class="num">0.27</td><td>不同類型樣品<strong>雙重複分析</strong>的中間精密度</td></tr>
+<tr><td><strong>偏倚 Bias（回收率）</strong></td><td>Rec = 0.9</td><td class="num">0.043/0.9 = 0.048</td><td>加標回收實驗：平均回收 90%，其 SD 與顯著性</td></tr>
+<tr><td><strong>均勻性 Homogeneity</strong></td><td>1.0</td><td class="num">0.20</td><td>模型估計最壞情境（農藥可能只在麵包表面）</td></tr>
+</table>
+
+<h3>Step 4　合成</h3>
+<div class="formula">
+<span class="frac"><span class="num">u<sub>c</sub>(P<sub>op</sub>)</span><span class="den">P<sub>op</sub></span></span> = √(0.27² + 0.048² + 0.20²) = <strong>0.34</strong>
+<br><br>U = 0.34 × 2 = <strong>0.68 × P<sub>op</sub></strong>（k=2）
+<span class="note">QUAM 原文：U(P_op) = 0.68 × P_op。相對不確定度 34% 是殘留分析的常態</span>
+</div>
+<p><strong>數值例</strong>：儀器測得 1.00 mg/kg → 回收率修正後 P<sub>op</sub> = 1.00/0.9 = 1.11 mg/kg，
+u<sub>c</sub> = 0.377，報告 <strong>1.11 ± 0.75 mg/kg（k=2）</strong>——與 QUAM Table A4.5 一致。</p>
+
+<pre class="rcode" data-file="case_hplc.R"># ====== 案例③ HPLC/GC 辳藥 (QUAM Example A4 重現) ======
+rel_prec  &lt;- 0.27        # 中間精密度 (雙重複數據)
+rel_bias  &lt;- 0.043/0.9   # 回收率偏倚
+rel_homog &lt;- 0.20        # 樣品均勻性 (最壞情境模型)
+
+rel_uc &lt;- sqrt(rel_prec^2 + rel_bias^2 + rel_homog^2)
+round(rel_uc, 2)         #&gt; 0.34
+
+# 數值例：儀器測得 1.00 mg/kg
+P_raw &lt;- 1.00
+P_op  &lt;- P_raw / 0.9     # 回收率修正
+U_op  &lt;- 2 * P_op * rel_uc
+sprintf("P_op = %.2f ± %.2f mg/kg (k=2)", P_op, U_op)
+#&gt; "P_op = 1.11 ± 0.75 mg/kg (k=2)"
+
+# 變異數占比：精密度 63%、均勻性 35%、偏倚 2%
+pct &lt;- c(P=rel_prec^2, H=rel_homog^2, B=rel_bias^2)
+round(pct/sum(pct)*100, 1)
+#&gt;    P    H    B
+#&gt; 63.3 34.7  2.0
+
+# 進階：自己從「雙重複對」算精密度項
+dup &lt;- data.frame(a = c(.42,1.13,.27,.88,.55,1.62,.31,.74),
+                  b = c(.39, .97,.30,.71,.60,1.28,.35,.80))
+d2 &lt;- with(dup, ((a-b)/((a+b)/2))^2)
+sqrt(sum(d2)/(2*nrow(dup)))   #&gt; 0.15 (短期；長期中間精密度 0.27 更大)
+
+# 符合性：MRL = 2.0 mg/kg
+judge &lt;- function(r,U,L) if (r-U&gt;L) "不符合" else
+         if (r+U&lt;=L) "符合" else "灰色地帶"
+judge(1.11, 0.75, 2.0)
+#&gt; "符合"   (1.11+0.75=1.86 <= 2.0；若 MRL=1.5 則為灰色地帶)</pre>
+
+<div class="callout warn"><span class="t">🎯 HPLC 案例的工程啟示</span>
+① <strong>精密度是老大（63%）</strong>：改善方向＝均勻化整條麵包再取樣、穩定萃取流程、增加平行數<br>
+② <strong>均勻性是老二（35%）</strong>：取樣代表性是殘留分析的地基——QUAM 特別用三種情境模型化它<br>
+③ <strong>回收率偏倚只占 2%</strong>：回收率平均 90% 需修正，但它的「不確定度」影響不大<br>
+④ 相對不確定度 34% 聽起來很大？這就是<strong>痕量殘留分析的真實世界</strong>，法規限量的設定已考慮此事</div>
+
+<div class="quiz" id="quiz"></div>
+<script>
+const QUIZ = [
+ { q: "滴定標定中貢獻最大的成分是：",
+   opts: ["KHP 稱重", "KHP 純度", "滴定體積 V_T", "莫耳質量"], ans: 2,
+   exp: "V_T 占變異數 52%（相對 u=0.0007 最大）。改善法：把滴定體積設計到接近滴定管滿管程，相對誤差立刻縮小。" },
+ { q: "滴定體積 u=0.013 mL 的三個組成不包括：",
+   opts: ["滴定管校正", "溫度效應", "終點判讀偏移", "KHP 的純度"], ans: 3,
+   exp: "純度是獨立成分（0.00029），不屬於體積。體積三兄弟：校正（0.004）+溫度（0.009）+終點（0.002），平方和開根號≈0.010，QUAM 保守取 0.013。" },
+ { q: "想把滴定標定的 u_c 從 0.00010 降到 0.000066，最有效的單一改變是：",
+   opts: ["換更貴的天平", "增加 KHP 質量讓 V_T 接近 50 mL", "多查三次原子量表", "改用指示劑"], ans: 1,
+   exp: "攻擊最大項 V_T：體積從 18.6→49 mL，其相對貢獻從 0.0007 降至約 0.00027，整體 u_c 改善 34%。天平本來就只占 12%。" },
+ { q: "HPLC/GC 內部驗證法中，為什麼儀器校正不是主要成分？",
+   opts: ["因為儀器很貴", "因為模型用訊號「比值」I_op/I_ref，抵銷了大部分儀器因素", "因為法規豁免", "因為回收率已含校正"], ans: 1,
+   exp: "同機同日同方法的標準品與樣品訊號相除，儀器校正、漂移等因素在比值中抵銷。剩下的是「方法表現」：精密度、回收率、均勻性。" },
+ { q: "農藥案例中相對標準不確定度 0.34 的組成（變異數占比）：",
+   opts: ["精密度 63%、均勻性 35%、偏倚 2%", "偏倚 90%、精密度 10%", "三項各 1/3", "均勻性 100%"], ans: 0,
+   exp: "0.27²:0.20²:0.048² = 0.0729:0.04:0.0023。精密度與均勻性合計 &gt;98%——改善取樣與流程遠比糾結回收率有效。" },
+ { q: "農藥結果 1.11 ± 0.75 mg/kg（k=2），MRL=2.0。判定：",
+   opts: ["不符合", "符合（1.86 ≤ 2.0）", "灰色地帶", "需先除以回收率再判"], ans: 1,
+   exp: "保守決策規則：result+U=1.86 ≤ 2.0 → 符合（情境 iv）。若 MRL=1.5，同樣數據就落入灰色地帶——限量與 U 的相對大小決定判定難度。" },
+ { q: "從 8 對雙重複數據算出的 RSD（0.15）與長期中間精密度（0.27）相比偏小，原因是：",
+   opts: ["計算錯誤", "雙重複只反映短時間變異，不含天與天、校準與校準的變異", "雙重複樣品比較好測", "應該除以 n"], ans: 1,
+   exp: "雙重複是同批、同流程的「重複性」級資訊；中間精密度還包含時間、人員、校正週期等變異，通常更大。用於預算時要採長期值。" }
+];
+</script>
+<script src="assets/app.js"></script>
+
+<nav class="pager">
+<a href="ch09.html"><small>上一章</small>Ch9 Kragten 與 Monte Carlo</a>
+<a href="ch11.html"><small>下一章</small>Ch11 綜合案例與期末測驗</a>
+</nav>
+</main>
+<footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫</footer>
+</body>
+</html>

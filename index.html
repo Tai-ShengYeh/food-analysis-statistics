@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>食品分析數據品管與量測不確定度 — R 語言教學</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar"><div class="inner">
+<a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
+<nav class="topnav">
+<a href="index.html">首頁</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a>
+</nav></div></header>
+
+<main>
+<div class="crumbs">首頁</div>
+<h1>食品分析的數據品管統計與量測不確定度
+<span class="en">Data Quality Statistics &amp; Measurement Uncertainty for Food Analysis — with R</span></h1>
+
+<div class="card">
+<p>本課程專為<strong>沒有程式基礎的大學生</strong>設計，從入門走到進階，全部範例以 <strong>R 語言</strong>實作。
+教材依兩大經典編寫：</p>
+<ul>
+<li>📘 <strong>Nielsen's Food Analysis 第 4 章〈Evaluation of Analytical Data〉</strong>（J. S. Smith）——數據品管統計</li>
+<li>📗 <strong>EURACHEM/CITAC Guide CG 4〈Quantifying Uncertainty in Analytical Measurement〉QUAM:2012.P1</strong>——量測不確定度</li>
+</ul>
+<p>每章都有：觀念講解 → 課本例題重現 → <strong>可下載的 R 程式</strong> → <strong>互動測驗</strong>（附詳解）。</p>
+<div class="tag-row">
+<span class="badge blue">12 章</span><span class="badge blue">16 支 R 腳本</span><span class="badge blue">90+ 題測驗</span><span class="badge">6 大實戰案例</span>
+</div>
+</div>
+
+<h2>🧭 學習地圖</h2>
+<div class="chapgrid">
+<a class="chapcard" href="ch01.html"><span class="no">PART 1 · CH 1</span>
+<h3>統計入門</h3><p>平均數、標準差、CV；準確度 vs 精密度；誤差三兄弟。你的第一支 R 程式。</p></a>
+<a class="chapcard" href="ch02.html"><span class="no">PART 1 · CH 2</span>
+<h3>常態分配與信賴區間</h3><p>68–95–99.7 法則、Z 與 t、95% CI 的正確解讀，用模擬親眼驗證。</p></a>
+<a class="chapcard" href="ch03.html"><span class="no">PART 1 · CH 3</span>
+<h3>LOD、LOQ 與管制圖</h3><p>方法能力指標與 Shewhart / CuSum 品質管制圖。</p></a>
+<a class="chapcard" href="ch04.html"><span class="no">PART 1 · CH 4</span>
+<h3>標準曲線與迴歸</h3><p>lm()、r²、殘差圖、信賴帶、反推濃度與外插危機。</p></a>
+<a class="chapcard" href="ch05.html"><span class="no">PART 1 · CH 5</span>
+<h3>有效數字與異常值</h3><p>取位規則、Dixon Q 檢定、Grubbs 檢定與學術倫理。</p></a>
+<a class="chapcard part2" href="ch06.html"><span class="no">PART 2 · CH 6</span>
+<h3>不確定度概念</h3><p>誤差 vs 不確定度、GUM 四步驟、魚骨圖、經驗方法。</p></a>
+<a class="chapcard part2" href="ch07.html"><span class="no">PART 2 · CH 7</span>
+<h3>Type A/B ＋ 案例①天平</h3><p>矩形/三角/常態轉換；分析天平稱量的完整預算。</p></a>
+<a class="chapcard part2" href="ch08.html"><span class="no">PART 2 · CH 8</span>
+<h3>合成、報告與符合性</h3><p>Rule 1/2、U=k·u<sub>c</sub>、報告格式、法規符合性判定。</p></a>
+<a class="chapcard part2" href="ch09.html"><span class="no">PART 2 · CH 9</span>
+<h3>Kragten 與 Monte Carlo</h3><p>數值微分與 10 萬次模擬，三方法對照鎘標準液案例。</p></a>
+<a class="chapcard part3" href="ch10.html"><span class="no">PART 2 · CH 10</span>
+<h3>案例②滴定 ③HPLC</h3><p>NaOH 標定（QUAM A2）與農藥殘留內部驗證法（QUAM A4）完整重現。</p></a>
+<a class="chapcard part3" href="ch11.html"><span class="no">PART 3 · CH 11</span>
+<h3>綜合案例與期末測驗</h3><p>粗纖維（A6）、標準曲線不確定度（E.4）＋ 15 題期末總測驗。</p></a>
+<a class="chapcard part3" href="ch12.html"><span class="no">PART 3 · CH 12</span>
+<h3>進階：LC-MS/MS 案例④</h3><p>基質效應（Matuszewski）、同位素內標、1/x 加權校正、氯黴素限量判定。</p></a>
+</div>
+
+<h2>📥 R 程式下載專區</h2>
+<div class="card">
+<p>每章內文都有可下載的程式碼區塊；完整腳本也可在此一次取得。
+所有程式只需 <strong>R 基礎套件</strong>（不需安裝任何額外套件），RStudio 中開啟即可逐行執行。</p>
+<p><strong>先下載這個：</strong>
+<a href="README.md" download>📄 README.md 課程手冊（含全部 R 程式碼與說明）</a>——
+一個 MD 檔收錄所有範例程式，手機/平板也能閱讀複製。</p>
+<table>
+<tr><th>章節</th><th>R 腳本</th><th>內容</th></tr>
+<tr><td>Ch1</td><td><a href="R/ch01_basics.R" download>ch01_basics.R</a></td><td>向量、mean/sd/CV、相對誤差</td></tr>
+<tr><td>Ch2</td><td><a href="R/ch02_ci_normal.R" download>ch02_ci_normal.R</a></td><td>pnorm/qnorm/qt、CI、1000 次模擬</td></tr>
+<tr><td>Ch3</td><td><a href="R/ch03_method_qc.R" download>ch03_method_qc.R</a></td><td>LOD/LOQ/MDL、Shewhart、CuSum</td></tr>
+<tr><td>Ch4</td><td><a href="R/ch04_regression.R" download>ch04_regression.R</a></td><td>lm()、r²、殘差、信賴帶、反推</td></tr>
+<tr><td>Ch5</td><td><a href="R/ch05_outliers_sigfig.R" download>ch05_outliers_sigfig.R</a></td><td>有效數字、Q 檢定、Grubbs</td></tr>
+<tr><td>Ch6</td><td><a href="R/ch06_uncertainty_concept.R" download>ch06_uncertainty_concept.R</a></td><td>誤差 vs 不確定度模擬</td></tr>
+<tr><td>Ch7</td><td><a href="R/ch07_typeAB_distributions.R" download>ch07_typeAB_distributions.R</a></td><td>Type A/B 分布轉換</td></tr>
+<tr><td>Ch7 案例①</td><td><a href="R/case_balance.R" download>case_balance.R</a></td><td><strong>天平稱量</strong>不確定度</td></tr>
+<tr><td>Ch8</td><td><a href="R/ch08_combine_report.R" download>ch08_combine_report.R</a></td><td>Rule 1/2、U=k·u<sub>c</sub>、符合性</td></tr>
+<tr><td>Ch9</td><td><a href="R/ch09_kragten_montecarlo.R" download>ch09_kragten_montecarlo.R</a></td><td>Kragten、Monte Carlo</td></tr>
+<tr><td>Ch10 案例②</td><td><a href="R/case_titration.R" download>case_titration.R</a></td><td><strong>NaOH 滴定標定</strong>（QUAM A2）</td></tr>
+<tr><td>Ch10 案例③</td><td><a href="R/case_hplc.R" download>case_hplc.R</a></td><td><strong>HPLC/GC 農藥</strong>（QUAM A4）</td></tr>
+<tr><td>Ch11</td><td><a href="R/ch11_capstone.R" download>ch11_capstone.R</a></td><td>粗纖維（A6）、迴歸不確定度（E.4）</td></tr>
+<tr><td>Ch12 案例④</td><td><a href="R/case_lcmsms.R" download>case_lcmsms.R</a></td><td><strong>LC-MS/MS 氯黴素</strong>：基質效應、SIL-IS、1/x 加權</td></tr>
+<tr><td>附錄</td><td><a href="R/figures.R" download>figures.R</a></td><td>本站全部教學圖表的繪圖程式</td></tr>
+</table>
+</div>
+
+<h2>🚀 開始之前：安裝 R（10 分鐘）</h2>
+<div class="goals">
+<ol>
+<li>到 <strong>cran.r-project.org</strong> 下載並安裝 R（選離你最近的鏡像站）</li>
+<li>到 <strong>posit.co/downloads</strong> 安裝 RStudio Desktop（免費 IDE）</li>
+<li>開啟 RStudio → File → New File → R Script → 把本課程的程式碼貼進去</li>
+<li>游標放在某一行，按 <span class="kbd">Ctrl+Enter</span> 執行；整支腳本用 <span class="kbd">Ctrl+Alt+R</span></li>
+</ol>
+</div>
+
+<h2>📚 參考文獻</h2>
+<div class="card">
+<ol class="refs">
+<li>Smith, J. S. Evaluation of Analytical Data. In <i>Nielsen’s Food Analysis</i>, 6th ed.; Ismail, B. P., Nielsen, S. S., Eds.; Food Science Text Series; Springer, 2024; Chapter 4, pp 37–50.</li>
+<li>Ellison, S. L. R.; Williams, A. (eds.) <i>Eurachem/CITAC Guide CG 4: Quantifying Uncertainty in Analytical Measurement</i>, 3rd ed., QUAM:2012.P1, 2012. <a href="https://www.eurachem.org/index.php/publications/guides/quam" target="_blank" rel="noopener">eurachem.org — QUAM</a></li>
+<li>Matuszewski, B. K.; Constanzer, M. L.; Chavez-Eng, C. M. Strategies for the Assessment of Matrix Effect in Quantitative Bioanalytical Methods Based on HPLC−MS/MS. <i>Anal. Chem.</i> <strong>2003</strong>, <em>75</em> (13), 3019–3030. <a href="https://doi.org/10.1021/ac020361s" target="_blank" rel="noopener">DOI: 10.1021/ac020361s</a>（Ch12 基質效應實驗之依據）</li>
+<li>European Commission, Health and Food Safety Directorate-General. <i>Analytical Quality Control and Method Validation Procedures for Pesticide Residues</i> (SANTE/11312/2021)（離子比 ±30% 等定性確認準則）.</li>
+</ol>
+</div>
+<div class="callout ok"><span class="t">👨‍🏫 給授課教師</span>
+章節順序即建議教學順序（Part 1 → Part 2 → Part 3），每章約 50 分鐘。
+所有數值均與 Nielsen Ch.4 及 QUAM:2012.P1 原文例題核對一致（如 SD=0.2927、
+c<sub>NaOH</sub>=0.10214、U=0.68×P<sub>op</sub>），可直接用於課堂演示與作業。</div>
+
+<nav class="pager">
+<a href="ch01.html"><small>開始學習</small>Ch1 統計入門 →</a>
+<a href="ch11.html"><small>直攻期末</small>Ch11 期末測驗 →</a>
+</nav>
+</main>
+<footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫 · 僅供教學使用</footer>
+</body>
+</html>

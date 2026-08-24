@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ch09 Kragten 試算表法與 Monte Carlo 模擬</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar"><div class="inner">
+<a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
+<nav class="topnav">
+<a href="index.html">首頁</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a>
+</nav></div></header>
+
+<main>
+<div class="crumbs">Part 2 量測不確定度（QUAM Appendix E.2–E.3）／第 9 章</div>
+<h1>數值方法：Kragten 試算表法與 Monte Carlo
+<span class="en">Numerical Approaches — 不想算偏微分的救星</span></h1>
+
+<div class="goals"><b>學習目標</b>
+<ul>
+<li>理解 Kragten 法＝用「加一點、重算一次」取代偏微分</li>
+<li>理解 Monte Carlo＝把輸入量當分布，抽樣 10 萬次看結果分布</li>
+<li>完成鎘標準液案例的三方法對照（解析法 / Kragten / MC）</li>
+<li>知道什麼時候必須放棄解析法改用模擬</li>
+</ul></div>
+
+<h2>9.1 回到鎘標準液：三種合成方法</h2>
+<div class="formula">
+c<sub>Cd</sub> = <span class="frac"><span class="num">1000 × m × P</span><span class="den">V</span></span> = 1002.7 mg/L
+<span class="note">m=100.28 mg (u=0.05)、P=0.9999 (u=0.000058)、V=100.0 mL (u=0.07)——QUAM Table A1.1</span>
+</div>
+
+<h3>方法一：解析法（Rule 2）</h3>
+<div class="formula">
+<span class="frac"><span class="num">u<sub>c</sub></span><span class="den">c</span></span> = √( (u(m)/m)² + (u(P)/P)² + (u(V)/V)² )
+= √(0.0005² + 0.000058² + 0.0007²) = 0.00086
+<br><br>u<sub>c</sub> = 1002.7 × 0.00086 ≈ <strong>0.9 mg/L</strong>（QUAM Table A1.1 完全一致）
+</div>
+
+<h3>方法二：Kragten 數值微分（QUAM Appendix E.2）</h3>
+<p>偏微分的<strong>數值近似</strong>：把某一輸入量 x<sub>i</sub> 加上自己的 u(x<sub>i</sub>)，
+重算 y，兩次結果的差就是該成分的貢獻：</p>
+<div class="formula">
+u(y, x<sub>i</sub>) ≈ y(x<sub>1</sub>, …, x<sub>i</sub>+u(x<sub>i</sub>), …) − y(x<sub>1</sub>, …, x<sub>i</sub>, …)
+<span class="note">這正是 Excel 試算表「複製欄、改一格」的 Kragten 技巧——R 一個迴圈就搞定</span>
+</div>
+
+<h3>方法三：Monte Carlo 模擬（QUAM Appendix E.3, GUM S1）</h3>
+<p>不再算任何公式——把每個輸入量視為<strong>機率分布</strong>，隨機抽 N 組，
+計算 N 個 y，直接用 y 的分布回答問題：</p>
+<div class="figure">
+<img src="assets/img/fig_montecarlo.png" alt="Monte Carlo 直方圖">
+<div class="cap">圖 9-1 100,000 次虛擬配製的 c(Cd) 分布：MC 95% 區間與解析法 U 幾乎重疊</div>
+</div>
+
+<pre class="rcode" data-file="ch09_ex1.R"># ============ 鎘標準液：三方法對照 ============
+m &lt;- 100.28; u_m &lt;- 0.05
+P &lt;- 0.9999; u_P &lt;- 0.000058
+V &lt;- 100.0;  u_V &lt;- 0.07
+conc &lt;- function(m,P,V) 1000*m*P/V
+c_Cd &lt;- conc(m,P,V)                  #&gt; 1002.7 mg/L
+
+# (1) 解析法 Rule 2
+uc1 &lt;- c_Cd * sqrt((u_m/m)^2 + (u_P/P)^2 + (u_V/V)^2)
+round(uc1, 2)                        #&gt; 0.86
+
+# (2) Kragten 數值微分
+kragten &lt;- function(f, x, u) {
+  y0 &lt;- f(x)
+  contrib &lt;- sapply(seq_along(x), function(i) {
+    xi &lt;- x; xi[[i]] &lt;- xi[[i]] + u[[i]]
+    f(xi) - y0
+  })
+  list(contrib = contrib, uc = sqrt(sum(contrib^2)))
+}
+res &lt;- kragten(conc, list(m,P,V), list(u_m,u_P,u_V))
+round(res$contrib, 3)   #&gt; 0.500 0.058 0.702  (m, P, V 的貢獻)
+round(res$uc, 2)        #&gt; 0.86  <- 與解析法一致!
+
+# (3) Monte Carlo
+set.seed(2024); N &lt;- 100000
+y_mc &lt;- conc(rnorm(N,m,u_m), rnorm(N,P,u_P), rnorm(N,V,u_V))
+sd(y_mc)                             #&gt; ~0.86 (同樣一致!)
+round(quantile(y_mc, c(.025,.975)), 1)
+#&gt;  2.5%  97.5%
+#&gt; 1001.0 1004.4   <- 95% 涵蓋區間，直接可得
+
+barplot(res$contrib, names.arg=c("質量 m","純度 P","體積 V"),
+        col=c("#43A047","#FDD835","#1E88E5"), las=1, border=NA,
+        main="鎘標準液：各成分貢獻 |u(y,x)|",
+        ylab="mg/L")</pre>
+
+<div class="figure">
+<img src="assets/img/fig_budget.png" alt="不確定度預算">
+<div class="cap">圖 9-2 鎘標準液的不確定度預算：體積 (0.70) &gt; 質量 (0.50) ≫ 純度 (0.06)</div>
+</div>
+
+<h2>9.2 何時必須放棄解析法？</h2>
+<table>
+<tr><th>情境</th><th>原因</th><th>解方</th></tr>
+<tr><td>模型高度非線性</td><td>Rule 1/2 的線性近似失效（u(x)/x 不小）</td><td>Kragten 或 MC</td></tr>
+<tr><td>結果分布不對稱</td><td>近零結果、乘除鏈長、指數模型</td><td>MC 直接給不對稱區間（QUAM §9.6）</td></tr>
+<tr><td>輸入分布混合（矩形+常態+三角）</td><td>合成分布不是常態，k=2 不精確</td><td>MC 用分位數給涵蓋區間</td></tr>
+<tr><td>想快速做「what-if」</td><td>改一個 u 看結果變化</td><td>Kragten 試算表改一格即更新</td></tr>
+</table>
+<div class="callout ok"><span class="t">✅ QUAM 的建議（§8.2.5）</span>
+「建議對所有<strong>非最簡單</strong>的案例使用試算表法或 Monte Carlo 等數值方法。」
+——解析法用來理解，數值法用來交付。</div>
+
+<div class="quiz" id="quiz"></div>
+<script>
+const QUIZ = [
+ { q: "Kragten 法的本質是：",
+   opts: ["新的統計分布", "用「x_i 加上 u_i 後重算 y」的數值微分，近似偏微分貢獻", "隨機抽樣", "最小平方法"], ans: 1,
+   exp: "u(y,x_i) ≈ y(x_i+u(x_i)) − y(x_i)。它是 Excel 時代分析師的聰明技巧（Kragten 1994），QUAM Appendix E.2 收錄，與解析法結果一致。" },
+ { q: "Monte Carlo 法中，每個輸入量被視為：",
+   opts: ["固定常數", "一個機率分布（依 Type A/B 資訊決定形狀）", "一個矩陣", "誤差上限"], ans: 1,
+   exp: "依已知資訊給每個輸入量指定分布（常態/矩形/三角…），抽 N 組代入模型，用輸出 y 的分布直接讀出標準差與 95% 區間。" },
+ { q: "鎘標準液案例中，貢獻最大的成分是：",
+   opts: ["質量 m", "純度 P", "體積 V", "三項相同"], ans: 2,
+   exp: "貢獻 = 相對不確定度競賽：V 0.0007 &gt; m 0.0005 ≫ P 0.000058。相對貢獻 0.70 vs 0.50 vs 0.06 mg/L——改善量瓶/控溫最划算。" },
+ { q: "哪一種情況「最需要」改用 Monte Carlo？",
+   opts: ["模型是簡單的加減", "結果接近零、分布明顯不對稱", "只有一個輸入量", "u 都很小"], ans: 1,
+   exp: "對稱近似常態時解析法夠用；近零結果（如空白校正、低濃度計數）分布歪斜，對稱的 ±U 不合理，MC 可直接給不對稱涵蓋區間（QUAM §9.6）。" },
+ { q: "MC 模擬得到的 y 分布，其 95% 涵蓋區間取自：",
+   opts: ["mean ± 2·SD", "2.5% 與 97.5% 分位數", "min 與 max", "中位數 ± SD"], ans: 1,
+   exp: "分位數法（quantile）不假設對稱，是不對稱分布的正確做法。mean±2SD 會把不對稱資訊丟掉。" },
+ { q: "Kragten 各成分貢獻的「平方和開根號」結果，與解析法比較：",
+   opts: ["一定比較大", "一定比較小", "在線性近似範圍內應幾乎相同", "無法比較"], ans: 2,
+   exp: "兩者都在算同一個傳播法則，只是偏微分用數值近似。u(x)/x 不大時（多數化學量測）差異可忽略——本案例兩者都 = 0.86。" }
+];
+</script>
+<script src="assets/app.js"></script>
+
+<nav class="pager">
+<a href="ch08.html"><small>上一章</small>Ch8 合成與符合性判定</a>
+<a href="ch10.html"><small>下一章</small>Ch10 實戰案例：滴定與 HPLC</a>
+</nav>
+</main>
+<footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫</footer>
+</body>
+</html>

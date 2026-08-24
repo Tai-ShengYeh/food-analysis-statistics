@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ch11 綜合案例與期末測驗</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar"><div class="inner">
+<a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
+<nav class="topnav">
+<a href="index.html">首頁</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a>
+</nav></div></header>
+
+<main>
+<div class="crumbs">Part 3 綜合應用／第 11 章</div>
+<h1>綜合案例與期末測驗
+<span class="en">Capstone: Crude Fibre, Calibration Uncertainty &amp; Final Exam</span></h1>
+
+<div class="goals"><b>學習目標</b>
+<ul>
+<li>整合應用：以協同試驗數據評估粗纖維的不確定度（QUAM Example A6）</li>
+<li>進階應用：標準曲線反推濃度的不確定度（QUAM Appendix E.4）</li>
+<li>通過期末測驗檢核全課程學習成效</li>
+</ul></div>
+
+<h2>11.1 案例④：飼料粗纖維——經驗方法與含量相關的不確定度（QUAM A6）</h2>
+<p><strong>情境</strong>：法定方法測動物飼料粗纖維：酸煮、鹼煮、灰化、秤失重。
+模型極簡：<strong>C<sub>fibre</sub> = (b − c)/a × 100 [% m/m]</strong>（b=樣品灰化失重、c=空白失重、a=樣品重）。</p>
+<div class="callout"><span class="t">📖 經驗方法的標準解法</span>
+粗纖維由方法條件定義（第 6 章）→ 不修正偏倚，直接採用<strong>協同試驗</strong>的
+再現性標準差 s<sub>R</sub> 當預算主體。實驗室先以內部重複性確認「表現與協同試驗相當」才可沿用。</div>
+<table>
+<tr><th>樣品</th><th class="num">A</th><th class="num">B</th><th class="num">C</th><th class="num">D</th><th class="num">E</th></tr>
+<tr><td>纖維含量 (% m/m)</td><td class="num">2.3</td><td class="num">12.1</td><td class="num">5.4</td><td class="num">3.4</td><td class="num">10.1</td></tr>
+<tr><td>s<sub>R</sub>（再現性 SD）</td><td class="num">0.293</td><td class="num">0.563</td><td class="num">0.390</td><td class="num">0.347</td><td class="num">0.575</td></tr>
+<tr><td>s<sub>r</sub>（重複性 SD）</td><td class="num">0.198</td><td class="num">0.358</td><td class="num">0.264</td><td class="num">0.232</td><td class="num">0.391</td></tr>
+</table>
+<p><strong>含量相關性</strong>：s<sub>R</sub> 隨含量上升 → 不確定度要「分含量層級」報告。
+另外「乾至恆重」的失重 ±2 mg（矩形）對 1 g 樣品 = 固定 0.115% m/m 貢獻——
+<strong>低含量時不可忽略</strong>（QUAM 的判斷準則：貢獻 &gt; s<sub>R</sub>/3 就要加進預算）。</p>
+<div class="formula">
+u<sub>c</sub> = √(s<sub>R</sub>² + 0.115²)
+<span class="note">含量 2.5%：u_c = √(0.292²+0.115²) = 0.31 → U = ±0.62（25% 相對！）<br>
+含量 5%：U = ±0.8（16%）　含量 10%：U = ±1.2（12%）——QUAM Table A6.4/A6.5</span>
+</div>
+
+<h2>11.2 案例⑤：標準曲線反推濃度的不確定度（QUAM Appendix E.4）</h2>
+<p>第 4 章我們反推了未知濃度 x<sub>pred</sub> = (y<sub>obs</sub> − b)/a。
+它的不確定度來自<strong>迴歸殘差</strong>與「未知點離校正中心多遠」：</p>
+<div class="formula">
+var(x<sub>pred</sub>) = <span class="frac"><span class="num">S²</span><span class="den">b<sub>1</sub>²</span></span>
+[ <span class="frac"><span class="num">1</span><span class="den">p</span></span> + <span class="frac"><span class="num">1</span><span class="den">n</span></span> +
+<span class="frac"><span class="num">(x<sub>pred</sub> − x̄)²</span><span class="den">S<sub>xx</sub></span></span> ]
+<span class="note">S=殘差標準差、b₁=斜率、p=未知樣品重複測定數、n=校正點數、S_xx=Σ(xᵢ−x̄)²</span>
+</div>
+<div class="figure">
+<img src="assets/img/fig_pred_unc.png" alt="反推濃度不確定度">
+<div class="cap">圖 11-1 反推濃度的 95% 不確定度隨濃度變化：校正範圍兩端最寬（藍色刻度＝校正點位置）</div>
+</div>
+<div class="callout ok"><span class="t">🎯 設計啟示</span>
+① 未知樣品測 p 次（如 3 次）直接把 1/p 項縮小<br>
+② 校正點涵蓋要寬、且未知濃度<strong>靠近校正中心</strong>（(x−x̄)² 項最小）<br>
+③ 這就是「標準曲線中段最可靠」的數學證明——呼應第 4 章的信賴帶</p></div>
+
+<pre class="rcode" data-file="ch11_capstone.R"># ====== 案例④ 粗纖維 (QUAM A6) ======
+sR_table &lt;- data.frame(
+  sample=LETTERS[1:5],
+  fibre = c(2.3, 12.1, 5.4, 3.4, 10.1),
+  sR    = c(0.293, 0.563, 0.390, 0.347, 0.575),
+  s_r   = c(0.198, 0.358, 0.264, 0.232, 0.391))
+plot(sR_table$fibre, sR_table$sR, pch=19, col="brown",
+     xlab="纖維含量 (%)", ylab="sR",
+     main="再現性隨含量上升")
+abline(lm(sR ~ fibre, data=sR_table), col="red")
+
+# 低含量樣品：sR + 乾燥固定項合成
+uc25 &lt;- sqrt(0.292^2 + 0.115^2)
+round(c(uc = uc25, U_k2 = 2*uc25), 2)
+#&gt;  uc U_k2
+#&gt; 0.31 0.62   (相對 25% —— QUAM Table A6.4/A6.5)
+
+# ====== 案例⑤ 標準曲線反推的不確定度 (QUAM E.4) ======
+x &lt;- c(1,3,5,10,20); y &lt;- c(.050,.140,.242,.521,.998)
+fit &lt;- lm(y ~ x)
+b1 &lt;- coef(fit)[2]; S &lt;- summary(fit)$sigma
+n &lt;- 5; p &lt;- 3
+xb &lt;- mean(x); Sxx &lt;- sum((x-xb)^2)
+y_obs &lt;- 0.555
+x_pred &lt;- (y_obs - coef(fit)[1]) / b1
+u_pred &lt;- sqrt((S^2/b1^2) * (1/p + 1/n + (x_pred-xb)^2/Sxx))
+round(c(x_pred = x_pred, u = u_pred, U_k2 = 2*u_pred), 2)
+#&gt; x_pred     u  U_k2
+#&gt;   11.10  0.19  0.38
+# 報告：Na = (11.1 ± 0.4) ug/mL (k=2)</pre>
+
+<hr>
+<h2>11.3 全課程知識地圖</h2>
+<table>
+<tr><th>主題</th><th>核心工具</th><th>章節</th></tr>
+<tr><td>描述統計</td><td>mean / SD / CV / CI（Z、t）</td><td>Ch1–2</td></tr>
+<tr><td>方法能力</td><td>LOD、LOQ、MDL、專一性</td><td>Ch3</td></tr>
+<tr><td>日常品管</td><td>Shewhart / CuSum 管制圖、空白、回收</td><td>Ch3</td></tr>
+<tr><td>校正</td><td>lm()、r²、殘差、信賴帶、反推</td><td>Ch4、11.2</td></tr>
+<tr><td>數據取捨</td><td>有效數字、Q 檢定、Grubbs、學術倫理</td><td>Ch5</td></tr>
+<tr><td>不確定度流程</td><td>GUM 四步驟、魚骨圖、經驗方法</td><td>Ch6</td></tr>
+<tr><td>量化成分</td><td>Type A/B、矩形/三角/常態轉換</td><td>Ch7</td></tr>
+<tr><td>合成與報告</td><td>Rule 1/2、U=k·u<sub>c</sub>、符合性判定</td><td>Ch8</td></tr>
+<tr><td>數值方法</td><td>Kragten、Monte Carlo</td><td>Ch9</td></tr>
+<tr><td>實戰案例</td><td>天平、滴定、HPLC、粗纖維、曲線</td><td>Ch7、10、11</td></tr>
+<tr><td>進階延伸</td><td>LC-MS/MS：基質效應、SIL-IS、1/x 加權校正</td><td>Ch12</td></tr>
+</table>
+
+<div class="quiz" id="quiz"></div>
+<script>
+const QUIZ = [
+ { q: "粗纖維（經驗方法）的不確定度預算主體應來自：",
+   opts: ["逐項拆解每個玻璃器皿", "協同試驗的再現性標準差 s_R（經內部重複性確認後採用）", "天平校正證書", "Monte Carlo"], ans: 1,
+   exp: "經驗方法的偏倚由方法定義、不修正；QUAM A6 以協同試驗 sR 為主體，前提是實驗室內部重複性與協同試驗相當。" },
+ { q: "粗纖維含量 2.5% 時 u_c=0.31（相對 12%），含量 10% 時相對不確定度約：",
+   opts: ["25%", "12%", "6%", "一樣 12%"], ans: 2,
+   exp: "sR 隨含量線性增加但相對值遞減：10% 時 U=1.2 → 相對 12%。低含量相對不確定度較大（25% @2.5%），報告時應分層級給 U。" },
+ { q: "QUAM 判斷「小成分要不要納入預算」的常用準則：",
+   opts: ["大於 0.01 就要", "貢獻超過最大項的 1/3（或 s_R/3）才需納入", "永遠全部納入", "憑感覺"], ans: 1,
+   exp: "平方和開根號下，小於最大項 1/3 的成分對 u_c 影響 &lt;6%。QUAM A6 即用「乾燥項 &gt; s_R/3？」決定是否納入。" },
+ { q: "標準曲線反推濃度的 var(x_pred) 公式中，「未知點離校正中心越遠」會讓不確定度：",
+   opts: ["越小", "越大（(x_pred−x̄)² 項）", "不變", "先大後小"], ans: 1,
+   exp: "這是迴歸的槓桿效應：外圍資訊少、斜率誤差被放大。所以未知濃度應落在校正範圍中段（信賴帶最窄處）。" },
+ { q: "把未知樣品從測 1 次改為測 3 次取平均，var(x_pred) 中的變化是：",
+   opts: ["1/n 變 1/3n", "1/p 變 1/(3p)，即該項縮小 3 倍", "S 變小", "斜率變準"], ans: 1,
+   exp: "p 是未知樣品的重複測定數：1/p 從 1 變 1/3。最便宜的不確定度改善就是多進樣兩針！" },
+ { q: "本課程中「天平、滴定、HPLC」三案例的預算老大分別是：",
+   opts: ["重複性、V_T、精密度", "校正、溫度、均勻性", "解析度、稱重、回收率", "三者都是精密度"], ans: 0,
+   exp: "天平案例（對 c 的貢獻）：體積 0.70 &gt; 質量 0.55（質量內部以重複性為主）；滴定：V_T 52%；HPLC：精密度 63%。找老大→攻擊老大，是所有預算分析的行動準則。" }
+];
+</script>
+
+<hr>
+<h2>11.4 期末總測驗（15 題綜合）</h2>
+<div id="finalexam"></div>
+<script>
+const FINALEXAM = [
+ { q: "重複測定 64.53、64.45、65.10、64.78 的 CV 最接近：",
+   opts: ["0.45%", "4.5%", "0.29%", "2.9%"], ans: 0,
+   exp: "SD/x̄×100 = 0.2927/64.72×100 = 0.452%。Ch1。" },
+ { q: "95% 信賴、n=4、SD=0.293，平均值的信賴半寬是：",
+   opts: ["0.293", "0.465", "0.115", "0.577"], ans: 1,
+   exp: "t(0.975,3)×SD/√n = 3.18×0.293/2 = 0.465。Ch2。" },
+ { q: "空白 20 次的 SD=0.003，此方法 LOQ 約為（空白均值≈0）：",
+   opts: ["0.009", "0.03", "0.003", "0.1"], ans: 1,
+   exp: "LOQ = 空白 + 10×SD = 0.03。Ch3。" },
+ { q: "標準曲線要求的分析化學經驗門檻：",
+   opts: ["r ≥ 0.90", "r ≥ 0.997", "r² ≥ 0.90", "r = 1"], ans: 1,
+   exp: "Nielsen 4.4.2：r ≥ 0.9970（生物數據除外）。Ch4。" },
+ { q: "n=6 的 Dixon Q 檢定 90% 臨界值：",
+   opts: ["0.76", "0.56", "0.94", "0.64"], ans: 1,
+   exp: "n=6 → 0.56（n=4→0.76、n=5→0.64）。Ch5。" },
+ { q: "下列何者「增加重複次數」無法改善？",
+   opts: ["平均值的隨機不確定度", "信賴區間半寬", "系統誤差（偏倚）", "管制圖的波動"], ans: 2,
+   exp: "系統誤差與 n 無關，只能校正/修正。Ch1、Ch6。" },
+ { q: "GUM Step 2 的建議工具是：",
+   opts: ["管制圖", "因果（魚骨）圖", "直方圖", "打靶圖"], ans: 1,
+   exp: "魚骨圖系統性列出來源並避免重複計算（QUAM Appendix D）。Ch6。" },
+ { q: "證書「±0.15 mL」無信賴水準，u 為：",
+   opts: ["0.15", "0.087", "0.061", "0.077"], ans: 1,
+   exp: "矩形分布：0.15/√3 = 0.0866 ≈ 0.087。Ch7。" },
+ { q: "y = p·q/r 型模型，合成用：",
+   opts: ["Rule 1 絕對值平方和", "Rule 2 相對值平方和", "直接相加", "取最大項"], ans: 1,
+   exp: "乘除用相對標準不確定度合成。Ch8。" },
+ { q: "u_c=0.081 mg 由 n=5 的 Type A 項主導，95% 的 U 為：",
+   opts: ["0.162", "0.23", "0.19", "0.081"], ans: 1,
+   exp: "k=t(0.975,4)=2.8 → U=2.8×0.081=0.23（QUAM §8.3.4）。Ch8。" },
+ { q: "結果 10.6、U=1.0、限值 10。保守規則判定：",
+   opts: ["不符合", "符合", "灰色地帶", "數據無效"], ans: 2,
+   exp: "result−U=9.6 &lt; 10 且 result+U=11.6 &gt; 10 → 區間橫跨限值（情境 ii），無法判定，屬灰色地帶：需複驗或依約定決策規則處理。Ch8。" },
+ { q: "Kragten 法計算各成分貢獻的方式：",
+   opts: ["隨機抽樣", "把該輸入量加 u 後重算 y，取與原值之差", "解聯立方程式", "查表"], ans: 1,
+   exp: "數值微分近似 ∂y/∂x·u(x)。Ch9。" },
+ { q: "NaOH 標定案例中，改善不確定度最有效的措施：",
+   opts: ["增加 KHP 使滴定體積接近 50 mL", "換 6 位數天平", "重查原子量", "多做空白"], ans: 0,
+   exp: "V_T 占 52% 是老大。Ch10。" },
+ { q: "農藥殘留（QUAM A4）U = 0.68×P 的 k 值與相對 u_c 分別是：",
+   opts: ["k=2, 34%", "k=2.8, 68%", "k=1.96, 27%", "k=3, 50%"], ans: 0,
+   exp: "相對 u_c=0.34，k=2 → U=0.68×P_op。Ch10。" },
+ { q: "實驗室間比對（協同試驗）的 s_R 可以直接當作：",
+   opts: ["重複性 SD", "該方法在「正常表現實驗室」的不確定度主體", "儀器噪音", "LOD"], ans: 1,
+   exp: "s_R 涵蓋實驗室間所有變異（QUAM §7.6），是經驗方法不確定度的現成來源——前提是自家內部重複性與之一致。Ch11。" }
+];
+</script>
+<script>
+/* 期末測驗：把第二組題目渲染到 #finalexam */
+document.addEventListener("DOMContentLoaded", function(){
+  var el = document.getElementById("finalexam");
+  if (el && typeof renderQuiz === "function") renderQuiz(el, FINALEXAM);
+});
+</script>
+<script src="assets/app.js"></script>
+
+<nav class="pager">
+<a href="ch10.html"><small>上一章</small>Ch10 實戰案例：滴定與 HPLC</a>
+<a href="ch12.html"><small>延伸選學</small>Ch12 LC-MS/MS 進階案例 →</a>
+</nav>
+</main>
+<footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫</footer>
+</body>
+</html>

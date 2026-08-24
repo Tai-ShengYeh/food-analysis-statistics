@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ch03 偵測極限與品質管制圖</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar"><div class="inner">
+<a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
+<nav class="topnav">
+<a href="index.html">首頁</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a>
+</nav></div></header>
+
+<main>
+<div class="crumbs">Part 1 數據品管統計（Nielsen's Food Analysis 第4章）／第 3 章</div>
+<h1>方法能力指標與品質管制
+<span class="en">Sensitivity, LOD/LOQ, Specificity &amp; Control Charts</span></h1>
+
+<div class="goals"><b>學習目標</b>
+<ul>
+<li>區分「靈敏度」與「偵測極限 LOD」</li>
+<li>會用空白標準差計算 LOD = 空白 + 3SD<sub>blk</sub>、LOQ = 空白 + 10SD<sub>blk</sub></li>
+<li>認識專一性（specificity）在食品基質的意義</li>
+<li>會建立 Shewhart 管制圖並判讀警告／行動界限</li>
+</ul></div>
+
+<h2>3.1 靈敏度 ≠ 偵測極限</h2>
+<div class="grid2">
+<div class="card"><strong>靈敏度 Sensitivity</strong><br>
+濃度改變時，儀器訊號跟著改變的幅度（校正曲線斜率）。
+可依需求調高或調低。<br><em>例：把 HPLC 靈敏度調低，一次就能測寬濃度範圍。</em></div>
+<div class="card"><strong>偵測極限 LOD</strong><br>
+「能被偵測到的最低量」，由<strong>空白訊號的變異</strong>決定。
+空白越吵（SD 大），LOD 越差。<br><em>常用規則：訊噪比 S/N ≥ 3。</em></div>
+</div>
+
+<div class="formula">
+X<sub>LD</sub> = X<sub>Blk</sub> + 3 × SD<sub>Blk</sub>
+<span class="note">Nielsen 式 (4.19)：LOQ（定量極限）則用 10 × SD<sub>Blk</sub></span>
+</div>
+<ul>
+<li><strong>低於 LOD</strong>：報「未檢出（ND）」，無法確認存在</li>
+<li><strong>LOD ~ LOQ 之間</strong>：可定性，但數字不可靠</li>
+<li><strong>高於 LOQ</strong>：才能安心報告定量值</li>
+</ul>
+<p>另一個更嚴謹的指標是 <strong>MDL（方法偵測極限，EPA 定義）</strong>：
+用「含分析物的真實基質樣品」重複分析 ≥7 次，MDL = t<sub>(n−1, 0.99)</sub> × SD，
+涵蓋整個方法流程（萃取、淨化、上機）的變異。</p>
+
+<h2>3.2 專一性 Specificity</h2>
+<p><strong>專一性</strong>＝方法只偵測「目標成分」的程度。食品分析常見兩難：</p>
+<ul>
+<li><em>粗脂肪</em>：定義就是「有機溶劑可溶物」，方法<strong>廣</strong>反而是對的（經驗方法）</li>
+<li><em>冰淇淋中的乳糖</em>：基質還有其他糖類，方法不夠專一就會<strong>高估</strong>乳糖</li>
+</ul>
+<div class="callout warn"><span class="t">🔗 與不準度的連結</span>
+專一性不足造成的干擾，是 Part 2 量測不確定度中「基質效應 / 偏倚」的來源之一（QUAM §6.7）。</div>
+
+<h2>3.3 Shewhart 管制圖：日常品質的眼睛</h2>
+<p>每天用<strong>QC 標準品</strong>（已知值）隨行分析，把結果按時間畫圖：
+中心線 CL＝目標值，<strong>±2s 警告界限</strong>、<strong>±3s 行動界限</strong>。</p>
+<div class="figure">
+<img src="assets/img/fig_shewhart.png" alt="Shewhart 管制圖">
+<div class="cap">圖 3-1 Shewhart 管制圖：紅圈為超出 ±3s 行動界限的失控點（本課程模擬數據）</div>
+</div>
+<div class="callout danger"><span class="t">🚨 判讀規則</span>
+① 任一點超出 ±3s → 立即停線找根本原因（root cause）<br>
+② 連續 7 點在同一側、或連續上升/下降 → 有系統性漂移（即使未超界）<br>
+③ 超過 ±2s 但未達 ±3s → 提高警覺，加測確認
+</div>
+
+<p><strong>CuSum（累積和）圖</strong>把每天的偏差累加，對「小而持續」的漂移特別敏感——
+Shewhart 圖上看起來還好的 +0.28% 漂移，CuSum 斜率立刻轉正：</p>
+<div class="figure">
+<img src="assets/img/fig_cusum.png" alt="CuSum 管制圖">
+<div class="cap">圖 3-2 CuSum 累積和管制圖（與圖 3-1 同一組數據）</div>
+</div>
+
+<pre class="rcode" data-file="ch03_ex1.R"># --- LOD / LOQ ---
+set.seed(42)
+blank &lt;- round(rnorm(20, 0.008, 0.0022), 4)   # 空白 20 次讀值
+LOD &lt;- mean(blank) + 3 * sd(blank)
+LOQ &lt;- mean(blank) + 10 * sd(blank)
+round(c(blank = mean(blank), s = sd(blank), LOD = LOD, LOQ = LOQ), 4)
+#&gt;  blank     s   LOD   LOQ
+#&gt; 0.0084 0.0029 0.0171 0.0372
+
+# --- MDL (EPA)：7 次基質加標樣品 ---
+spiked &lt;- c(1.02, .98, 1.05, .99, 1.01, .97, 1.03)
+qt(0.99, 6) * sd(spiked)          #&gt; 0.09 (mg/L)
+
+# --- Shewhart 管制圖 ---
+set.seed(7)
+qc &lt;- round(rnorm(25, 12.00, 0.15), 3)   # 25 天 QC 標準品(蛋白質%)
+qc[8:11] &lt;- qc[8:11] + 0.28               # 人為漂移事件
+qc[18]   &lt;- 12.62                         # 人為爆表事件
+plot(1:25, qc, type="b", pch=19, col="steelblue",
+     main="Shewhart 管制圖", xlab="分析日", ylab="測值(%)")
+abline(h = 12.00)                                    # CL
+abline(h = 12.00 + c(-2,2)*0.15, col="orange", lty=2) # 警告
+abline(h = 12.00 + c(-3,3)*0.15, col="red", lty=2)    # 行動
+bad &lt;- qc &gt; 12.45 | qc &lt; 11.55
+which(bad)          #&gt; 第 10 與 18 天超出 ±3s 行動界限！
+# CuSum：累積偏差
+plot(1:25, cumsum(qc - 12), type="b", pch=19, col="darkgreen",
+     main="CuSum 管制圖", ylab="累積偏差")
+abline(h = 0, lty = 2)</pre>
+
+<h2>3.4 其他日常 QC 手段（名詞總整理）</h2>
+<table>
+<tr><th>手段</th><th>做法</th><th>抓什麼</th></tr>
+<tr><td>空白試驗 Blank</td><td>不含樣品，走完整流程</td><td>污染、背景干擾</td></tr>
+<tr><td>加標回收 Spike</td><td>樣品 + 已知量分析物</td><td>基質效應、回收損失（通常要求 80~120%）</td></tr>
+<tr><td>重複樣品 Duplicate</td><td>同樣品平行處理</td><td>精密度（RSD）</td></tr>
+<tr><td>查核標準品 / CRM</td><td>已知濃度標準物質隨行</td><td>準確度、儀器漂移（管制圖的素材）</td></tr>
+<tr><td>能力試驗 PT</td><td>與其他實驗室比對同一盲樣</td><td>實驗室間偏倚（也是不確定度評估素材，見第 9 章）</td></tr>
+</table>
+
+<div class="quiz" id="quiz"></div>
+<script>
+const QUIZ = [
+ { q: "空白訊號平均值 0.008、標準差 0.003，LOD 為何？",
+   opts: ["0.011", "0.017", "0.038", "0.003"], ans: 1,
+   exp: "LOD = 空白 + 3×SD = 0.008+3×0.003 = 0.017。0.038 是 LOQ（10×SD）；0.011 是空白+1SD。" },
+ { q: "LOD 與 LOQ 之間的濃度範圍：",
+   opts: ["可以精準定量", "只能定性（有測到），數字不可靠", "完全測不到", "必須報 ND"], ans: 1,
+   exp: "LOD~LOQ 間可確認「有」，但定量變異太大；可靠定量需 ≥ LOQ（空白+10SD）。" },
+ { q: "管制圖上「±2s 警告界限、±3s 行動界限」，若今天 QC 值落在 +2.5s：",
+   opts: ["正常，不用理會", "超過警告但未達行動：提高警覺、加測確認", "立即停線", "直接重測到合格為止"], ans: 1,
+   exp: "±2s~±3s 之間是警訊區（約 5% 機率自然發生），應加測/觀察趨勢；±3s 之外才立即停線找原因。絕不可「重測到合格」。" },
+ { q: "哪一種圖對「小而持續的漂移」最敏感？",
+   opts: ["直方圖", "Shewhart 管制圖", "CuSum 累積和圖", "打靶圖"], ans: 2,
+   exp: "CuSum 把每日偏差累加，小漂移會累積成明顯斜率變化；Shewhart 單點判斷，對小漂移較遲鈍。Nielsen 4.3.5。" },
+ { q: "冰淇淋乳糖定量方法若不夠專一（會同時測到其他糖），結果會：",
+   opts: ["低估乳糖", "高估乳糖", "不影響", "只影響精密度"], ans: 1,
+   exp: "干擾物被一起算進來 → 系統性偏高（正偏倚）。這是準確度問題，也是不確定度評估中「基質效應」來源。" },
+ { q: "MDL 與 LOD 最大的差別：",
+   opts: ["MDL 用 2×SD", "MDL 用真實基質含分析物的樣品、涵蓋整個方法流程", "MDL 只看儀器噪音", "兩者相同"], ans: 1,
+   exp: "MDL（EPA 定義）以基質加標樣品 ≥7 次全流程分析估計（t₀.₉₉×SD），比只看空白訊號的 LOD 更嚴謹。" }
+];
+</script>
+<script src="assets/app.js"></script>
+
+<nav class="pager">
+<a href="ch02.html"><small>上一章</small>Ch2 常態分配與信賴區間</a>
+<a href="ch04.html"><small>下一章</small>Ch4 標準曲線與線性迴歸</a>
+</nav>
+</main>
+<footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫</footer>
+</body>
+</html>

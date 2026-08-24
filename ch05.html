@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ch05 有效數字與異常值檢定</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar"><div class="inner">
+<a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
+<nav class="topnav">
+<a href="index.html">首頁</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a>
+</nav></div></header>
+
+<main>
+<div class="crumbs">Part 1 數據品管統計（Nielsen's Food Analysis 第4章）／第 5 章</div>
+<h1>有效數字與異常值檢定
+<span class="en">Significant Figures, Dixon Q-test &amp; Grubbs Test</span></h1>
+
+<div class="goals"><b>學習目標</b>
+<ul>
+<li>掌握有效數字的判定規則與運算取位</li>
+<li>會執行 Dixon Q 檢定並正確查表（90% 信賴）</li>
+<li>認識 Grubbs 檢定作為進階工具</li>
+<li>建立「刪數據的學術倫理」底線</li>
+</ul></div>
+
+<h2>5.1 有效數字：報告的誠實度</h2>
+<p>有效數字 = 所有確定的位數 + <strong>最後一位有疑義的位數</strong>。
+多報是膨風、少報是浪費。Nielsen 的規則：</p>
+<table>
+<tr><th>規則</th><th>例子</th><th>有效位數</th></tr>
+<tr><td>小數點後的零<strong>算</strong></td><td>64.720</td><td>5</td></tr>
+<tr><td>前導零（0.00xx）<strong>不算</strong></td><td>0.0072</td><td>2</td></tr>
+<tr><td>夾在中間的零<strong>算</strong></td><td>6.407</td><td>4</td></tr>
+<tr><td>整數末端的零<strong>預設不算</strong></td><td>7000 → 7×10³</td><td>1</td></tr>
+<tr><td>寫成 7000.0 則末端零算</td><td>7000.0</td><td>5</td></tr>
+</table>
+<p><strong>運算取位</strong>：乘除看「有效位數最少」的項；加減看「小數位數最少」的項。
+先算完再一次四捨五入。</p>
+<div class="formula">
+36.54 × 238 × 1.1 = 9566.172 → <strong>9600</strong>（1.1 只有 2 位）
+<br><br>7.45 + 8.725 = 16.175 → <strong>16.18</strong>（7.45 只有 2 位小數）
+<span class="note">Nielsen 4.5.1 的兩個課本例題</span>
+</div>
+<div class="callout warn"><span class="t">⚠️ 稀釋倍數的陷阱（課本經典）</span>
+咖啡因 43.5 μg/mL 稀釋 50 倍 → 43.5×50 = 2175。若把「50」當 1 位有效數字會得到 2000——
+<strong>嚴重低估</strong>！A 級容量瓶的容許差 ±0.05 mL，稀釋倍數應寫成 <strong>50.0</strong>（3 位）→ 2180 μg/mL。
+每個數字都要檢視它的「器皿依據」，不能機械套規則。</div>
+
+<h2>5.2 異常值：能不能刪？</h2>
+<p>Nielsen 的答案很明確：<strong>「非常罕見（very rarely）」，且必須經過審慎評估</strong>。
+為了讓精密度變漂亮而刪數據＝扭曲結果。客觀工具是 <strong>Dixon Q 檢定</strong>：</p>
+<div class="formula">
+Q = <span class="frac"><span class="num">gap</span><span class="den">W</span></span> =
+<span class="frac"><span class="num">可疑值與最近鄰的距離</span><span class="den">全距（最大 − 最小）</span></span>
+<span class="note">Nielsen 式 (4.26)：Q &gt; 臨界值 → 該值可在 90% 信賴下捨棄</span>
+</div>
+<table>
+<tr><th>n</th><th class="num">3</th><th class="num">4</th><th class="num">5</th><th class="num">6</th><th class="num">7</th><th class="num">8</th><th class="num">9</th><th class="num">10</th></tr>
+<tr><td>Q<sub>0.90</sub> 臨界值</td><td class="num">0.94</td><td class="num">0.76</td><td class="num">0.64</td><td class="num">0.56</td><td class="num">0.51</td><td class="num">0.47</td><td class="num">0.44</td><td class="num">0.41</td></tr>
+</table>
+
+<p><strong>課本範例</strong>：水分 4 重複 64.78、64.53、64.45、<span class="badge">55.31?</span><br>
+Q = (64.45 − 55.31)/(64.78 − 55.31) = 9.14/9.47 = <strong>0.97 &gt; 0.76</strong>（n=4）→ 可捨棄。</p>
+<p><strong>習題 3（乾物質）</strong>：88.62、88.74、89.20、<span class="badge">82.20?</span><br>
+Q = 6.42/7.00 = <strong>0.917 &gt; 0.76</strong> → 可捨棄。捨棄後 mean = 88.85、SD = 0.31
+（捨棄前 mean = 87.19、SD = 3.34——差很多！這就是為什麼檢定要客觀）。</p>
+
+<pre class="rcode" data-file="ch05_ex1.R"># --- Dixon Q 檢定（90% 信賴）---
+q_crit &lt;- c("3"=.94, "4"=.76, "5"=.64, "6"=.56,
+            "7"=.51, "8"=.47, "9"=.44, "10"=.41)
+
+q_test &lt;- function(x) {
+  x &lt;- sort(x); n &lt;- length(x)
+  gap &lt;- max(x[2]-x[1], x[n]-x[n-1])   # 兩端誰更可疑
+  Q &lt;- gap / (x[n] - x[1])
+  list(Q = round(Q,3), Qcrit = q_crit[[as.character(n)]],
+       reject = Q &gt; q_crit[[as.character(n)]])
+}
+q_test(c(64.78, 64.53, 64.45, 55.31))
+#&gt; $Q [1] 0.969   $Qcrit [1] 0.76   $reject [1] TRUE
+
+dry &lt;- c(88.62, 88.74, 89.20, 82.20)
+q_test(dry)                            # Q=0.917 &gt; 0.76 -> TRUE
+dry2 &lt;- dry[-which.min(dry)]           # 捨棄後重算
+round(c(mean=mean(dry2), SD=sd(dry2)), 2)
+#&gt;  mean    SD
+#&gt; 88.85  0.31
+
+# --- 95% 信賴區間（捨棄前 vs 後）---
+round(mean(dry) + c(-1,1)*qt(.975,3)*sd(dry)/2, 2)  # 87.19±5.31
+round(mean(dry2) + c(-1,1)*qt(.975,2)*sd(dry2)/sqrt(3), 2)</pre>
+
+<h2>5.3 進階：Grubbs 檢定</h2>
+<p>Q 檢定只看「與最近鄰的距離」，一次只適合處理一個可疑值。
+<strong>Grubbs 檢定</strong>用「離群距離 ÷ 標準差」：
+
+<div class="formula">
+G = <span class="frac"><span class="num">max |<i>x<sub>i</sub></i> − <i>x̄</i>|</span><span class="den">SD</span></span> &gt; G<sub>crit</sub>(n, α) → 為異常值
+</div>
+<p>對乾物質數據：G = |82.20 − 87.19|/3.34 = <strong>2.60 &gt; 1.48</strong>（n=4, 95% 雙尾）→ 同樣判定為異常值。
+兩種檢定結論一致時，刪除的正當性更強。</p>
+
+<pre class="rcode" data-file="ch05_ex2.R"># Grubbs 臨界值（t 分布近似公式）
+grubbs_crit &lt;- function(n, alpha = 0.05) {
+  t2 &lt;- qt(alpha/(2*n), df = n-2)^2
+  ((n-1)/sqrt(n)) * sqrt(t2/(n-2+t2))
+}
+round(sapply(4:8, grubbs_crit), 3)
+#&gt;  n=4    n=5    n=6    n=7    n=8
+#&gt; 1.481  1.712  1.889  2.018  2.126
+
+G &lt;- max(abs(dry - mean(dry))) / sd(dry)
+G                                  #&gt; 2.596
+G &gt; grubbs_crit(4)                 #&gt; TRUE -> 82.20 是異常值</pre>
+
+<div class="callout danger"><span class="t">⚖️ 學術倫理三條底線</span>
+① 只有<strong>可追溯的操作失誤紀錄</strong>（漏加試劑、樣品灑落）＋<strong>統計檢定支持</strong>，兩者兼備才可刪除<br>
+② 刪除必須在報告中<strong>揭露</strong>（檢定方法、數值、理由）<br>
+③ QUAM §2.4.13 同樣警告：「純粹以統計理由拒絕數值通常不明智」——統計是輔助，不是藉口
+</div>
+
+<div class="quiz" id="quiz"></div>
+<script>
+const QUIZ = [
+ { q: "0.0072 的有效位數是幾位？",
+   opts: ["6", "4", "2", "3"], ans: 2,
+   exp: "前導零（0.00）只是定位，不算有效數字 → 7 和 2 共 2 位。Nielsen 規則 3。" },
+ { q: "36.54 × 238 × 1.1 = 9566.172，正確報告值為：",
+   opts: ["9566.172", "9566", "9600", "9570"], ans: 2,
+   exp: "乘除看最少有效位數：1.1 只有 2 位 → 結果取 2 位 = 9600（末兩個零不算有效數字）。Nielsen 4.5.1 例題。" },
+ { q: "n=4 的 Q 檢定，計算得 Q = 0.97。結論是：",
+   opts: ["保留該值（0.97&lt;1）", "捨棄該值（0.97 &gt; 0.76）", "需再算 Grubbs", "數據無效整組作廢"], ans: 1,
+   exp: "n=4 的 90% 臨界值是 0.76；Q=0.97 &gt; 0.76 → 可在 90% 信賴下捨棄。注意臨界值隨 n 變小而變大（n=3 時要 0.94，幾乎刪不掉）。" },
+ { q: "乾物質數據 88.62、88.74、89.20、82.20，捨棄 82.20 前後的 SD 分別是：",
+   opts: ["3.34 → 0.31", "0.31 → 3.34", "3.34 → 3.34", "87.19 → 88.85"], ans: 0,
+   exp: "捨棄前 SD=3.34（CV 3.83%），捨棄後 SD=0.31。一個可疑值就能把 SD 放大 10 倍——這正是必須用客觀檢定的原因。（87.19→88.85 是平均值變化）" },
+ { q: "關於刪除異常值，下列何者正確？",
+   opts: ["只要 Q 檢定過關就能刪，不用說明", "有操作失誤紀錄＋統計檢定支持，並在報告中揭露", "為了讓 CV&lt;5% 可以刪", "每組數據最多可以刪 1 個"], ans: 1,
+   exp: "Nielsen 4.5.2 與 QUAM §2.4.13 一致：統計檢定只是輔助證據，程序透明與揭露是底線。以美化精密度為目的的刪除是學術不端。" },
+ { q: "稀釋倍數「50 倍」計算最終濃度時，Nielsen 建議：",
+   opts: ["當 1 位有效數字", "當 2 位有效數字", "依器皿容許差寫成 50.0（3 位）", "有效數字不適用稀釋倍數"], ans: 2,
+   exp: "A 級容量瓶 ±0.05 mL 的精確度支撐第 3 位數。43.5×50.0=2180 而非 2000。取位要回溯每個數字的「器皿依據」。" }
+];
+</script>
+<script src="assets/app.js"></script>
+
+<nav class="pager">
+<a href="ch04.html"><small>上一章</small>Ch4 標準曲線與線性迴歸</a>
+<a href="ch06.html"><small>下一章</small>Ch6 量測不確定度：概念與 GUM 流程</a>
+</nav>
+</main>
+<footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫</footer>
+</body>
+</html>

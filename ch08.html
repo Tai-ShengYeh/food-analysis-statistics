@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ch08 合成與擴展不確定度、報告與符合性</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar"><div class="inner">
+<a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
+<nav class="topnav">
+<a href="index.html">首頁</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a>
+</nav></div></header>
+
+<main>
+<div class="crumbs">Part 2 量測不確定度（QUAM §8–§9）／第 8 章</div>
+<h1>合成、擴展不確定度與符合性判定
+<span class="en">Combining Rules, Expanded U, Reporting &amp; Compliance</span></h1>
+
+<div class="goals"><b>學習目標</b>
+<ul>
+<li>會用 Rule 1（加減）與 Rule 2（乘除）合成標準不確定度</li>
+<li>會計算擴展不確定度 U = k·u<sub>c</sub>，並知道 k=2 與 t 值 k 的時機</li>
+<li>會按 QUAM 建議格式報告結果</li>
+<li>會依決策規則判定「符合／不符合／灰色地帶」</li>
+</ul></div>
+
+<h2>8.1 一般式：不確定度傳播法則</h2>
+<div class="formula">
+u<sub>c</sub>(y) = √ Σ [c<sub>i</sub> · u(x<sub>i</sub>)]²，
+其中敏感度係數 c<sub>i</sub> = ∂y/∂x<sub>i</sub>
+<span class="note">QUAM §8.2.2：每個輸入量的 u 經「偏微分 × u」轉換成對 y 的貢獻後，平方相加再開根號</span>
+</div>
+<p>偏微分聽起來可怕，但絕大多數情況會退化成兩條簡單規則：</p>
+
+<h2>8.2 兩條黃金規則</h2>
+<div class="grid2">
+<div class="card"><strong>Rule 1：加減模型</strong><br>
+y = p + q − r + …<br>
+<div class="formula" style="margin:10px 0 0">u<sub>c</sub>(y) = √(u(p)² + u(q)² + u(r)² + …)</div>
+<em>直接用各項的絕對 u。</em></div>
+<div class="card"><strong>Rule 2：乘除模型</strong><br>
+y = p·q/r·…<br>
+<div class="formula" style="margin:10px 0 0"><span class="frac"><span class="num">u<sub>c</sub>(y)</span><span class="den">y</span></span> = √( (u(p)/p)² + (u(q)/q)² + … )</div>
+<em>用各項的「相對 u」，合成完再乘回 y。</em></div>
+</div>
+<p><strong>QUAM §8.2.8 例題 1</strong>：y = p − q + r = 5.02 − 6.45 + 9.04 = 7.61，
+u = √(0.13² + 0.05² + 0.22²) = <strong>0.26</strong>。<br>
+<strong>例題 2</strong>：y = op/qr = 2.46×4.32/(6.38×2.99) = 0.56，
+相對合成 √(0.0081²+0.0301²+0.0172²+0.0234²) = 0.043 → u<sub>c</sub> = <strong>0.024</strong>。</p>
+<div class="callout"><span class="t">🧩 混合式模型</span>
+遇到 y=(o+p)/(q+r) 這種混合式，先分別用 Rule 1 算出分子、分母的中間 u，
+再用 Rule 2 合成（QUAM §8.2.7）。</div>
+
+<h2>8.3 擴展不確定度 U = k · u<sub>c</sub></h2>
+<table>
+<tr><th>情況</th><th>k</th><th>說明</th></tr>
+<tr class="hl"><td>一般情況（QUAM §8.3.3）</td><td class="num">2</td><td>約 95% 信賴；報告必須註明 k 值</td></tr>
+<tr><td>u<sub>c</sub> 被「自由度 &lt;6 的 Type A 項」主導</td><td class="num">t 值</td><td>用該項的 df 查雙尾 t（95%），如 df=4 → k=2.8</td></tr>
+</table>
+<p><strong>QUAM §8.3.4 稱重例</strong>：u<sub>c</sub> = √(0.01² + 0.08²) = 0.081 mg，
+由 5 次重複的 s<sub>obs</sub>=0.08 主導（df=4）→ k = t<sub>0.975,4</sub> = 2.8 →
+<strong>U = 2.8 × 0.081 = 0.23 mg</strong>。</p>
+
+<h2>8.4 報告格式（QUAM §9）</h2>
+<div class="card">
+<strong>擴展不確定度格式</strong>：<br>
+<code>總氮：(3.52 ± 0.14) g/100g</code><br>
+<em>所述不確定度為擴展不確定度，以涵蓋因子 k=2 計算，信賴水準約 95%。</em><br><br>
+<strong>標準不確定度格式</strong>：<br>
+<code>總氮：3.52 g/100g，標準不確定度 0.07 g/100g</code>
+</div>
+<ul>
+<li>U 或 u<sub>c</sub> 最多取 <strong>2 位有效數字</strong>；結果位數與 U 對齊（QUAM §9.5.1）</li>
+<li>分布明顯不對稱（近零結果、MC 法）→ 報區間而非單一 U（QUAM §9.6）</li>
+</ul>
+
+<h2>8.5 符合性判定（QUAM §9.7, Figure 2）</h2>
+<div class="figure">
+<img src="assets/img/fig_compliance.png" alt="符合性判定四情境">
+<div class="cap">圖 8-1 結果 ± U 與法規上限 L 的四種關係（保守決策規則）</div>
+</div>
+<table>
+<tr><th>情境</th><th>位置</th><th>保守決策規則判定</th></tr>
+<tr><td>(i)</td><td>結果 − U &gt; L（整個區間超標）</td><td><strong style="color:#C62828">不符合</strong></td></tr>
+<tr><td>(ii)</td><td>結果 &gt; L 但 (result−U) &lt; L</td><td>灰色地帶（無法判定）</td></tr>
+<tr><td>(iii)</td><td>結果 &lt; L 但 (result+U) &gt; L</td><td>灰色地帶</td></tr>
+<tr><td>(iv)</td><td>結果 + U ≤ L（整個區間合格）</td><td><strong style="color:#2E7D32">符合</strong></td></tr>
+</table>
+<div class="callout warn"><span class="t">⚖️ 決策規則要事先講好</span>
+「測值超限即不符」與「result−U 超限才不符」結論可能相反。
+ISO/IEC 17025:2017 要求實驗室與客戶事先約定決策規則（詳見 EURACHEM
+《Use of uncertainty information in compliance assessment》）。</div>
+
+<pre class="rcode" data-file="ch08_ex1.R"># ---- Rule 1：QUAM 例題 1 ----
+p &lt;- 5.02; q &lt;- 6.45; r &lt;- 9.04
+y &lt;- p - q + r                       #&gt; 7.61
+uc1 &lt;- sqrt(0.13^2 + 0.05^2 + 0.22^2)
+round(uc1, 2)                        #&gt; 0.26
+
+# ---- Rule 2：QUAM 例題 2 ----
+y2 &lt;- 2.46*4.32/(6.38*2.99)          #&gt; 0.557
+rel &lt;- sqrt((0.02/2.46)^2 + (0.13/4.32)^2 +
+            (0.11/6.38)^2 + (0.07/2.99)^2)
+y2 * rel                             #&gt; 0.0239 -> 0.024
+
+# ---- t 值 k：稱重例 ----
+uc_w &lt;- sqrt(0.01^2 + 0.08^2)        #&gt; 0.0806
+qt(0.975, 4)                         #&gt; 2.776 (QUAM 取 2.8)
+2.8 * uc_w                           #&gt; 0.23 mg
+
+# ---- 符合性判定函數 ----
+judge &lt;- function(result, U, L) {
+  if (result - U &gt; L)       "不符合"
+  else if (result + U &lt;= L) "符合"
+  else                      "灰色地帶（需複驗/加測）"
+}
+judge(11.5, 1.0, 10)   #&gt; "不符合"
+judge( 9.6, 1.0, 10)   #&gt; "灰色地帶（需複驗/加測）"
+judge( 8.8, 1.0, 10)   #&gt; "符合"
+
+# ---- 完整小案例：果汁中鉛 ----
+Pb &lt;- 0.085
+u &lt;- c(rep=0.006, cal=0.004, blank=0.002, vol=0.0015, rec=0.005)
+U_Pb &lt;- 2 * sqrt(sum(u^2))
+sprintf("Pb = (%.3f ± %.3f) mg/L (k=2)", Pb, U_Pb)
+#&gt; "Pb = (0.085 ± 0.018) mg/L (k=2)"
+judge(Pb, U_Pb, 0.10)  #&gt; 0.085+0.017=0.102 &gt; 0.10 -> 灰色地帶!</pre>
+
+<div class="quiz" id="quiz"></div>
+<script>
+const QUIZ = [
+ { q: "y = p + q − r，u(p)=0.13、u(q)=0.05、u(r)=0.22，u_c(y) 為：",
+   opts: ["0.40", "0.26", "0.13", "0.068"], ans: 1,
+   exp: "Rule 1 平方和開根號：√(0.0169+0.0025+0.0484)=√0.0678=0.26（QUAM 例題1）。直接相加 0.40 是最常見錯誤——不確定度幾乎不會線性相加！" },
+ { q: "乘除模型（Rule 2）合成時要使用：",
+   opts: ["絕對不確定度直接相加", "相對不確定度（u/x）的平方和開根號", "最大那項就好", "標準差的平均"], ans: 1,
+   exp: "y=op/qr → u_c(y)/y = √(Σ(u(x_i)/x_i)²)。合成完的相對值再乘回 y 得絕對值。（QUAM 例題2：0.56×0.043=0.024）" },
+ { q: "u_c 被一個 n=5 的 Type A 項主導，95% 的涵蓋因子 k 應取：",
+   opts: ["2", "1.96", "2.8（t₀.₉₇₅, df=4）", "3"], ans: 2,
+   exp: "QUAM §8.3.4：自由度太少時常態近似不可靠，k 改用該主導項的雙尾 t 值（df=n−1=4 → 2.8），U=2.8×0.081=0.23。" },
+ { q: "報告擴展不確定度時，QUAM 要求：",
+   opts: ["至少 3 位有效數字", "最多 2 位有效數字，且必須註明 k 值", "只寫 ± 數字即可", "用 99.99% 信賴"], ans: 1,
+   exp: "§9.4–9.5：U 最多 2 位有效數字、結果位數與其對齊，並註明「k=2，約95%」。例：(3.52 ± 0.14) g/100g。" },
+ { q: "結果 9.6、U=1.0、法規上限 10。依保守決策規則：",
+   opts: ["符合（9.6&lt;10）", "不符合（9.6+1&gt;10）", "灰色地帶：無法宣稱符合，需複驗", "直接報合格"], ans: 2,
+   exp: "result+U=10.6 &gt; L，result−U=8.6 &lt; L → 區間橫跨限值（情境 iii），無法判定。這正是「測值合格≠宣稱合格」的經典情境。" },
+ { q: "果汁鉛案例：0.085 ± 0.018 mg/L（k=2），限量 0.10。判定為：",
+   opts: ["符合", "不符合", "灰色地帶（0.103 剛好超過 0.10）", "數據無效"], ans: 2,
+   exp: "0.085+0.017=0.102 &gt; 0.10，差之毫釐落入灰色地帶。實務上應複驗、提高精密度，或依約定決策規則處理。" }
+];
+</script>
+<script src="assets/app.js"></script>
+
+<nav class="pager">
+<a href="ch07.html"><small>上一章</small>Ch7 Type A/B 與天平案例</a>
+<a href="ch09.html"><small>下一章</small>Ch9 Kragten 與 Monte Carlo</a>
+</nav>
+</main>
+<footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫</footer>
+</body>
+</html>

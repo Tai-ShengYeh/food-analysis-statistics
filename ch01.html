@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ch01 統計入門：平均數、標準差與變異係數</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar"><div class="inner">
+<a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
+<nav class="topnav">
+<a href="index.html">首頁</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a>
+</nav></div></header>
+
+<main>
+<div class="crumbs">Part 1 數據品管統計（Nielsen's Food Analysis 第4章）／第 1 章</div>
+<h1>統計入門：平均數、標準差與變異係數
+<span class="en">Measures of Central Tendency &amp; Dispersion — 你的第一支 R 程式</span></h1>
+
+<div class="goals"><b>學習目標</b>
+<ul>
+<li>了解為什麼食品分析一定要「重複測定」並用統計整理數據</li>
+<li>會用 R 把量測值存成向量，計算平均數、中位數、標準差、變異係數</li>
+<li>能分辨「準確度」與「精密度」，並說出三大誤差來源</li>
+<li>會計算絕對誤差與相對誤差百分比（%E<sub>rel</sub>）</li>
+</ul></div>
+
+<h2>1.1 為什麼需要統計？</h2>
+<p>食品分析的結果（水分、粗脂肪、重金屬、農藥殘留…）會拿來做<strong>重大決策</strong>：
+產品能否出貨、標示是否屬實、是否超過法規限量。Nielsen 第 4 章開宗明義：
+<em>「適當的數據收集與分析，可以避免基於數據做出錯誤決策。」</em></p>
+<p>單一次量測無法告訴我們任何「信心」——所以我們<strong>至少重複測定 3 次</strong>，
+再用統計把這些重複值變成「平均值 + 變異」的專業報告。本章就從零開始，用 R 完成這件事。</p>
+
+<div class="callout"><span class="t">🧪 貫穿全課的範例</span>
+生漢堡肉水分含量 4 次重複測定：<strong>64.53、64.45、65.10、64.78（%）</strong>（Nielsen Table 4.1）。
+這組數據會陪我們走完整個課程。</div>
+
+<h2>1.2 第一支 R 程式：把數據存進「向量」</h2>
+<p>R 裡最基礎的資料結構是<strong>向量（vector）</strong>：用 <span class="kbd">c()</span> 把一組數字裝在一起，
+再用 <span class="kbd">&lt;-</span> 指派給一個變數名稱。就這麼簡單！</p>
+
+<pre class="rcode" data-file="ch01_ex1.R"># 把 4 次水分測定值存進向量 moisture
+moisture &lt;- c(64.53, 64.45, 65.10, 64.78)
+moisture            # 輸入名稱按 Enter，R 會印出內容
+#&gt; [1] 64.53 64.45 65.10 64.78
+
+length(moisture)    # 資料筆數
+#&gt; [1] 4</pre>
+
+<div class="callout ok"><span class="t">💡 給完全新手</span>
+<span class="kbd">c</span> 是 combine（組合）的意思；<span class="kbd">&lt;-</span> 讀作「存到」。
+在 RStudio 裡按 <span class="kbd">Ctrl+Enter</span> 逐行執行，右下角環境視窗會看到 <code>moisture</code>。</div>
+
+<h2>1.3 中央趨勢：平均數與中位數</h2>
+<div class="formula">
+<i>x̄</i> = <span class="frac"><span class="num">Σ<i>x<sub>i</sub></i></span><span class="den">n</span></span>
+= <span class="frac"><span class="num">64.53 + 64.45 + 65.10 + 64.78</span><span class="den">4</span></span> = <strong>64.72 %</strong>
+<span class="note">Nielsen 式 (4.1)–(4.2)：平均數是「最佳實驗估計值」，但平均數本身不保證準確</span>
+</div>
+<p>另一個指標是<strong>中位數</strong>（由小到大排在中間的值）。本例中位數 = 64.655%。
+平均數對極端值較敏感，因此若數據中有可疑值（第 5 章的 Q 檢定），中位數是穩健的替代方案。</p>
+
+<h2>1.4 離散程度：標準差與變異係數</h2>
+<p><strong>標準差 SD</strong>衡量重複測定值的散布程度，是「精密度」最常用的指標。
+因為真實平均值未知，樣本標準差一律用 <strong>n−1</strong>（Nielsen 式 4.5）：</p>
+<div class="formula">
+SD = <span class="frac"><span class="num">√ Σ(<i>x<sub>i</sub></i> − <i>x̄</i>)²</span><span class="den">n − 1</span></span>
+= <span class="frac"><span class="num">√ 0.257</span><span class="den">3</span></span> = <strong>0.2927 %</strong>
+<span class="note">Σ(xᵢ−x̄)² = 0.0361+0.0729+0.1444+0.0036 = 0.257（Nielsen Table 4.1）</span>
+</div>
+<p><strong>變異係數 CV%</strong>（又稱相對標準偏差 RSD）把標準差除以平均數，方便跨方法、跨濃度比較：</p>
+<div class="formula">
+CV% = <span class="frac"><span class="num">SD</span><span class="den">x̄</span></span> × 100 =
+<span class="frac"><span class="num">0.2927</span><span class="den">64.72</span></span> × 100 = <strong>0.452 %</strong>
+<span class="note">Nielsen 式 (4.6)–(4.7)；經驗法則：CV &lt; 5% 通常可接受（依方法而異）</span>
+</div>
+
+<pre class="rcode" data-file="ch01_ex2.R">moisture &lt;- c(64.53, 64.45, 65.10, 64.78)
+xbar &lt;- mean(moisture)      # 平均數
+s    &lt;- sd(moisture)        # 標準差（R 的 sd 內建就是 n-1 版）
+cv   &lt;- s / xbar * 100      # 變異係數 %
+
+round(c(mean = xbar, SD = s, CV = cv), 3)
+#&gt;  mean    SD    CV
+#&gt; 64.715 0.293 0.452
+
+# 手動驗證 SD 公式（教學用）
+dev &lt;- moisture - xbar          # 偏差
+sqrt(sum(dev^2) / (length(moisture) - 1))
+#&gt; [1] 0.2926317</pre>
+
+<h2>1.5 準確度 vs 精密度：打靶圖</h2>
+<div class="figure">
+<img src="assets/img/fig_target.png" alt="準確度與精密度打靶圖">
+<div class="cap">圖 1-1 Nielsen Fig 4.1 重繪：(a) 準又精 (b) 精但不準（系統誤差）(c) 準但不精（隨機誤差大）(d) 又偏又散</div>
+</div>
+<div class="grid2">
+<div class="card"><strong>精密度 Precision</strong><br>
+重複測定值彼此接近的程度 → 由 <strong>SD / CV</strong> 評估。<br>
+只靠自己的數據就能計算。<br><em>對應：隨機誤差</em></div>
+<div class="card"><strong>準確度 Accuracy</strong><br>
+測定值接近「真值」的程度 → 需要已知真值的樣品
+（標準品 CRM、加標回收、實驗室間比對）才能評估。<br><em>對應：系統誤差</em></div>
+</div>
+
+<h2>1.6 誤差的三大來源與相對誤差</h2>
+<table>
+<tr><th>誤差類型</th><th>特性</th><th>食品實驗室例子</th><th>克服方法</th></tr>
+<tr><td><strong>系統誤差</strong><br>(determinate)</td><td>固定偏向同一方向</td><td>移液器一直少吸 0.04 mL；儀器未校正</td><td>校正儀器、做空白、加回收修正</td></tr>
+<tr><td><strong>隨機誤差</strong><br>(indeterminate)</td><td>正負隨機出現、無法消除</td><td>讀滴定管刻度、終點顏色判斷、儀器噪音</td><td>增加重複次數取平均（統計可處理）</td></tr>
+<tr><td><strong>疏失</strong><br>(blunder)</td><td>明顯錯誤、使數據無效</td><td>加錯試劑、漏加樣品（「星期一症候群」）</td><td>確認後整筆捨棄，不可納入統計</td></tr>
+</table>
+
+<p>當真值已知（如標準品 65.05%），可以計算<strong>誤差</strong>來評估準確度：</p>
+<div class="formula">
+E<sub>abs</sub> = <i>x</i> − T = 64.72 − 65.05 = −0.33 %<br>
+%E<sub>rel</sub> = <span class="frac"><span class="num"><i>x</i> − T</span><span class="den">T</span></span> × 100 =
+<span class="frac"><span class="num">64.72 − 65.05</span><span class="den">65.05</span></span> × 100 = <strong>−0.507 %</strong>
+<span class="note">Nielsen 式 (4.15)–(4.18)：負號表示結果偏低 0.507%，方向資訊要保留</span>
+</div>
+
+<div class="callout warn"><span class="t">📐 ISO/IEC 17025 提醒</span>
+Nielsen 在此特別註明：實驗室認證規範 ISO/IEC 17025 要求實驗室必須估計
+「量測不確定度 (Uncertainty of Measurement)」。這正是本課程 Part 2（第 6 章起）的主題——
+先學好誤差與統計，才能懂不確定度。</div>
+
+<pre class="rcode" data-file="ch01_ex3.R"># 準確度：與真值比較
+true_value &lt;- 65.05
+Eabs &lt;- mean(moisture) - true_value
+Erel &lt;- Eabs / true_value * 100
+round(c(Eabs = Eabs, Erel_pct = Erel), 3)
+#&gt;   Eabs Erel_pct
+#&gt; -0.335   -0.515   #（用未四捨五入的 mean 計算；課本以 64.72 計得 -0.507%）
+
+# 練習：Nielsen 章末習題——乾物質 4 次測定
+dry &lt;- c(88.62, 88.74, 89.20, 82.20)
+round(c(mean = mean(dry), SD = sd(dry),
+        CV = sd(dry)/mean(dry)*100), 2)
+#&gt; mean    SD    CV
+#&gt; 87.19  3.34  3.83   # CV&lt;5% 但...82.20 看起來很可疑？第5章見分曉</pre>
+
+<div class="quiz" id="quiz"></div>
+<script>
+const QUIZ = [
+ { q: "同一樣品重複測定 4 次得 64.53、64.45、65.10、64.78，平均數是多少？",
+   opts: ["64.72 %", "64.655 %", "65.05 %", "0.293 %"], ans: 0,
+   exp: "Σx/n = 258.86/4 = 64.72%。64.655% 是中位數；65.05% 是假設的真值；0.293 是標準差。" },
+ { q: "計算樣本標準差時分母用 n−1 而不是 n，原因是：",
+   opts: ["讓數字比較好看", "真實平均值未知，用樣本平均數代替會低估變異，n−1 可修正", "統計軟體規定的習慣", "因為食品數據不是常態分布"], ans: 1,
+   exp: "以 x̄ 代替 μ 會損失 1 個自由度；除以 n−1（Bessel 修正）才能得到變異的無偏估計。Nielsen 4.3.1 明確說明小樣本（約≤30）一律用 n−1。" },
+ { q: "CV = 0.452% 代表什麼？",
+   opts: ["結果偏離真值 0.452%", "標準差只占平均數的 0.452%，重複性非常好", "此方法有 0.452% 的機率出錯", "數據有 0.452% 是異常值"], ans: 1,
+   exp: "CV% = SD/x̄ × 100，是「相對」精密度指標。經驗法則 CV<5% 可接受。它與準確度（接近真值）無關。" },
+ { q: "移液器每次都固定吸取 0.96 mL 而非 1.00 mL，這是哪一種誤差？",
+   opts: ["隨機誤差", "系統誤差", "疏失", "計算誤差"], ans: 1,
+   exp: "固定方向、固定大小的偏差是系統（determinate）誤差，靠校正移液器解決；增加重複次數無法消除它。（Nielsen 章末習題 6a）" },
+ { q: "真值 65.05%，測得平均 64.72%，%相對誤差為：",
+   opts: ["+0.507%", "−0.507%", "−0.33%", "+0.452%"], ans: 1,
+   exp: "%Erel=(64.72−65.05)/65.05×100=−0.507%。保留負號表示偏低方向；−0.33 是絕對誤差。" },
+ { q: "下列哪一個「不能」用來改善精密度？",
+   opts: ["增加重複測定次數", "減少讀數判讀的主觀誤差", "校正天平與玻璃器皿", "以上都能改善精密度"], ans: 3,
+   exp: "校正器皿改善的是「系統誤差＝準確度」，不是精密度。精密度靠增加重複次數與降低隨機變異來改善——這是本課程最常考的觀念陷阱。" }
+];
+</script>
+<script src="assets/app.js"></script>
+
+<nav class="pager">
+<a href="index.html"><small>上一頁</small>課程首頁</a>
+<a href="ch02.html"><small>下一章</small>Ch2 常態分配與信賴區間</a>
+</nav>
+</main>
+<footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫</footer>
+</body>
+</html>

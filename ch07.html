@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ch07 Type A/B 與天平案例</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar"><div class="inner">
+<a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
+<nav class="topnav">
+<a href="index.html">首頁</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a>
+</nav></div></header>
+
+<main>
+<div class="crumbs">Part 2 量測不確定度（QUAM §7, §8.1, Appendix E.1）／第 7 章</div>
+<h1>量化不確定度：Type A / Type B 與分布轉換
+<span class="en">Quantifying Components — plus 實戰案例① 分析天平稱量</span></h1>
+
+<div class="goals"><b>學習目標</b>
+<ul>
+<li>區分 Type A（統計）與 Type B（其他資訊）評估</li>
+<li>會把「±a 界限」依矩形／三角形／常態分布換算成標準不確定度</li>
+<li>完成實戰案例①：把天平稱量的三種來源換算、合成，並評估對最終濃度的貢獻</li>
+</ul></div>
+
+<h2>7.1 兩種評估類型</h2>
+<div class="grid2">
+<div class="card"><strong>Type A 評估</strong><br>
+由<strong>重複量測的統計</strong>得出：<br>
+u(x) = 觀測標準差 s<br>
+（結果為 n 次平均時用 s/√n）<br>
+<em>例：同一樣品稱 6 次的 SD</em></div>
+<div class="card"><strong>Type B 評估</strong><br>
+由<strong>既有資訊</strong>推得：校正證書、規格容許差、
+文獻數據、儀器規格、專業判斷。<br>
+關鍵動作：把「±a」換算成等效標準差。<br>
+<em>例：容量瓶證書 ±0.2 mL</em></div>
+</div>
+
+<h2>7.2 Type B 的分布轉換（QUAM Appendix E.1）</h2>
+<div class="figure">
+<img src="assets/img/fig_distributions.png" alt="三種分布">
+<div class="cap">圖 7-1 同樣 ±a，三種假設分布換算出的 u 不同：矩形最保守</div>
+</div>
+<table>
+<tr><th>分布</th><th>換算公式</th><th>何時使用（QUAM §8.1）</th><th>例：a=0.2</th></tr>
+<tr class="hl"><td><strong>矩形</strong></td><td>u = a/√3 ≈ 0.577a</td><td>只知 ±a、無信賴水準、極端值可能出現</td><td class="num">0.115</td></tr>
+<tr><td><strong>三角形</strong></td><td>u = a/√6 ≈ 0.408a</td><td>知 ±a，且中間值明顯較可能（極端罕見）</td><td class="num">0.082</td></tr>
+<tr><td><strong>常態</strong></td><td>u = a/1.96 ≈ 0.51a</td><td>±a 明確是 95% 信賴區間</td><td class="num">0.102</td></tr>
+</table>
+<div class="callout"><span class="t">📖 QUAM 原例（§8.1.3–8.1.5）</span>
+同一支 10 mL A 級容量瓶 ±0.2 mL：<strong>矩形 → u=0.12 mL</strong>；若內部查核顯示極端值罕見
+（三角形）→ <strong>u=0.08 mL</strong>。天平讀值 ±0.2 mg（95% 信賴）→ u = 0.2/1.96 = <strong>0.1 mg</strong>。
+選分布＝做工程判斷，必須在預算表中寫明理由。</div>
+
+<pre class="rcode" data-file="ch07_ex1.R"># Type B 轉換函數
+u_rect &lt;- function(a) a / sqrt(3)     # 矩形
+u_tri  &lt;- function(a) a / sqrt(6)     # 三角形
+u_n95  &lt;- function(a) a / qnorm(.975) # 常態(95% CI)
+
+round(c(flask_rect = u_rect(0.2), flask_tri = u_tri(0.2),
+        balance_n95 = u_n95(0.2)), 4)
+#&gt; flask_rect flask_tri balance_n95
+#&gt;     0.1155    0.0817      0.1021
+
+# Type A：直接用實驗標準差
+reps &lt;- c(1001.2, 1000.8, 1001.5, 1001.0, 1000.9)
+sd(reps)              #&gt; 0.268 mg  (單次量測的 u)
+sd(reps)/sqrt(5)      #&gt; 0.120 mg  (5 次平均的 u)</pre>
+
+<hr>
+<h2>7.3 實戰案例①：分析天平稱量（QUAM Example A1 架構）</h2>
+<p><strong>情境</strong>：配製 AAS 用鎘標準液，需精確稱取約 100 mg 高純度金屬，
+溶於 100 mL 容量瓶。模型：</p>
+<div class="formula">
+c<sub>Cd</sub> = <span class="frac"><span class="num">1000 × m × P</span><span class="den">V</span></span> [mg/L]
+<span class="note">m=質量(mg)、P=純度(質量分數)、V=體積(mL)；QUAM Example A1</span>
+</div>
+
+<p><strong>稱量的三個不確定度來源</strong>（QUAM A1 的魚骨把皮重/毛重各展開成
+讀值解析度、校正線性、敏感度、重複性）：</p>
+<table>
+<tr><th>來源</th><th>資訊</th><th>分布</th><th>u</th></tr>
+<tr><td>讀值解析度</td><td>末位 0.01 mg → a=0.005 mg</td><td>矩形</td><td class="num">0.0029 mg</td></tr>
+<tr><td>校正線性</td><td>證書 ±0.05 mg（極端罕見）</td><td>三角形</td><td class="num">0.0204 mg</td></tr>
+<tr><td>重複性</td><td>6 次稱重 SD（Type A）</td><td>常態</td><td class="num">0.032 mg</td></tr>
+</table>
+<p><strong>淨重 = 毛重 − 皮重</strong>經歷兩次完整稱重 →
+u(m) = √2 × √(0.0029² + 0.0204² + 0.032²) ≈ <strong>0.055 mg</strong>
+——量級與 QUAM Table A1.1 的 u(m)=0.05 mg 相符。</p>
+
+<pre class="rcode" data-file="case_balance.R"># ============ 案例① 天平稱量 (完整腳本，下載後可執行) ============
+# 三成分的標準不確定度
+u_read &lt;- 0.005 / sqrt(3)          # 讓值解析度 (矩形)
+u_cal   &lt;- 0.05 / sqrt(6)          # 校正線性 (三角形)
+reps &lt;- c(100.03, 100.08, 100.02, 100.09, 100.04, 100.01)
+u_rep   &lt;- sd(reps)                # 重複性 (Type A)
+round(c(read=u_read, cal=u_cal, rep=u_rep), 4)
+
+# 淨重 = 毛重 - 皮重 -> 兩次稱重 (Rule 1 加減模型)
+u_once &lt;- sqrt(u_read^2 + u_cal^2 + u_rep^2)
+u_m &lt;- sqrt(2) * u_once
+round(u_m, 4)                      #&gt; 0.0547 mg
+
+# 對最終濃度 c = 1000*m*P/V 的貢獻 (Rule 2)
+m &lt;- 100.28; P &lt;- 0.9999; V &lt;- 100.0
+c_Cd &lt;- 1000*m*P/V                 #&gt; 1002.7 mg/L
+contrib_m &lt;- c_Cd * u_m / m        #&gt; 0.55 mg/L
+contrib_V &lt;- c_Cd * 0.07 / V       #&gt; 0.70 mg/L  (體積貢獻更大!)
+contrib_P &lt;- c_Cd * 0.000058 / P   #&gt; 0.06 mg/L
+
+# 靈敏度意識：只稱 10 mg 會怎樣？
+1002.7 * u_m / 10                  #&gt; 5.5 mg/L -> 稱太少，質量項主導!</pre>
+
+<div class="callout ok"><span class="t">🎯 案例啟示</span>
+① 稱 100 mg 時，天平貢獻 (0.55) <strong>小於</strong> 體積貢獻 (0.70)——先改善量瓶！<br>
+② 稱樣量降到 10 mg，質量相對不確定度放大 10 倍 → <strong>稱樣量是方法設計的關鍵決策</strong><br>
+③ 完整的 c(Cd) 預算（含 V 與 P）在第 9 章用三種方法合成，結果 U ≈ ±1.8 mg/L (k=2)</div>
+
+<div class="figure">
+<img src="assets/img/fig_cases.png" alt="三案例預算比較">
+<div class="cap">圖 7-2 三大案例預算總覽：左＝本案例（天平/標準液）；中＝第10章滴定；右＝第10章 HPLC</div>
+</div>
+
+<div class="quiz" id="quiz"></div>
+<script>
+const QUIZ = [
+ { q: "容量瓶證書寫「100 mL ± 0.2 mL」，未註明信賴水準。標準不確定度為：",
+   opts: ["0.2 mL", "0.2/√3 = 0.115 mL", "0.2/√6 = 0.082 mL", "0.2/1.96 = 0.102 mL"], ans: 1,
+   exp: "只有 ±a 沒有信賴水準 → 矩形分布（QUAM §8.1.4），u = a/√3 = 0.115。三角形要「極端值罕見」的額外證據；1.96 要明示 95%。" },
+ { q: "天平規格「±0.2 mg（95% 信賴）」，u 為：",
+   opts: ["0.2 mg", "0.115 mg", "0.102 mg", "0.082 mg"], ans: 2,
+   exp: "明確是 95% 信賴 → 常態，u = 0.2/1.96 = 0.102（QUAM §8.1.3 原例）。" },
+ { q: "Type A 與 Type B 評估的差別：",
+   opts: ["A 比較準確", "A 用重複觀測的統計（標準差）；B 用證書/規格/文獻/判斷等既有資訊", "B 不需要換算", "A 用於儀器，B 用於化學"], ans: 1,
+   exp: "兩者最後都表達為標準不確定度 u，在合成時完全平等對待——Type B 不是次等品，只是資訊來源不同。" },
+ { q: "淨重 = 毛重 − 皮重，每次稱重的合成 u 為 0.039 mg，則 u(淨重) 為：",
+   opts: ["0.039 mg", "0.078 mg", "0.055 mg", "0.019 mg"], ans: 2,
+   exp: "加減模型 Rule 1：√(0.039²+0.039²) = √2×0.039 = 0.055。是「平方和開根號」不是直接相加，也不是除以 2。" },
+ { q: "案例①中稱 100 mg 時，為什麼體積的貢獻 (0.70) 大於質量 (0.55)？",
+   opts: ["量瓶比較貴", "u(V)/V = 0.07/100 = 0.0007 大於 u(m)/m = 0.055/100.28 = 0.00055", "因為 V 在分母", "計算錯誤"], ans: 1,
+   exp: "乘除模型中各項以「相對不確定度」競爭。0.0007 &gt; 0.00055，所以體積贏。改善順序：先換更準的量瓶/控溫。" },
+ { q: "同樣的天平（u_m=0.055 mg），把稱樣量從 100 mg 改成 10 mg，質量項對濃度的貢獻會：",
+   opts: ["不變", "放大 10 倍成為主導項", "縮小 10 倍", "消失"], ans: 1,
+   exp: "相對不確定度 u(m)/m 從 0.00055 變 0.0055，貢獻從 0.55 → 5.5 mg/L。稱樣量太小是不確定度的經典地雷。" }
+];
+</script>
+<script src="assets/app.js"></script>
+
+<nav class="pager">
+<a href="ch06.html"><small>上一章</small>Ch6 量測不確定度概念</a>
+<a href="ch08.html"><small>下一章</small>Ch8 合成、擴展與符合性判定</a>
+</nav>
+</main>
+<footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫</footer>
+</body>
+</html>
