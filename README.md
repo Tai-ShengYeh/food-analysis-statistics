@@ -1,7 +1,8 @@
 # 食品分析數據品管統計與量測不確定度 — 課程手冊（R 語言版）
 
-> 本手冊收錄全課程 **16 支 R 程式**。每支程式皆可直接複製到 R / RStudio 執行，
+> 本手冊收錄全課程 **18 支 R 程式**。每支程式皆可直接複製到 R / RStudio 執行，
 > 或從本頁對應的 .R 檔下載。教學內容請開啟各章 HTML 網頁。
+> **完全初學者請先開啟 [ch00.html](ch00.html) 課程導覽與名詞圖鑑**（含全部專有名詞的白話解釋與比喻）。
 
 **教材依據**
 - Nielsen's Food Analysis, 4th Ed., Chapter 4: *Evaluation of Analytical Data* (J. S. Smith)
@@ -11,6 +12,7 @@
 
 | 章 | 教學網頁 | R 檔案 |
 |---|---|---|
+| Ch0 課程導覽與名詞圖鑑（給初學者） | [ch00.html](ch00.html) | — |
 | Ch1 統計入門：平均數、標準差與變異係數 | [ch01.html](ch01.html) | [ch01_basics.R](R/ch01_basics.R) |
 | Ch2 常態分配與信賴區間 | [ch02.html](ch02.html) | [ch02_ci_normal.R](R/ch02_ci_normal.R) |
 | Ch3 方法能力指標與品質管制圖 (LOD/LOQ/管制圖) | [ch03.html](ch03.html) | [ch03_method_qc.R](R/ch03_method_qc.R) |
@@ -25,6 +27,8 @@
 | Ch10 實戰案例(3)：HPLC/GC 農藥殘留 (QUAM Example A4) | [ch10.html](ch10.html) | [case_hplc.R](R/case_hplc.R) |
 | Ch11 綜合案例：粗纖維 (A6) 與標準曲線反推不確定度 (E.4) | [ch11.html](ch11.html) | [ch11_capstone.R](R/ch11_capstone.R) |
 | Ch12 進階案例(4)：LC-MS/MS 氯黴素 (基質效應/SIL-IS/加權校正) | [ch12.html](ch12.html) | [case_lcmsms.R](R/case_lcmsms.R) |
+| Ch13 實戰應用：USDA FDC 成分資料庫與配方計算 | [ch13.html](ch13.html) | [ch13_fdc.R](R/ch13_fdc.R) |
+| Ch14 實驗設計與反應曲面法 (DOE & RSM) | [ch14.html](ch14.html) | [ch14_doe_rsm.R](R/ch14_doe_rsm.R) |
 | 附錄：本站全部教學圖表繪圖程式 | — | [R/figures.R](R/figures.R) |
 
 ## 如何使用
@@ -1322,3 +1326,382 @@ ion_ratio_sample < ion_ratio_standard + tol     #> TRUE -> 離子比合格
 
 ---
 
+
+---
+
+## Ch13 實戰應用：USDA FoodData Central 與配方計算
+
+> 對照業界軟體 TechWizard 的兩大招牌功能：最低成本配方與營養標籤/逆向工程。
+> 原料組成摘錄自 USDA FoodData Central (SR Legacy, CC0)；核心部分完全離線可執行。
+> 有網路時可將 RUN_ONLINE 改為 TRUE，體驗 FDC API 抓取真實資料。
+
+📄 檔案：`ch13_fdc.R` ｜ 教學網頁：[ch13.html](ch13.html)
+
+```r
+# =====================================================================
+# Ch13 實戰應用：USDA FoodData Central 開放資料 × 食品配方計算
+# 對照業界軟體 TechWizard 的兩大招牌功能：
+#   (1) 目標導向配方 + 最低成本配方 (goal-oriented / least-cost formulation)
+#   (2) 營養標籤 + 逆向工程 (nutrition labeling & reverse engineering)
+# 特色：
+#   - 全部使用 R 內建函數，不需安裝任何套件
+#   - 核心部分完全離線可執行；原料組成摘錄自 USDA FoodData Central
+#     (SR Legacy，公眾領域 CC0 授權)
+#   - 情境：香草冰淇淋配方 (對照 TechWizard 官網 Ice Cream 範例的規格：
+#     脂肪 12%、MSNF 11%、砂糖 14%、玉米糖漿 3%、安定劑/乳化劑 0.5%)
+# =====================================================================
+
+# ---------- 0. 環境旗標 ----------
+RUN_ONLINE <- FALSE  # 有網路時改成 TRUE，會示範呼叫 FDC API 抓真資料(見 Part 6)
+
+# ---------- Part 1. 迷你原料資料庫 (摘錄自 USDA FDC / SR Legacy) ----------
+# 組成欄位 = 每 100 g 原料的克數 (%)
+#   water 水分 | protein 蛋白質 | fat 脂肪 | carb 碳水化合物 | ash 灰分(礦物質)
+# NDB = SR Legacy 傳統編號，可在 fdc.nal.usda.gov 搜尋頁查回對應 fdcId
+# msnf = 非脂乳固形質 (milk solids-not-fat) = protein + carb + ash，
+#        乳品工業的慣用指標（只對乳原料有意義）
+ing <- data.frame(
+  name    = c("鮮奶油(36%)", "全脂鮮乳", "脫脂奶粉", "砂糖", "玉米糖漿", "安定劑/乳化劑"),
+  ndb     = c("01053", "01077", "01095", "19335", NA, NA),
+  water   = c(57.71, 88.10,  3.20,  0.00, 20.0, 0),
+  protein = c( 2.05,  3.15, 36.16,  0.00,  0.0, 0),
+  fat     = c(36.08,  3.25,  0.77,  0.00,  0.0, 0),
+  carb    = c( 2.79,  4.80, 51.99, 99.98, 78.0, 0),
+  ash     = c( 0.61,  0.70,  7.92,  0.00,  0.0, 0),
+  price   = c(230, 38, 280, 42, 55, 850)   # 示教用虛構單價 (元/kg)
+)
+ing$msnf <- ing$protein + ing$carb + ing$ash
+ing[, c("name", "fat", "msnf", "water", "price")]
+#> 鮮奶油 fat=36.08 msnf=5.45 | 全脂乳 fat=3.25 msnf=8.65 | 脫脂奶粉 fat=0.77 msnf=96.07
+
+# 教學重點：FDC 對「複合加工原料」(玉米糖漿、安定劑) 覆蓋度低，
+# 實務上要向供應商索取規格書 —— 正是 TechWizard「Ingredient Request Wizard」的存在理由！
+
+# ---------- Part 2. 目標導向配方：冰淇淋的質量平衡聯立方程 ----------
+# 目標規格 (每 100 kg 配方中的 kg 數)，同 TechWizard Ice Cream 範例：
+tgt_fat    <- 12      # 脂肪 12 kg
+tgt_msnf   <- 11      # 非脂乳固形 11 kg
+w_sugar    <- 14      # 砂糖
+w_csyrup   <-  3      # 玉米糖漿
+w_stab     <-  0.5    # 安定劑+乳化劑
+minor      <- w_sugar + w_csyrup + w_stab
+dairy_water <- 100 - minor          # 82.5 kg 由「乳原料 + 水」湊足
+
+# 未知數：c=鮮奶油, m=全脂乳, s=脫脂奶粉, w=水  ->  4 個未知數、只有 3 條方程式
+#   (1) 總質量 : c + m + s + w            = 82.5
+#   (2) 脂肪   : .3608c + .0325m + .0077s = 12
+#   (3) MSNF   : .0545c + .0865m + .9607s = 11
+# 缺一條方程式 -> 存在「一個自由度」的整個配方家族！這就是配方的本質。
+
+f_c <- ing$fat[1]/100;   f_m <- ing$fat[2]/100;   f_s <- ing$fat[3]/100
+n_c <- ing$msnf[1]/100;  n_m <- ing$msnf[2]/100;  n_s <- ing$msnf[3]/100
+
+A <- rbind(c(1, 1, 1),          # 未知數順序 (cream, milk, water)；smp 移到右邊當參數
+           c(f_c, f_m, 0),      # 水不含脂肪
+           c(n_c, n_m, 0))      # 水不含乳固形
+
+p_cream <- ing$price[1]; p_milk <- ing$price[2]; p_smp <- ing$price[3]
+p_water <- 0.5
+minor_cost <- w_sugar * ing$price[4] + w_csyrup * ing$price[5] +
+              w_stab  * ing$price[6]
+
+# balance_mix(): 掃描「脫脂奶粉用量 s」，每個 s 解一次 3x3 聯立方程
+balance_mix <- function(target_fat, target_msnf,
+                        grid = seq(0, 12, by = 0.05)) {
+  out <- data.frame(smp = grid, cream = NA_real_, milk = NA_real_,
+                    water = NA_real_, ok = FALSE, cost = NA_real_)
+  for (i in seq_along(grid)) {
+    s <- grid[i]
+    b <- c(dairy_water - s,               # 方程(1)
+           target_fat  - f_s * s,         # 方程(2)
+           target_msnf - n_s * s)         # 方程(3)
+    x <- tryCatch(solve(A, b), error = function(e) rep(NA_real_, 3))
+    out[i, c("cream", "milk", "water")] <- x
+    out$ok[i] <- all(!is.na(x)) && all(x >= -1e-9)   # 用量不能是負的！
+    if (out$ok[i]) {
+      out$cost[i] <- p_cream * x[1] + p_milk * x[2] +
+                     p_smp * s + p_water * max(x[3], 0) + minor_cost
+    }
+  }
+  out
+}
+
+sol <- balance_mix(tgt_fat, tgt_msnf)
+sum(sol$ok)                          #> 約 82 個網格點可行
+range(sol$smp[sol$ok])               #> 可行的 SMP 區間約 5.50 ~ 9.60 kg
+
+# ---------- Part 3. 最低成本配方：在配方家族中找最便宜的 ----------
+best  <- sol[which.min(sol$cost), ]
+worst <- sol[sol$ok, ][which.max(sol$cost[sol$ok]), ]
+
+round(best[, c("smp", "cream", "milk", "water", "cost")], 2)
+#> 最便宜解落在可行區間左端點：SMP≈5.5、水≈0.25、成本≈11,169 元/100kg
+round(worst[, c("smp", "cream", "milk", "water", "cost")], 2)
+#> 最貴解在右端點：SMP≈9.6、水≈39.9，成本多約 300 元 (+2.8%)
+
+plot(cost ~ smp, data = sol, subset = ok, type = "l", lwd = 2,
+     col = "#1565C0",
+     main = "最低成本配方：成本隨脫脂奶粉用量單調上升",
+     xlab = "脫脂奶粉用量 (kg / 100 kg 配方)",
+     ylab = "原料成本 (元 / 100 kg)")
+points(best$smp, best$cost, pch = 19, col = "red", cex = 1.5)
+text(best$smp, best$cost - 90, sprintf("最便宜 %.0f 元", best$cost),
+     col = "red", pos = 4)
+abline(v = range(sol$smp[sol$ok]), lty = 2, col = "grey50")
+
+# 為什麼最適解在「端點」？
+#   成本是各項用量的線性函數 -> 在可行區域(凸多面體)的極值必出現在頂點。
+#   本題只有 1 個自由度 => 可行集合是一條線段 => 最佳解必在兩端之一。
+#   這就是線性規劃 (LP) 的核心直覺；TechWizard 的 AI 配方引擎 =
+#   同樣邏輯 + 更多原料與限制式時的自動化 (單純法, simplex method)。
+
+# ---------- Part 4. 加權營養計算 -> 營養標籤 ----------
+# TechWizard 邏輯：配方加權平均出「每 100 g」營養值，再換算每份並套捨入規則
+wt_cream <- best$cream; wt_milk <- best$milk; wt_smp <- best$smp
+
+prot  <- (wt_cream*2.05 + wt_milk*3.15 + wt_smp*36.16)/100
+carb  <- (wt_cream*2.79 + wt_milk*4.80 + wt_smp*51.99 +
+          w_sugar*99.98 + w_csyrup*78)/100
+lact  <- (wt_cream*2.79 + wt_milk*4.80 + wt_smp*51.99)/100   # 乳糖
+sugar <- w_sugar + lact + w_csyrup*0.26                      # 標示用「糖」
+na_mg <- (wt_cream*30 + wt_milk*43 + wt_smp*1010)/100        # 鈉 (mg)
+kcal  <- 4*prot + 4*carb + 9*tgt_fat                         # Atwater 4-4-9
+round(c(protein = prot, fat = tgt_fat, carb = carb, sugar = sugar,
+        Na_mg = na_mg, kcal_44_9 = kcal), 2)
+#> protein=4.09  fat=12.00  carb=22.30  sugar=20.74  Na=84.8  kcal=213.6
+
+# 台灣格式：每 100 g；美國 FDA 格式：每份 (冰淇淋 RACC = 2/3 杯 ≈ 66 g，
+# 已把 overrun 打入空氣考慮)。捨入規則此處為教學簡化版，實際以最新法規為準。
+serv <- 66/100
+fda_g   <- function(x) ifelse(x < 0.5, 0, round(x))
+fda_cal <- function(k) ifelse(k <= 5, 0, ifelse(k <= 50, round(k/5)*5, round(k/10)*10))
+label_tw <- data.frame(
+  營養素 = c("熱量(kcal)", "蛋白質(g)", "脂肪(g)", "碳水化合物(g)", "糖(g)", "鈉(mg)"),
+  每100g = round(c(kcal, prot, tgt_fat, carb, sugar, na_mg), 1))
+label_us <- data.frame(
+  營養素 = label_tw$營養素,
+  每份66g_fda = c(fda_cal(kcal*serv), fda_g(prot*serv), fda_g(tgt_fat*serv),
+                  fda_g(carb*serv), fda_g(sugar*serv),
+                  round(na_mg*serv/5)*5))
+cbind(label_tw, label_us[2])
+#> 每66g: 熱量140 kcal / 蛋白質3g / 脂肪8g / 碳水15g / 糖14g / 鈉55mg
+#> —— 和市售香草冰淇淋的標籤幾乎一模一樣！
+
+# Atwater 檢核 (呼應 Ch4 迴歸)：FDC 的 Energy 若與 4-4-9 差很多，
+# 通常代表該筆資料用了「特定因子」(如乳品 3.87/4.27/8.79) 或纖維扣除法
+
+# ---------- Part 5. 逆向工程：從競品的檢驗值反推配方 ----------
+# TechWizard Reverse Engineering：輸入產品分析結果 -> 反推等效配方
+# 情境：買了競品香草冰淇淋送實驗室檢測：
+lab_fat     <- 10.8    # 脂肪 (%)
+lab_protein <-  4.4    # 蛋白質 (%)
+msnf_est    <- lab_protein / 0.36    # 乳蛋白約占非脂固形的 36% -> MSNF 估計
+msnf_est                              #> 12.2%
+
+sol_re  <- balance_mix(lab_fat, msnf_est)
+best_re <- sol_re[which.min(sol_re$cost), ]
+
+compare <- rbind(
+  我方設計  = round(unlist(best [c("cream","milk","smp","water")]), 1),
+  競品還原  = round(unlist(best_re[c("cream","milk","smp","water")]), 1))
+compare                                # 競品脂肪較低、MSNF較高 -> 更省錢的配方結構
+sprintf("競品等效配方成本約 %.0f 元/100kg (我方 %.0f 元)",
+        best_re$cost, best$cost)
+
+# 逆向工程的三個不確定來源 (呼應 Ch6~Ch8！)：
+#   (1) 標籤/檢驗值的捨入誤差  (2) 各原料組成的批次變異
+#   (3) MSNF 由蛋白質反推的模型假設 -> 所以解不是唯一，只是「等效近似」
+
+# ---------- Part 6. 取得真資料：FDC API 與 CSV 下載 ----------
+if (RUN_ONLINE) {
+  # (a) API：到 https://fdc.nal.usda.gov/api-key-signup 免費申請金鑰換掉 DEMO_KEY
+  key  <- "DEMO_KEY"
+  qurl <- paste0("https://api.nal.usda.gov/fdc/v1/foods/search",
+                 "?api_key=", key,
+                 "&query=butter%2Csalted&dataType=SR%20Legacy&pageSize=1")
+  txt  <- paste(readLines(url(qurl), warn = FALSE), collapse = "")
+  hit  <- regmatches(txt, regexpr(
+    '"nutrientName":"Energy","nutrientNumber":"[0-9]+","unitName":"KCAL"[^}]*"value":[0-9.]+',
+    txt))
+  cat(hit, "\n")     #> 奶油能量 value":717 kcal (與教科書一致)
+
+  # (b) 整包 CSV：到 https://fdc.nal.usda.gov/download-datasets 複製最新連結
+  # download.file("<下載頁的zip連結>", destfile = "fdc_sr_legacy.zip")
+  # unzip("fdc_sr_legacy.csv.zip")
+  # food <- read.csv("food.csv")   # 數十萬列 -> Ch1 的描述統計直接派上用場
+}
+
+# ---------- 小結 ----------
+cat("TechWizard 兩大招牌功能 = 質量平衡聯立方程 (solve) + 加權平均 (weighted mean)，
+    背後沒有魔法，只有你已經學過的統計與代數。\n")
+
+```
+
+---
+
+## Ch14 實驗設計與反應曲面法 (DOE & RSM)
+
+> 情境：超音波輔助萃取茶葉多酚（DPPH 清除率）。
+> Part 1–3 完全 base R：2³ 全因子＋中心點 -> CCD -> 二階模型 -> 駐點 -> 驗證實驗。
+> Part 4 為套件選讀（rsm / FrF2 / desirability），先 install.packages 再將 HAVE_PKGS 改 TRUE。
+> 參考：Lenth (2009) JSS 32:7；Tanaka & Amaliah (2022) arXiv:2206.07532。
+
+📄 檔案：`ch14_doe_rsm.R` ｜ 教學網頁：[ch14.html](ch14.html)
+
+```r
+# =====================================================================
+# Ch14 實驗設計與反應曲面法 (DOE & RSM)
+# 情境：超音波輔助萃取 (UAE) 茶葉多酚，反應值 = DPPH 清除率 (%)
+# 因子 (編碼單位 ±1)：
+#   A 乙醇濃度  50 ± 10 %   (即 40~60%)
+#   B 萃取溫度  50 ± 10 °C  (即 40~60°C)
+#   C 超音波時間 22.5 ± 7.5 min (即 15~30 min)
+# 學習路徑：
+#   Part 1  2^3 全因子 + 中心點 (base R) -> 主效應/交互作用/曲率偵測
+#   Part 2  中心複合設計 CCD (base R)    -> 二階模型/駐點/等高線
+#   Part 3  預測區間與驗證實驗 (呼應 Ch2/Ch8)
+#   Part 4  套件選讀：rsm / FrF2 / desirability (需安裝，見 HAVE_PKGS)
+# 參考：Lenth (2009) rsm, J. Stat. Software 32:7；
+#       Tanaka & Amaliah (2022) arXiv:2206.07532 (DoE 套件總體檢)
+# =====================================================================
+
+HAVE_PKGS <- FALSE   # 改 TRUE 前先 install.packages(c("rsm","FrF2","desirability"))
+
+# ---------- 共用：真實模型 (教學模擬用，學生實作時以實驗數據取代) ----------
+# 真實世界存在一個「內部極大值」—— 這正是需要 RSM 的原因
+true_y <- function(A, B, C)                       # 編碼單位
+  60 + 5*A + 3*B + 2*C - 7*A^2 - 5*B^2 - 6*C^2 + 2.5*A*B
+
+# =====================================================================
+# Part 1. 2^3 全因子設計 + 4 個中心點
+# =====================================================================
+fac <- expand.grid(A = c(-1, 1), B = c(-1, 1), C = c(-1, 1))   # 8 個處理組合
+set.seed(14)
+fac$y <- round(true_y(fac$A, fac$B, fac$C) + rnorm(8, 0, 1.2), 1)
+ctr <- data.frame(A = 0, B = 0, C = 0,
+                  y = round(rnorm(4, true_y(0, 0, 0), 1.2), 1))  # 中心點
+dat1 <- rbind(fac, ctr)
+dat1                                                   # 設計矩陣長這樣
+
+# --- 1a. 配一階+交互作用模型，讀出效應 ---
+fit1 <- lm(y ~ (A + B + C)^2, data = dat1)
+round(coef(fit1), 2)
+#> 效應(effect) = 2*係數。A(乙醇) 最大，A:B 交互作用明顯
+#> 注意：模型截距 ~48.8 (因子點平均)，但中心點「實測」平均 ~60.2 —— 差很多！
+
+# --- 1b. 交互作用圖：兩線不平行 = 有交互作用 ---
+interaction.plot(dat1$A, dat1$B, dat1$y, type = "b", pch = c(1, 19),
+                 col = c("#1565C0", "#C62828"), lwd = 2,
+                 xlab = "乙醇濃度 A (編碼)", ylab = "DPPH 清除率 (%)",
+                 trace.label = "溫度 B",
+                 main = "2^3 因子實驗：A×B 交互作用與中心點曲率")
+
+# --- 1c. 曲率檢定：中心點平均 vs 因子點平均 ---
+mean_fac <- mean(fac$y); mean_ctr <- mean(ctr$y)
+s_pure   <- sd(ctr$y)                       # 純誤差 (只有中心點重複能給)
+t_curv <- (mean_ctr - mean_fac) / (s_pure * sqrt(1/4 + 1/8))
+round(c(mean_factorial = mean_fac, mean_center = mean_ctr,
+        s_pure = s_pure, t_curv = t_curv,
+        p_value = 2 * pt(-abs(t_curv), df = 3)), 4)
+#> p 值極小 -> 「反應曲面是彎的！」直線模型不夠用 -> 需要 RSM (Part 2)
+
+# =====================================================================
+# Part 2. 中心複合設計 (CCD)：因子點 + 軸點 + 中心點
+# =====================================================================
+# 旋轉性(rotatable)設計的 alpha = (2^k)^(1/4)；k=3 -> 1.682
+# 旋轉性 = 預測變異數在「等半徑」處相等，不偏向任何方向
+alpha <- 2^(3/4)
+round(alpha, 3)                                          #> 1.682
+axi <- data.frame(A = c(-alpha, alpha, rep(0, 4)),
+                  B = c(0, 0, -alpha, alpha, 0, 0),
+                  C = c(0, 0, 0, 0, -alpha, alpha))
+ccd <- rbind(fac[, c("A", "B", "C")], axi,
+             data.frame(A = 0, B = 0, C = 0)[rep(1, 6), ])   # 8+6+6 = 20 runs
+set.seed(15)
+ccd$y <- round(true_y(ccd$A, ccd$B, ccd$C) + rnorm(20, 0, 1.2), 1)
+
+# --- 2a. 二階模型：線性 + 雙因子交互 + 三個平方項 ---
+fit2 <- lm(y ~ (A + B + C)^2 + I(A^2) + I(B^2) + I(C^2), data = ccd)
+round(coef(fit2), 2)
+#> 平方項係數全為負 -> 開口朝下 -> 存在極大值 (呼應曲率檢定的結論)
+
+# --- 2b. 矩陣代數找駐點：x0 = -0.5 * B^-1 * b ---
+# ŷ = b0 + x'b + x'Bx (B 對角線放平方項、非對角線放交互係數的一半)
+b    <- coef(fit2)
+blin <- b[c("A", "B", "C")]
+Bmat <- matrix(c(b["I(A^2)"], b["A:B"]/2,  b["A:C"]/2,
+                 b["A:B"]/2,  b["I(B^2)"], b["B:C"]/2,
+                 b["A:C"]/2,  b["B:C"]/2,  b["I(C^2)"]), 3, byrow = TRUE)
+x0 <- as.numeric(-0.5 * solve(Bmat, blin))     # 駐點 (編碼單位)
+eigen(Bmat)$values                            # 三個特徵值全負 -> 極大值
+y0 <- as.numeric(b[1] + t(x0) %*% blin + t(x0) %*% Bmat %*% x0)
+round(c(A = x0[1], B = x0[2], C = x0[3], DPPH_pred = y0), 2)
+#> 駐點約 (0.4, 0.4, 0.2)，預測 DPPH ~ 62% —— 與真實模型幾乎一致！
+
+# --- 2c. 換回實際單位 (這才是操作員要的答案) ---
+unc <- c(乙醇濃度 = 50 + 10 * x0[1],          # %
+         萃取溫度 = 50 + 10 * x0[2],          # °C
+         超音波時間 = 22.5 + 7.5 * x0[3])     # min
+round(unc, 1)
+
+# --- 2d. 等高線圖：A-B 平面 (固定 C 在駐點) ---
+gA <- seq(-1.7, 1.7, length.out = 60)
+gB <- seq(-1.7, 1.7, length.out = 60)
+grid <- expand.grid(A = gA, B = gB)
+grid$C <- x0[3]
+grid$yhat <- as.numeric(predict(fit2, grid))
+contour(50 + 10 * gA, 50 + 10 * gB,
+        matrix(grid$yhat, nrow = length(gA)),
+        xlab = "乙醇濃度 (%)", ylab = "萃取溫度 (°C)",
+        main = sprintf("RSM 等高線 (超音波時間 = %.1f min)", unc[3]),
+        col = "#455A64", lwd = 1.5)
+points(unc[1], unc[2], pch = 19, col = "red", cex = 1.6)
+text(unc[1], unc[2], sprintf(" 最適 (預測 %.1f%%)", y0),
+     col = "red", adj = 0, font = 2)
+
+# =====================================================================
+# Part 3. 預測區間與驗證實驗 (呼應 Ch2 的 CI 與 Ch8 的符合性思維)
+# =====================================================================
+newp  <- data.frame(A = x0[1], B = x0[2], C = x0[3])
+pred  <- predict(fit2, newp, interval = "prediction")
+round(pred, 1)
+#> 報告寫法：「在最適條件下，DPPH 清除率預期 (下限~上限)%」—— 單點預測必附區間！
+
+set.seed(16)
+verify <- round(true_y(x0[1], x0[2], x0[3]) + rnorm(3, 0, 1.2), 1)
+verify                                    # 模擬「照最適條件重做 3 次」
+verdict <- if (mean(verify) >= pred[2] && mean(verify) <= pred[3])
+  "驗證通過：實測落在 95% 預測區間內" else "驗證失敗：模型需重新檢討"
+verdict
+
+# =====================================================================
+# Part 4. 套件選讀：業界標準做法 (HAVE_PKGS <- TRUE 時執行)
+# =====================================================================
+if (HAVE_PKGS) {
+  # install.packages(c("rsm", "FrF2", "desirability"))
+  library(rsm)      # Lenth (2009) JSS 32:7 —— RSM 教學與實務的標準套件
+  fit_rsm <- rsm(y ~ SO(A, B, C), data = ccd)   # SO = second-order
+  summary(fit_rsm)$canonical     # 駐點 + 特徵值 + 特徵向量 (canonical 分析)
+  steepest(fit_rsm)              # 最陡上升路徑表 (Part 1 之後的下一步)
+  contour(fit_rsm, ~ A + B, image = TRUE)       # 一行畫出等高線+填色
+
+  library(FrF2)     # Grömping (2014) JSS 56:1 —— 2 水準部分因子/篩選設計
+  FrF2(8, 4, randomize = FALSE)   # 2^(4-1) 解析度 IV 半因子：4 因子只做 8 run
+  pb(12, 5)                       # Plackett-Burman 12 runs 篩 5 個變因
+
+  library(desirability)  # 多反應同時最佳化：產率最高 & 乙醇消耗最少
+  d1 <- dMax(40, 65)     # DPPH：40% 最差、65% 最好
+  d2 <- dMin(30, 60)     # 溶劑用量：越少越好
+  # 將各反應的 desirability 幾何平均後，在等高線上找 D 最大的點
+}
+
+# ---------- 小結與延伸練習 ----------
+cat("
+練習 1：把 I(C^2) 從模型移除，駐點與預測值怎麼變？(提示：C 的曲率本來就較弱)
+練習 2：alpha 改成 1 (face-centered CCD，軸點貼在邊界) 重跑 Part 2，
+        預測區間變寬還是變窄？為什麼？(提示：旋轉性沒了)
+練習 3：用 cranlogs 套件抓 ExperimentalDesign 任務視圖套件的下載量，
+        重現 Tanaka & Amaliah (2022) 的 Lorenz curve 與 Gini index。
+")
+
+```

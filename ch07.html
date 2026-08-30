@@ -5,18 +5,32 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ch07 Type A/B 與天平案例</title>
 <link rel="stylesheet" href="assets/style.css">
+
+<!-- KaTeX -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\[', right: '\]', display: true}]});"></script>
 </head>
 <body>
 <header class="topbar"><div class="inner">
 <a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
 <nav class="topnav">
-<a href="index.html">首頁</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a>
+<a href="index.html">首頁</a><a href="ch00.html">Ch0 入門</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a><a href="ch13.html">Ch13 FDC配方</a><a href="ch14.html">Ch14 DOE/RSM</a>
 </nav></div></header>
 
 <main>
 <div class="crumbs">Part 2 量測不確定度（QUAM §7, §8.1, Appendix E.1）／第 7 章</div>
 <h1>量化不確定度：Type A / Type B 與分布轉換
 <span class="en">Quantifying Components — plus 實戰案例① 分析天平稱量</span></h1>
+
+<p class="lede">天平說明書只寫「線性 ±0.2 mg」。這個「±」到底代表什麼機率？換算錯了，後面整套不確定度都會歪掉。</p>
+
+<div class="callout"><span class="t">🔑 課前暖身</span>
+證書只寫「±0.2 mL」時，標準差該算多少？答案：看「極端值可不可信」，從三種形狀中選一種來換算。
+本章後半用<strong>分析天平</strong>當主角，把這些換算套到真儀器上，完成第一個完整的不確定度預算。<br>
+<strong>本章新詞先認識</strong>：<em>Type A</em>＝用重複實驗算出來的；<em>Type B</em>＝用證書/規格換算出來的；<em>矩形分布</em>＝只知道範圍時最保守的假設；<em>三角分布</em>＝極端值罕見一點的假設。<br>
+<small>名詞卡住了？回 <a href="ch00.html">Ch0 名詞圖鑑</a> 查白話解釋與比喻。</small></div>
 
 <div class="goals"><b>學習目標</b>
 <ul>
@@ -30,7 +44,7 @@
 <div class="card"><strong>Type A 評估</strong><br>
 由<strong>重複量測的統計</strong>得出：<br>
 u(x) = 觀測標準差 s<br>
-（結果為 n 次平均時用 s/√n）<br>
+（結果為 n 次平均時用 s/\(\sqrt{n}\)）<br>
 <em>例：同一樣品稱 6 次的 SD</em></div>
 <div class="card"><strong>Type B 評估</strong><br>
 由<strong>既有資訊</strong>推得：校正證書、規格容許差、
@@ -46,8 +60,8 @@ u(x) = 觀測標準差 s<br>
 </div>
 <table>
 <tr><th>分布</th><th>換算公式</th><th>何時使用（QUAM §8.1）</th><th>例：a=0.2</th></tr>
-<tr class="hl"><td><strong>矩形</strong></td><td>u = a/√3 ≈ 0.577a</td><td>只知 ±a、無信賴水準、極端值可能出現</td><td class="num">0.115</td></tr>
-<tr><td><strong>三角形</strong></td><td>u = a/√6 ≈ 0.408a</td><td>知 ±a，且中間值明顯較可能（極端罕見）</td><td class="num">0.082</td></tr>
+<tr class="hl"><td><strong>矩形</strong></td><td>u = a/\(\sqrt{3}\) ≈ 0.577a</td><td>只知 ±a、無信賴水準、極端值可能出現</td><td class="num">0.115</td></tr>
+<tr><td><strong>三角形</strong></td><td>u = a/\(\sqrt{6}\) ≈ 0.408a</td><td>知 ±a，且中間值明顯較可能（極端罕見）</td><td class="num">0.082</td></tr>
 <tr><td><strong>常態</strong></td><td>u = a/1.96 ≈ 0.51a</td><td>±a 明確是 95% 信賴區間</td><td class="num">0.102</td></tr>
 </table>
 <div class="callout"><span class="t">📖 QUAM 原例（§8.1.3–8.1.5）</span>
@@ -69,6 +83,11 @@ round(c(flask_rect = u_rect(0.2), flask_tri = u_tri(0.2),
 reps &lt;- c(1001.2, 1000.8, 1001.5, 1001.0, 1000.9)
 sd(reps)              #&gt; 0.268 mg  (單次量測的 u)
 sd(reps)/sqrt(5)      #&gt; 0.120 mg  (5 次平均的 u)</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">flask_rect   flask_tri balance_n95 
+     0.1155      0.0816      0.1020 
+[1] 0.2774887
+[1] 0.1240967</pre></div>
 
 <hr>
 <h2>7.3 實戰案例①：分析天平稱量（QUAM Example A1 架構）</h2>
@@ -88,7 +107,7 @@ c<sub>Cd</sub> = <span class="frac"><span class="num">1000 × m × P</span><span
 <tr><td>重複性</td><td>6 次稱重 SD（Type A）</td><td>常態</td><td class="num">0.032 mg</td></tr>
 </table>
 <p><strong>淨重 = 毛重 − 皮重</strong>經歷兩次完整稱重 →
-u(m) = √2 × √(0.0029² + 0.0204² + 0.032²) ≈ <strong>0.055 mg</strong>
+u(m) = \(\sqrt{2}\) × \(\sqrt{(0.0029² + 0.0204² + 0.032²)}\) ≈ <strong>0.055 mg</strong>
 ——量級與 QUAM Table A1.1 的 u(m)=0.05 mg 相符。</p>
 
 <pre class="rcode" data-file="case_balance.R"># ============ 案例① 天平稱量 (完整腳本，下載後可執行) ============
@@ -113,6 +132,11 @@ contrib_P &lt;- c_Cd * 0.000058 / P   #&gt; 0.06 mg/L
 
 # 靈敏度意識：只稱 10 mg 會怎樣？
 1002.7 * u_m / 10                  #&gt; 5.5 mg/L -> 稱太少，質量項主導!</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">read    cal    rep 
+0.0029 0.0204 0.0327 
+[1] 0.0547
+[1] 5.482853</pre></div>
 
 <div class="callout ok"><span class="t">🎯 案例啟示</span>
 ① 稱 100 mg 時，天平貢獻 (0.55) <strong>小於</strong> 體積貢獻 (0.70)——先改善量瓶！<br>
@@ -124,12 +148,25 @@ contrib_P &lt;- c_Cd * 0.000058 / P   #&gt; 0.06 mg/L
 <div class="cap">圖 7-2 三大案例預算總覽：左＝本案例（天平/標準液）；中＝第10章滴定；右＝第10章 HPLC</div>
 </div>
 
+<h2>📊 Excel 也會算：Type A / B 與分布轉換</h2>
+<div class="callout ok"><span class="t">📊 沒有 R 也能動手</span>
+Type A 用重複數據算（放 <code>A1:A10</code>），Type B 用規格 ±a 換算。重點是「除以哪個數」：<br>
+<table>
+<tr><th>任務</th><th>Excel 公式</th><th>說明</th></tr>
+<tr><td>Type A 標準不確定度</td><td><code>=STDEV(A1:A10)/SQRT(10)</code></td><td>平均值的標準誤</td></tr>
+<tr><td>矩形分布（只知道 ±a）</td><td><code>=a/SQRT(3)</code></td><td>最保守</td></tr>
+<tr><td>三角分布（極端少見）</td><td><code>=a/SQRT(6)</code></td><td>較不保守</td></tr>
+<tr><td>常態 95%（± 即 U）</td><td><code>=a/2</code></td><td>證書若註明 k=2</td></tr>
+<tr><td>證書給 U 與 k</td><td><code>=U/k</code></td><td>先除回標準不確定度</td></tr>
+</table>
+<strong>天平案例</strong>：把解析度、校正、重複性三個 u 各自換算後放一欄，再用 <code>=SQRT(SUMSQ(...))</code> 合成。<code>SUMSQ</code> 直接算平方和，超好用。</div>
+
 <div class="quiz" id="quiz"></div>
 <script>
 const QUIZ = [
  { q: "容量瓶證書寫「100 mL ± 0.2 mL」，未註明信賴水準。標準不確定度為：",
-   opts: ["0.2 mL", "0.2/√3 = 0.115 mL", "0.2/√6 = 0.082 mL", "0.2/1.96 = 0.102 mL"], ans: 1,
-   exp: "只有 ±a 沒有信賴水準 → 矩形分布（QUAM §8.1.4），u = a/√3 = 0.115。三角形要「極端值罕見」的額外證據；1.96 要明示 95%。" },
+   opts: ["0.2 mL", "0.2/\\(\\sqrt{3}\\) = 0.115 mL", "0.2/\\(\\sqrt{6}\\) = 0.082 mL", "0.2/1.96 = 0.102 mL"], ans: 1,
+   exp: "只有 ±a 沒有信賴水準 → 矩形分布（QUAM §8.1.4），u = a/\\(\\sqrt{3}\\) = 0.115。三角形要「極端值罕見」的額外證據；1.96 要明示 95%。" },
  { q: "天平規格「±0.2 mg（95% 信賴）」，u 為：",
    opts: ["0.2 mg", "0.115 mg", "0.102 mg", "0.082 mg"], ans: 2,
    exp: "明確是 95% 信賴 → 常態，u = 0.2/1.96 = 0.102（QUAM §8.1.3 原例）。" },
@@ -138,16 +175,27 @@ const QUIZ = [
    exp: "兩者最後都表達為標準不確定度 u，在合成時完全平等對待——Type B 不是次等品，只是資訊來源不同。" },
  { q: "淨重 = 毛重 − 皮重，每次稱重的合成 u 為 0.039 mg，則 u(淨重) 為：",
    opts: ["0.039 mg", "0.078 mg", "0.055 mg", "0.019 mg"], ans: 2,
-   exp: "加減模型 Rule 1：√(0.039²+0.039²) = √2×0.039 = 0.055。是「平方和開根號」不是直接相加，也不是除以 2。" },
+   exp: "加減模型 Rule 1：\\(\\sqrt{(0.039²+0.039²)}\\) = \\(\\sqrt{2}\\)×0.039 = 0.055。是「平方和開根號」不是直接相加，也不是除以 2。" },
  { q: "案例①中稱 100 mg 時，為什麼體積的貢獻 (0.70) 大於質量 (0.55)？",
    opts: ["量瓶比較貴", "u(V)/V = 0.07/100 = 0.0007 大於 u(m)/m = 0.055/100.28 = 0.00055", "因為 V 在分母", "計算錯誤"], ans: 1,
    exp: "乘除模型中各項以「相對不確定度」競爭。0.0007 &gt; 0.00055，所以體積贏。改善順序：先換更準的量瓶/控溫。" },
  { q: "同樣的天平（u_m=0.055 mg），把稱樣量從 100 mg 改成 10 mg，質量項對濃度的貢獻會：",
    opts: ["不變", "放大 10 倍成為主導項", "縮小 10 倍", "消失"], ans: 1,
    exp: "相對不確定度 u(m)/m 從 0.00055 變 0.0055，貢獻從 0.55 → 5.5 mg/L。稱樣量太小是不確定度的經典地雷。" }
+,
+ { q: "在 R 語言中，若要將 95% 信賴水準的擴充不確定度轉換為常態分布的標準不確定度，最精確的語法為何？",
+   opts: ["a / sqrt(3)", "a / qnorm(0.95)", "a / qnorm(0.975)", "a / sqrt(6)"], ans: 2,
+   exp: "常態分布下 95% 雙尾信賴區間的臨界值約為 1.96，在 R 中使用 qnorm(0.975) 取得更精確的值，因此 a / qnorm(0.975) 是最精確的作法。" },
+ { q: "在 Excel 中，要將多個獨立標準不確定度分量進行合成（即各分量的平方和開根號），最簡潔的公式是：",
+   opts: ["=SUM(B2:B4)^2", "=SQRT(SUMSQ(B2:B4))", "=SQRT(SUM(B2:B4))", "=SUMSQ(SQRT(B2:B4))"], ans: 1,
+   exp: "Excel 的 SUMSQ 函數會先計算數列的平方和，外層再包覆 SQRT 開根號，即可完美對應合成標準不確定度的公式。" },
+ { q: "計算 Type A 標準不確定度（平均值的標準誤）時，若有 10 次重複量測數據，在 Excel 與 R 分別應使用哪種計算方式？",
+   opts: ["Excel: =VAR(A1:A10)/10，R: var(x)/10", "Excel: =STDEV(A1:A10)/10，R: sd(x)/10", "Excel: =STDEV(A1:A10)/SQRT(10)，R: sd(x)/sqrt(10)", "Excel: =SQRT(A1:A10)，R: sqrt(x)"], ans: 2,
+   exp: "Type A 標準不確定度為單次量測標準差除以 \\(\\sqrt{n}\\)，因此 Excel 是 STDEV 除以 SQRT(10)，R 則是 sd 除以 sqrt(10)。" }
 ];
 </script>
 <script src="assets/app.js"></script>
+<script src="assets/js/showout.js"></script>
 
 <nav class="pager">
 <a href="ch06.html"><small>上一章</small>Ch6 量測不確定度概念</a>

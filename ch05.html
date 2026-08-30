@@ -5,18 +5,32 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ch05 有效數字與異常值檢定</title>
 <link rel="stylesheet" href="assets/style.css">
+
+<!-- KaTeX -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\[', right: '\]', display: true}]});"></script>
 </head>
 <body>
 <header class="topbar"><div class="inner">
 <a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
 <nav class="topnav">
-<a href="index.html">首頁</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a>
+<a href="index.html">首頁</a><a href="ch00.html">Ch0 入門</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a><a href="ch13.html">Ch13 FDC配方</a><a href="ch14.html">Ch14 DOE/RSM</a>
 </nav></div></header>
 
 <main>
 <div class="crumbs">Part 1 數據品管統計（Nielsen's Food Analysis 第4章）／第 5 章</div>
 <h1>有效數字與異常值檢定
 <span class="en">Significant Figures, Dixon Q-test &amp; Grubbs Test</span></h1>
+
+<p class="lede">學長的報告寫 64.7201359%，被退件；學姊把一個「怪數據」刪掉，被告學術不端。兩個地雷，這一章教你怎麼避開。</p>
+
+<div class="callout"><span class="t">🔑 課前暖身</span>
+為什麼課本寫 64.72% 而不是 64.7201359%？為什麼全班都考 60–80 分、有人考 5 分你會先懷疑他缺考？
+本章教你<strong>有效數字</strong>的專業規則，以及判斷「手滑數據」的客觀檢定——還有重要提醒：不能為了報告漂亮而亂刪數據。<br>
+<strong>本章新詞先認識</strong>：<em>有效數字</em>＝報告該保留的位數；<em>異常值</em>＝明顯不合群的可疑數據；<em>Q 檢定/Grubbs 檢定</em>＝判斷能否刪除的「法律依據」。<br>
+<small>名詞卡住了？回 <a href="ch00.html">Ch0 名詞圖鑑</a> 查白話解釋與比喻。</small></div>
 
 <div class="goals"><b>學習目標</b>
 <ul>
@@ -92,6 +106,29 @@ round(c(mean=mean(dry2), SD=sd(dry2)), 2)
 # --- 95% 信賴區間（捨棄前 vs 後）---
 round(mean(dry) + c(-1,1)*qt(.975,3)*sd(dry)/2, 2)  # 87.19±5.31
 round(mean(dry2) + c(-1,1)*qt(.975,2)*sd(dry2)/sqrt(3), 2)</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">$Q
+[1] 0.965
+
+$Qcrit
+[1] 0.76
+
+$reject
+[1] TRUE
+
+$Q
+[1] 0.917
+
+$Qcrit
+[1] 0.76
+
+$reject
+[1] TRUE
+
+ mean    SD 
+88.85  0.31 
+[1] 81.88 92.50
+[1] 88.09 89.61</pre></div>
 
 <h2>5.3 進階：Grubbs 檢定</h2>
 <p>Q 檢定只看「與最近鄰的距離」，一次只適合處理一個可疑值。
@@ -115,11 +152,36 @@ round(sapply(4:8, grubbs_crit), 3)
 G &lt;- max(abs(dry - mean(dry))) / sd(dry)
 G                                  #&gt; 2.596
 G &gt; grubbs_crit(4)                 #&gt; TRUE -> 82.20 是異常值</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">[1] 1.481 1.715 1.887 2.020 2.127
+[1] 1.495783
+[1] TRUE</pre></div>
 
 <div class="callout danger"><span class="t">⚖️ 學術倫理三條底線</span>
 ① 只有<strong>可追溯的操作失誤紀錄</strong>（漏加試劑、樣品灑落）＋<strong>統計檢定支持</strong>，兩者兼備才可刪除<br>
 ② 刪除必須在報告中<strong>揭露</strong>（檢定方法、數值、理由）<br>
 ③ QUAM §2.4.13 同樣警告：「純粹以統計理由拒絕數值通常不明智」——統計是輔助，不是藉口
+</div>
+
+<h2>📊 Excel 也會算：異常值檢定與有效數字</h2>
+<div class="callout ok"><span class="t">📊 沒有 R 也能動手</span>
+<strong>有效數字</strong>：若 <code>=ROUND(數值, 小數位數)</code>；要求保留有效數字則 <code>=ROUND(數值, 位數-1-INT(LOG10(ABS(數值))))</code>。<br>
+<strong>Dixon Q 檢定</strong>：將 4 個值由小到大排序於 <code>A1:A4</code>（如 55.31、64.45、64.53、64.78），可疑值若是最小值：<br>
+<table>
+<tr><th>計算</th><th>Excel 函數</th><th>說明</th></tr>
+<tr><td>gap（可疑值與相鄰的差距）</td><td><code>=A2-A1</code></td><td>64.45-55.31=9.14</td></tr>
+<tr><td>全距 W</td><td><code>=A4-A1</code></td><td>64.78-55.31=9.47</td></tr>
+<tr><td>Q 值</td><td><code>=(A2-A1)/(A4-A1)</code></td><td>約 0.97</td></tr>
+<tr><td>判定</td><td><code>=IF(Q>0.76,"可剔除","保留")</code></td><td>n=4 臨界值 0.76</td></tr>
+</table>
+若可疑值是最大值，Q=<code>=(A4-A3)/(A4-A1)</code>。Excel 內無 Q 檢定，查表為首。<br><br>
+<strong>Grubbs 檢定</strong>：適用於不需要排序的原始資料（如 A1:A4）：<br>
+<table>
+<tr><th>計算</th><th>Excel 函數</th><th>說明</th></tr>
+<tr><td>G 值</td><td><code>=MAX(ABS(A1:A4 - AVERAGE(A1:A4))) / STDEV(A1:A4)</code></td><td>須按 Ctrl+Shift+Enter (舊版) 或直接 Enter (新版)</td></tr>
+<tr><td>臨界值 G<sub>crit</sub></td><td><code>=(COUNT(A1:A4)-1)/SQRT(COUNT(A1:A4)) * SQRT(T.INV.2T(0.05/COUNT(A1:A4), COUNT(A1:A4)-2)^2 / (COUNT(A1:A4)-2 + T.INV.2T(0.05/COUNT(A1:A4), COUNT(A1:A4)-2)^2))</code></td><td>利用 \(\alpha/n\) 反求雙尾 t 分配，免查表！</td></tr>
+<tr><td>判定</td><td><code>=IF(G值 > G_crit, "可剔除", "保留")</code></td><td>n=4 時 G<sub>crit</sub> 算出來精準等於 1.481</td></tr>
+</table>
 </div>
 
 <div class="quiz" id="quiz"></div>
@@ -142,10 +204,20 @@ const QUIZ = [
    exp: "Nielsen 4.5.2 與 QUAM §2.4.13 一致：統計檢定只是輔助證據，程序透明與揭露是底線。以美化精密度為目的的刪除是學術不端。" },
  { q: "稀釋倍數「50 倍」計算最終濃度時，Nielsen 建議：",
    opts: ["當 1 位有效數字", "當 2 位有效數字", "依器皿容許差寫成 50.0（3 位）", "有效數字不適用稀釋倍數"], ans: 2,
-   exp: "A 級容量瓶 ±0.05 mL 的精確度支撐第 3 位數。43.5×50.0=2180 而非 2000。取位要回溯每個數字的「器皿依據」。" }
+   exp: "A 級容量瓶 ±0.05 mL 的精確度支撐第 3 位數。43.5×50.0=2180 而非 2000。取位要回溯每個數字的「器皿依據」。" },
+ { q: "在 Excel 中想將計算結果以「指定的有效位數」進行取位，可以使用下列哪一個公式組合？",
+   opts: ["=ROUND(值, 小數位)", "=ROUNDDOWN(值, 位數)", "=ROUND(值, 位數-1-INT(LOG10(ABS(值))))", "=SIGNIFICANT(值, 位數)"], ans: 2,
+   exp: "Excel 沒有內建直接依「有效位數」取位的函數。教材中示範以 =ROUND(值, 位數-1-INT(LOG10(ABS(值)))) 利用對數計算數值的數量級，動態決定四捨五入的位置。" },
+ { q: "在 Excel 手動計算 Dixon Q 檢定，若將 4 個數據「由小到大」排序於 A1 到 A4 儲存格，且懷疑「最大值」為異常值時，Q 值的公式應為？",
+   opts: ["=(A2-A1)/(A4-A1)", "=(A4-A3)/(A4-A1)", "=(A4-A1)/(A4-A3)", "=(A3-A2)/(A4-A1)"], ans: 1,
+   exp: "當可疑值是最大值時，分子 gap 為最大值與第二大值的差距 (A4-A3)，分母為全距 (A4-A1)。如果懷疑的是最小值，才是 (A2-A1)。" },
+ { q: "在 R 語言中實作 Grubbs 檢定時，教材使用程式碼 `max(abs(x - mean(x))) / sd(x)` 計算。其中的 `sd(x)` 代表什麼？",
+   opts: ["樣本標準差", "樣本變異數", "標準誤", "中位數絕對偏差"], ans: 0,
+   exp: "在 R 語言中，sd() 是計算樣本標準差 (Standard Deviation) 的內建函數，與平均值 mean() 搭配用於算出最大偏離值 (G值)。" }
 ];
 </script>
 <script src="assets/app.js"></script>
+<script src="assets/js/showout.js"></script>
 
 <nav class="pager">
 <a href="ch04.html"><small>上一章</small>Ch4 標準曲線與線性迴歸</a>

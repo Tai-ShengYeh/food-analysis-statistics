@@ -5,18 +5,32 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ch11 綜合案例與期末測驗</title>
 <link rel="stylesheet" href="assets/style.css">
+
+<!-- KaTeX -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\[', right: '\]', display: true}]});"></script>
 </head>
 <body>
 <header class="topbar"><div class="inner">
 <a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
 <nav class="topnav">
-<a href="index.html">首頁</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a>
+<a href="index.html">首頁</a><a href="ch00.html">Ch0 入門</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a><a href="ch13.html">Ch13 FDC配方</a><a href="ch14.html">Ch14 DOE/RSM</a>
 </nav></div></header>
 
 <main>
 <div class="crumbs">Part 3 綜合應用／第 11 章</div>
 <h1>綜合案例與期末測驗
 <span class="en">Capstone: Crude Fibre, Calibration Uncertainty &amp; Final Exam</span></h1>
+
+<p class="lede">為什麼粗纖維的「真值」不存在？為什麼標準曲線的不確定度在中間最小？考前最後一次把所有觀念串起來，然後用 15 題驗收。</p>
+
+<div class="callout"><span class="t">🔑 課前暖身</span>
+期末總複習！粗纖維案例會挑戰你對「真值」的認知——有些方法的結果是「<strong>定義出來的</strong>」；
+標準曲線反推則把 Ch4 的迴歸和 Ch8 的區間串成一條線。最後 15 題期末測驗見真章。<br>
+<strong>本章新詞先認識</strong>：<em>實證方法</em>＝結果由操作步驟定義的方法（如粗纖維）；<em>協同試驗 sR</em>＝多家實驗室共同驗證出來的散布。<br>
+<small>名詞卡住了？回 <a href="ch00.html">Ch0 名詞圖鑑</a> 查白話解釋與比喻。</small></div>
 
 <div class="goals"><b>學習目標</b>
 <ul>
@@ -41,8 +55,8 @@
 另外「乾至恆重」的失重 ±2 mg（矩形）對 1 g 樣品 = 固定 0.115% m/m 貢獻——
 <strong>低含量時不可忽略</strong>（QUAM 的判斷準則：貢獻 &gt; s<sub>R</sub>/3 就要加進預算）。</p>
 <div class="formula">
-u<sub>c</sub> = √(s<sub>R</sub>² + 0.115²)
-<span class="note">含量 2.5%：u_c = √(0.292²+0.115²) = 0.31 → U = ±0.62（25% 相對！）<br>
+u<sub>c</sub> = \(\sqrt{(s_R² + 0.115²)}\)
+<span class="note">含量 2.5%：u_c = \(\sqrt{(0.292²+0.115²)}\) = 0.31 → U = ±0.62（25% 相對！）<br>
 含量 5%：U = ±0.8（16%）　含量 10%：U = ±1.2（12%）——QUAM Table A6.4/A6.5</span>
 </div>
 
@@ -94,6 +108,11 @@ round(c(x_pred = x_pred, u = u_pred, U_k2 = 2*u_pred), 2)
 #&gt; x_pred     u  U_k2
 #&gt;   11.10  0.19  0.38
 # 報告：Na = (11.1 ± 0.4) ug/mL (k=2)</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">uc U_k2 
+0.31 0.63 
+x_pred.(Intercept)                u.x             U_k2.x 
+             11.07               0.21               0.42</pre></div>
 
 <hr>
 <h2>11.3 全課程知識地圖</h2>
@@ -111,6 +130,19 @@ round(c(x_pred = x_pred, u = u_pred, U_k2 = 2*u_pred), 2)
 <tr><td>實戰案例</td><td>天平、滴定、HPLC、粗纖維、曲線</td><td>Ch7、10、11</td></tr>
 <tr><td>進階延伸</td><td>LC-MS/MS：基質效應、SIL-IS、1/x 加權校正</td><td>Ch12</td></tr>
 </table>
+
+<h2>📊 Excel 也會算：粗纖維與校正不確定度</h2>
+<div class="callout ok"><span class="t">📊 沒有 R 也能動手</span>
+粗纖維的 u 由「協同試驗 s<sub>R</sub>＋固定失重」合成，分含量層級報告：<br>
+<table>
+<tr><th>含量</th><th>s<sub>R</sub></th><th>合成 u<sub>c</sub></th><th>Excel</th></tr>
+<tr><td>2.5%</td><td>0.292</td><td>\(\sqrt{(0.292²+0.115²)}\)</td><td><code>=SQRT(SUMSQ(0.292,0.115))</code> → 0.31</td></tr>
+<tr><td>5%</td><td>0.390</td><td>—</td><td><code>=SQRT(SUMSQ(0.390,0.115))</code> → 0.41</td></tr>
+<tr><td>10%</td><td>0.575</td><td>—</td><td><code>=SQRT(SUMSQ(0.575,0.115))</code> → 0.59</td></tr>
+<tr><td>擴展 U (k=2)</td><td>—</td><td>—</td><td><code>=2*uc</code></td></tr>
+</table>
+<strong>相對 U</strong>：<code>=U/含量*100</code> → 2.5% 時高達 25%（低含量特別不准）。
+標準曲線反推的 var(x<sub>pred</sub>) 公式也可在 Excel 用 SLOPE、STEYX（殘差）、DEVSQ（S<sub>xx</sub>）逐項算。</div>
 
 <div class="quiz" id="quiz"></div>
 <script>
@@ -146,7 +178,7 @@ const FINALEXAM = [
    exp: "SD/x̄×100 = 0.2927/64.72×100 = 0.452%。Ch1。" },
  { q: "95% 信賴、n=4、SD=0.293，平均值的信賴半寬是：",
    opts: ["0.293", "0.465", "0.115", "0.577"], ans: 1,
-   exp: "t(0.975,3)×SD/√n = 3.18×0.293/2 = 0.465。Ch2。" },
+   exp: "t(0.975,3)×SD/\\(\\sqrt{n}\\) = 3.18×0.293/2 = 0.465。Ch2。" },
  { q: "空白 20 次的 SD=0.003，此方法 LOQ 約為（空白均值≈0）：",
    opts: ["0.009", "0.03", "0.003", "0.1"], ans: 1,
    exp: "LOQ = 空白 + 10×SD = 0.03。Ch3。" },
@@ -164,7 +196,7 @@ const FINALEXAM = [
    exp: "魚骨圖系統性列出來源並避免重複計算（QUAM Appendix D）。Ch6。" },
  { q: "證書「±0.15 mL」無信賴水準，u 為：",
    opts: ["0.15", "0.087", "0.061", "0.077"], ans: 1,
-   exp: "矩形分布：0.15/√3 = 0.0866 ≈ 0.087。Ch7。" },
+   exp: "矩形分布：0.15/\\(\\sqrt{3}\\) = 0.0866 ≈ 0.087。Ch7。" },
  { q: "y = p·q/r 型模型，合成用：",
    opts: ["Rule 1 絕對值平方和", "Rule 2 相對值平方和", "直接相加", "取最大項"], ans: 1,
    exp: "乘除用相對標準不確定度合成。Ch8。" },
@@ -186,6 +218,16 @@ const FINALEXAM = [
  { q: "實驗室間比對（協同試驗）的 s_R 可以直接當作：",
    opts: ["重複性 SD", "該方法在「正常表現實驗室」的不確定度主體", "儀器噪音", "LOD"], ans: 1,
    exp: "s_R 涵蓋實驗室間所有變異（QUAM §7.6），是經驗方法不確定度的現成來源——前提是自家內部重複性與之一致。Ch11。" }
+,
+ { q: "在 R 中，如何從線性迴歸模型 <code>fit <- lm(y ~ x)</code> 取得計算反推不確定度所需的殘差標準差 (S)？",
+   opts: ["fit$sigma", "summary(fit)$sigma", "resid(fit)", "sd(fit)"], ans: 1,
+   exp: "在 R 語言裡，summary(fit)$sigma 可直接提取迴歸模型的殘差標準誤（Residual standard error），對應不確定度公式中的 S。" },
+ { q: "在 Excel 中，哪個函數可用於計算標準曲線迴歸的殘差標準差 (S)？",
+   opts: ["STDEV.S", "STEYX", "SLOPE", "DEVSQ"], ans: 1,
+   exp: "Excel 的 STEYX(known_y's, known_x's) 函數專門計算迴歸估計的標準誤，是 Excel 反推濃度不確定度預算中的關鍵參數。" },
+ { q: "在 Excel 裡，若要用最簡潔的方式計算粗纖維低含量的合成不確定度 <code>\\(\\sqrt{0.292² + 0.115²}\\)</code>，應使用下列哪個公式？",
+   opts: ["=SQRT(0.292^2 + 0.115^2)", "=SUMSQ(0.292, 0.115)", "=SQRT(SUMSQ(0.292, 0.115))", "=SUM(0.292^2, 0.115^2)"], ans: 2,
+   exp: "使用 =SQRT(SUMSQ(...)) 可以將各不確定度分量直接平方和後開根號，這是 Excel 合成不確定度最簡潔且不易出錯的寫法。" }
 ];
 </script>
 <script>
@@ -196,6 +238,7 @@ document.addEventListener("DOMContentLoaded", function(){
 });
 </script>
 <script src="assets/app.js"></script>
+<script src="assets/js/showout.js"></script>
 
 <nav class="pager">
 <a href="ch10.html"><small>上一章</small>Ch10 實戰案例：滴定與 HPLC</a>

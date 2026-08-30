@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ch0 課程導覽與入門（Orientation）</title>
+<link rel="stylesheet" href="assets/style.css">
+
+<!-- KaTeX -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\[', right: '\]', display: true}]});"></script>
+</head>
+<body>
+<header class="topbar"><div class="inner">
+<a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
+<nav class="topnav">
+<a href="index.html">首頁</a><a href="ch00.html">Ch0 入門</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a><a href="ch13.html">Ch13 FDC配方</a><a href="ch14.html">Ch14 DOE/RSM</a>
+</nav></div></header>
+
+<main>
+<div class="crumbs">課程起點／第 0 章（不需要任何背景知識，10 分鐘讀完再出發）</div>
+<h1>課程導覽與入門
+<span class="en">Orientation — Read This Before Chapter 1</span></h1>
+
+<div class="callout"><span class="t">🧑‍🎓 這一頁給誰看？</span>
+給<strong>從沒學過統計、沒寫過程式</strong>的你。這門課的所有章節都預設「你什麼都不會」——
+但如果你直接跳進 Ch1，可能會被名詞轟炸。這一頁先幫你把<strong>地圖、名詞、工具</strong>準備好，
+之後每一章的開頭也都有「🔑 課前暖身」帶你進入狀況。讀完這頁，你就不會迷路了。</div>
+
+<h2>0.1 這門課到底在學什麼？（一句話版本）</h2>
+<p><strong>「把食品分析的數據算對，並且把實驗設計好。」</strong></p>
+<div class="card">
+<p>想像你畢業後到食品廠或檢驗公司上班，主管跟你說：</p>
+<ol>
+<li>「你量出來的數據<strong>可不可信</strong>？誤差多大？誰說的？」→ 這是 <strong>Part 1＋2：數據品管統計與量測不確定度</strong>（Ch1–Ch11）</li>
+<li>「這台兩百萬的儀器為什麼測不準？去查。」→ <strong>Ch12 進階案例</strong></li>
+<li>「幫公司把配方成本降 3%，順便把營養標籤做出來。」→ <strong>Ch13 配方計算</strong></li>
+<li>「新萃取製程交給你，用最少的實驗找到最佳條件。」→ <strong>Ch14 實驗設計</strong></li>
+</ol>
+<p>這四件事就是本課程的全部。每一章都是其中一小步，學完你就能獨立完成上面所有任務。</p>
+</div>
+
+<h2>0.2 三個安心聲明（給初學者的心理建設）</h2>
+<table>
+<tr><th>你可能擔心…</th><th>實際情況</th></tr>
+<tr><td>「我數學不好」</td><td>本課程只需要<strong>國中數學</strong>（加減乘除、開根號）——而且開根號都是電腦在做。你需要的是<strong>觀念</strong>，不是心算。</td></tr>
+<tr><td>「我沒寫過程式」</td><td>Ch1 會從「R 是一台計算機」開始教：輸入 <code>2 + 3</code> 按 Enter 就出答案。全部程式碼都可以<strong>直接複製貼上執行</strong>，看著改數字就能學。</td></tr>
+<tr><td>「統計好像很抽象」</td><td>每個名詞我們都用<strong>生活比喻</strong>（導航的 ±5 分鐘、打靶圖、聽力測驗）——下面的名詞圖鑑就是你的字典。</td></tr>
+</table>
+<div class="goals">
+<ol>
+<li>會開電腦、會用瀏覽器（你正在做）</li>
+<li>國中數學：加減乘除</li>
+<li>一點點好奇心</li>
+</ol>
+</div>
+
+<h2>0.3 名詞圖鑑：三個 PART 的核心詞彙（白話版）</h2>
+<p>這些詞<strong>現在不用背</strong>——各章會詳細教。這裡先混個臉熟，之後卡住了就回來查。</p>
+
+<h3>📘 Part 1 數據品管統計（Ch1–Ch5）</h3>
+<table>
+<tr><th>名詞</th><th>白話一句話</th><th>日常比喻</th></tr>
+<tr><td><strong>平均數</strong> mean</td><td>一組數據「大家合起來的共識」＝加總÷個數</td><td>全班期中考平均分數</td></tr>
+<tr><td><strong>標準差</strong> SD</td><td>數據彼此「合不合群」：越小越整齊</td><td>同學分數都差 2 分 vs 差 30 分</td></tr>
+<tr><td><strong>變異係數</strong> CV%</td><td>把散布換算成「相對於平均的百分比」，方便跨單位比較</td><td>身高差 3 cm 和體重差 3 kg 不能直接比大小</td></tr>
+<tr><td><strong>準確度 vs 精密度</strong></td><td>打中靶心＝準確；彈著點集中＝精密（兩者獨立）</td><td>見 Ch1 的四個靶圖</td></tr>
+<tr><td><strong>常態分配</strong></td><td>大多數量測誤差「中間多、兩邊少」的鐘形</td><td>全班身高分布</td></tr>
+<tr><td><strong>信賴區間</strong> CI</td><td>「真值最可能落在這個範圍」的專業講法</td><td>天氣預報「降雨機率 70%」</td></tr>
+<tr><td><strong>LOD / LOQ</strong></td><td>儀器「聽得到」與「量得準」的門檻濃度</td><td>在吵雜餐廳：聽得到≠聽得懂</td></tr>
+<tr><td><strong>管制圖</strong></td><td>每天畫一點監控方法是否在正常軌道</td><td>每天量體重記錄，突然連續上升＝警訊</td></tr>
+<tr><td><strong>標準曲線／迴歸</strong></td><td>用已知濃度畫直線，反推未知樣品濃度</td><td>用身高與鞋子尺碼的對照表猜身高</td></tr>
+<tr><td><strong>r²</strong></td><td>點有多貼近直線（0~1），愈接近 1 愈好</td><td>—</td></tr>
+<tr><td><strong>異常值</strong> outlier</td><td>明顯不合群、可能是手滑的數據</td><td>全班 60–80 分，有人考 5 分</td></tr>
+<tr><td><strong>有效數字</strong></td><td>報告該寫幾位（不是越多越專業）</td><td>體重計不會顯示 63.48291 kg</td></tr>
+</table>
+
+<h3>📗 Part 2 量測不確定度（Ch6–Ch11）</h3>
+<table>
+<tr><th>名詞</th><th>白話一句話</th><th>日常比喻</th></tr>
+<tr><td><strong>系統 vs 隨機誤差</strong></td><td>固定偏一邊 vs 上上下下的誤差</td><td>體重計永遠多 0.5 kg vs 站姿不同</td></tr>
+<tr><td><strong>不確定度</strong> U</td><td>專業的「±多少」：真值的合理範圍</td><td>導航「25 ± 5 分鐘」</td></tr>
+<tr><td><strong>GUM 四步驟</strong></td><td>國際標準流程：定義→找來源→量化→合成</td><td>做菜的標準作業流程</td></tr>
+<tr><td><strong>Type A / Type B</strong></td><td>用重複實驗算的 vs 用證書規格換算的</td><td>親身試吃 vs 看標籤</td></tr>
+<tr><td><strong>矩形/三角/常態分布</strong></td><td>只知道「±a」時的三種換算假設，結果不同</td><td>三種不同公平性的骰子</td></tr>
+<tr><td><strong>合成不確定度</strong> u<sub>c</sub></td><td>把各來源的小誤差「平方和開根號」合體</td><td>直角三角形：兩股求斜邊</td></tr>
+<tr><td><strong>涵蓋因子</strong> k=2</td><td>乘 2 把 u<sub>c</sub> 變成 95% 信賴的區間 U</td><td>—</td></tr>
+<tr><td><strong>符合性判定</strong></td><td>結果±U 與法規限值的四種相對位置</td><td>足球壓線：整顆過線才算進球</td></tr>
+<tr><td><strong>Monte Carlo</strong></td><td>電腦模擬幾萬次代替困難的數學</td><td>擲骰子一萬次估機率</td></tr>
+<tr><td><strong>Kragten 法</strong></td><td>一次只動一個誤差來源，看誰貢獻大</td><td>控制變因的排查法</td></tr>
+</table>
+
+<h3>📕 Part 3 進階應用（Ch12–Ch14）</h3>
+<table>
+<tr><th>名詞</th><th>白話一句話</th><th>日常比喻</th></tr>
+<tr><td><strong>中間精密度</strong></td><td>不同天/人/儀器之間的長期變異</td><td>不同廚師煮同一道菜</td></tr>
+<tr><td><strong>基質效應</strong></td><td>樣品裡的其他成分干擾儀器訊號</td><td>湯太濁了，看不到杯底</td></tr>
+<tr><td><strong>同位素內標</strong> SIL-IS</td><td>化學性質相同的「雙胞胎」替你分擔干擾</td><td>長得一模一樣的替身演員</td></tr>
+<tr><td><strong>回收率</strong> recovery</td><td>加已知量的標準品，看能收回多少%</td><td>轉帳 100 元測試，看收到幾元</td></tr>
+<tr><td><strong>FDC 資料型</strong></td><td>USDA 免費資料庫的五種資料來源，品質定位不同</td><td>官方實測 vs 廠商自述</td></tr>
+<tr><td><strong>質量平衡配方</strong></td><td>每個成分「進＝出」，列聯立方程式算用量</td><td>做菜抓料：總重與各成分都要對帳</td></tr>
+<tr><td><strong>MSNF</strong></td><td>非脂乳固形：牛奶扣掉水和脂肪剩下的精華</td><td>—</td></tr>
+<tr><td><strong>線性規劃</strong> LP</td><td>在限制條件下找最便宜組合，最佳解在端點</td><td>便當配菜省錢法</td></tr>
+<tr><td><strong>逆向工程</strong></td><td>由標籤/檢驗值反推競品配方</td><td>喝一口就猜出整份食譜</td></tr>
+<tr><td><strong>overrun</strong></td><td>冰淇淋打入的空氣比例</td><td>打發鮮奶油會變大</td></tr>
+<tr><td><strong>因子 / 水準</strong></td><td>實驗中改變的條件 / 條件的設定值</td><td>溫度（因子）設 40 與 60 度（水準）</td></tr>
+<tr><td><strong>交互作用</strong></td><td>A 的效果取決於 B：1+1≠2</td><td>糖＋檸檬：甜酸加成不是線性的</td></tr>
+<tr><td><strong>中心點</strong></td><td>所有因子都設中間值，用來偵測曲率</td><td>濃度試 40/60 之前，先試一次 50</td></tr>
+<tr><td><strong>CCD</strong></td><td>因子點＋軸點＋中心點的標準設計（20 runs）</td><td>—</td></tr>
+<tr><td><strong>RSM 反應曲面法</strong></td><td>配拋物面找最大/最小值的策略</td><td>沿著山丘地形找山頂</td></tr>
+<tr><td><strong>駐點</strong></td><td>曲面的山頂/山谷/馬鞍位置</td><td>—</td></tr>
+<tr><td><strong>預測區間</strong></td><td>最適點下次實際做出來會落在的範圍</td><td>—</td></tr>
+</table>
+
+<h2>0.4 每章 30 秒預覽（電影預告版）</h2>
+<table>
+<tr><th>章</th><th>一句話</th><th>學完你會…</th></tr>
+<tr><td>Ch1 統計入門</td><td>把一組重複數據摘要成「共識＋散布」</td><td>算 mean/SD/CV</td></tr>
+<tr><td>Ch2 常態與 CI</td><td>給出「真值大概在哪」的範圍</td><td>算 95% 信賴區間</td></tr>
+<tr><td>Ch3 LOD 與 QC</td><td>儀器的能力極限＋方法的每日體檢</td><td>畫管制圖</td></tr>
+<tr><td>Ch4 迴歸</td><td>用直線把儀器訊號換成濃度</td><td>做標準曲線並反推</td></tr>
+<tr><td>Ch5 有效數字與異常值</td><td>數字該寫幾位、哪些數據可刪</td><td>跑 Q 檢定/Grubbs</td></tr>
+<tr><td>Ch6 不確定度概念</td><td>誤差 vs 不確定度＝「遲到幾分」vs「25±5 分」</td><td>寫出被測量定義</td></tr>
+<tr><td>Ch7 分布與天平</td><td>只知道 ±a 時怎麼換算成標準差</td><td>完成天平的預算</td></tr>
+<tr><td>Ch8 合成與報告</td><td>把所有小誤差合體＋回答合不合格</td><td>做符合性判定</td></tr>
+<tr><td>Ch9 模擬法</td><td>不會微積分的兩招：Kragten、Monte Carlo</td><td>跑十萬次模擬</td></tr>
+<tr><td>Ch10 三大案例</td><td>滴定＋農藥殘留的真實完整流程</td><td>寫完整報告</td></tr>
+<tr><td>Ch11 總複習</td><td>粗纖維的哲學＋期末 15 題</td><td>畢業水準檢核</td></tr>
+<tr><td>Ch12 LC-MS/MS</td><td>當儀器被樣品欺騙時的破解法</td><td>看懂現代質譜報告</td></tr>
+<tr><td>Ch13 FDC 配方</td><td>免費資料庫＋質量平衡＝商業軟體的功能</td><td>做出營養標籤</td></tr>
+<tr><td>Ch14 DOE/RSM</td><td>用 20 個實驗找到最佳製程條件</td><td>跑完整 RSM</td></tr>
+</table>
+
+<h2>0.5 如何使用本站（10 分鐘設定）</h2>
+<div class="goals">
+<ol>
+<li>到 <strong>cran.r-project.org</strong> 下載並安裝 R（免費，一路下一步）</li>
+<li>到 <strong>posit.co/downloads</strong> 安裝 RStudio Desktop（免費的「Word for R」）</li>
+<li>開 RStudio → File → New File → R Script（新檔案）</li>
+<li>從各章的程式碼區塊按「複製程式碼」→ 貼上 → 游標放某行按 <span class="kbd">Ctrl+Enter</span> 執行該行；<span class="kbd">Ctrl+Alt+R</span> 整段執行</li>
+<li>執行結果出現在左下 Console——出現紅字先別慌，多半是少貼了前幾行，整段重貼一次即可</li>
+<li>每章讀完做「📝 隨堂測驗」，錯的題目會顯示詳解</li>
+</ol>
+</div>
+<div class="callout warn"><span class="t">💾 版本與安裝提醒</span>
+全部課程<strong>不需要安裝任何套件</strong>（Ch14 的選讀段除外，會特別註明）。
+R 版本 4.x 皆可；螢幕解析度不限；Windows/Mac 皆可執行。
+遇到任何錯誤訊息，把整段錯誤複製下來問老師或搜尋——<strong>看懂錯誤訊息也是課程訓練的一部分</strong>。</div>
+
+<h2>0.6 學習路徑建議</h2>
+<table>
+<tr><th>你的情況</th><th>建議路徑</th></tr>
+<tr><td><strong>完整學習（一學期）</strong></td><td>Ch0 → Ch1–Ch14 順序讀，每週一章＋隨堂測驗＋回家跑程式</td></tr>
+<tr><td><strong>快速衝刺（考試/致用）</strong></td><td>Ch0 → Ch1 → Ch2 → Ch4 → Ch6 → Ch8 → Ch10（主幹），有餘力再回頭補 Ch3/5/7/9</td></tr>
+<tr><td><strong>只想查資料</strong></td><td>用上面的名詞圖鑑找詞 → 跳到對應章節；每章開頭的「🔑 課前暖身」會告訴你需要哪些先修</td></tr>
+</table>
+<div class="callout ok"><span class="t">✅ 出發前自我檢核</span>
+① 我知道這門課的四個任務（0.1）　② 我知道名詞圖鑑在哪、怎麼用（0.3）　
+③ 我裝好了 R 與 RStudio，並成功執行了 <code>2 + 3</code>（0.5）　
+④ 我知道自己走哪條學習路徑（0.6）
+全部打勾？往 <a href="ch01.html">Ch1 統計入門</a> 出發！</div>
+
+<div class="quiz" id="quiz"></div>
+<script>
+const QUIZ = [
+ { q: "本課程的兩大主軸是：",
+   opts: ["會計與法規", "把數據算對（品管統計＋不確定度）＋把實驗做對（配方與實驗設計）", "程式設計專題", "食品加工技術"], ans: 1,
+   exp: "Part 1+2 練「把數據算對」，Ch13/14 練「把實驗與配方做對」——對應就業後的四個真實任務。" },
+ { q: "「打中靶心」與「彈著點集中」分別對應：",
+   opts: ["精密度/準確度", "準確度/精密度", "都是準確度", "都是精密度"], ans: 1,
+   exp: "準確度=接近真值（靶心）；精密度=重複結果彼此接近（彈著集中）。兩者獨立：可能又準又密、準而不密、密而不準。" },
+ { q: "「導航說 25±5 分鐘」最接近課程中的哪個概念？",
+   opts: ["平均數", "異常值", "不確定度", "有效數字"], ans: 2,
+   exp: "不確定度就是「事前給出的合理範圍」：估計值 ± 一個區間。誤差則是事後才知道的單一差距。" },
+ { q: "在 RStudio 中執行單行程式碼的快捷鍵是：",
+   opts: ["Ctrl+S", "Ctrl+Enter", "Ctrl+C", "F5"], ans: 1,
+   exp: "Ctrl+Enter 執行游標所在行；Ctrl+Alt+R 執行整個腳本。結果顯示在左下 Console。" },
+ { q: "讀各章時遇到名詞卡住，最好的第一步是：",
+   opts: ["直接跳過整章", "回 Ch0 名詞圖鑑查白話解釋，或看該章開頭的課前暖身", "放棄這門課", "先把整本書背起來"], ans: 1,
+   exp: "每章開頭都有🔑課前暖身預告本章新詞；卡住就回 Ch0 圖鑑查詢——這頁就是為此設計的字典。" }
+];
+</script>
+<script src="assets/app.js"></script>
+
+<nav class="pager">
+<a href="ch01.html"><small>下一步</small>Ch1 統計入門 →</a>
+<a href="index.html"><small>返回</small>課程首頁</a>
+</nav>
+</main>
+<footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫 · 僅供教學使用</footer>
+</body>
+</html>

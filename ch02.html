@@ -5,12 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ch02 常態分配與信賴區間</title>
 <link rel="stylesheet" href="assets/style.css">
+
+<!-- KaTeX -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\[', right: '\]', display: true}]});"></script>
 </head>
 <body>
 <header class="topbar"><div class="inner">
 <a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
 <nav class="topnav">
-<a href="index.html">首頁</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a>
+<a href="index.html">首頁</a><a href="ch00.html">Ch0 入門</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a><a href="ch13.html">Ch13 FDC配方</a><a href="ch14.html">Ch14 DOE/RSM</a>
 </nav></div></header>
 
 <main>
@@ -18,12 +24,20 @@
 <h1>常態分配與信賴區間
 <span class="en">Normal Distribution, Z &amp; t, Confidence Interval</span></h1>
 
+<p class="lede">主管問：「這批油的酸價標準上限是 4，你測出 3.8，過不過？」你心裡沒底——因為你只測了 3 次。這一章教你用「區間」代替「猜測」。</p>
+
+<div class="callout"><span class="t">🔑 課前暖身</span>
+大多數量測誤差像<strong>全班身高</strong>——中間多、兩邊少。本章把「大概啦」升級成專業的 95% 信賴區間：
+真值最可能落在的範圍，像天氣預報的降雨機率，是有依據的打賭。<br>
+<strong>本章新詞先認識</strong>：<em>常態分配</em>＝鐘形分布；<em>68-95-99.7 法則</em>＝±1/±2/±3 SD 內的面積口訣；<em>信賴區間 CI</em>＝真值的可能範圍。<br>
+<small>名詞卡住了？回 <a href="ch00.html">Ch0 名詞圖鑑</a> 查白話解釋與比喻。</small></div>
+
 <div class="goals"><b>學習目標</b>
 <ul>
 <li>說出常態分配的 68–95–99.7 法則</li>
 <li>知道大樣本用 Z、小樣本（食品分析日常）用 t</li>
 <li>會計算 95% 信賴區間並正確解讀其意義</li>
-<li>了解標準誤 SEM = SD/√n，以及「增加重複次數」的邊際效益</li>
+<li>了解標準誤 SEM = SD/\(\sqrt{n}\)，以及「增加重複次數」的邊際效益</li>
 </ul></div>
 
 <h2>2.1 常態分配：隨機誤差的長相</h2>
@@ -36,10 +50,14 @@
 pnorm(1) - pnorm(-1)    #&gt; 0.6827  (68%)
 pnorm(2) - pnorm(-2)    #&gt; 0.9545  (95%)
 pnorm(3) - pnorm(-3)    #&gt; 0.9973  (99.7%)</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">[1] 0.6826895
+[1] 0.9544997
+[1] 0.9973002</pre></div>
 
 <h2>2.2 Z 值：大樣本（n&gt;30）時的信賴區間</h2>
 <div class="formula">
-CI = <i>x̄</i> ± Z × <span class="frac"><span class="num">SD</span><span class="den">√n</span></span>
+CI = <i>x̄</i> ± Z × <span class="frac"><span class="num">SD</span><span class="den">\(\sqrt{n}\)</span></span>
 <span class="note">Nielsen 式 (4.8)：Z 依信心水準查表（Table 4.2）</span>
 </div>
 <table>
@@ -47,18 +65,18 @@ CI = <i>x̄</i> ± Z × <span class="frac"><span class="num">SD</span><span clas
 <tr><td>Z 值</td><td class="num">1.29</td><td class="num">1.64</td><td class="num">1.96</td><td class="num">2.58</td><td class="num">3.29</td></tr>
 </table>
 <p><strong>課本範例</strong>：假設水分測了 n=25 次，x̄=64.72、SD=0.2927：<br>
-CI = 64.72 ± 1.96 × 0.2927/√25 = <strong>64.72 ± 0.115%</strong>。
-其中 SD/√n 這一項稱為<strong>平均數標準誤（SEM）</strong>——它才是「平均值」的不準度，
-比單次量測的 SD 小 √n 倍。</p>
+CI = 64.72 ± 1.96 × 0.2927/\(\sqrt{25}\) = <strong>64.72 ± 0.115%</strong>。
+其中 SD/\(\sqrt{n}\) 這一項稱為<strong>平均數標準誤（SEM）</strong>——它才是「平均值」的不準度，
+比單次量測的 SD 小 \(\sqrt{n}\) 倍。</p>
 
 <h2>2.3 t 值：小樣本才是食品分析的日常</h2>
 <p>實務上我們只做 3~5 次重複。小樣本的 SD 本身不可靠，必須改用 <strong>t 分布</strong>（較胖的鐘形）：</p>
 <div class="formula">
-CI = <i>x̄</i> ± t × <span class="frac"><span class="num">SD</span><span class="den">√n</span></span>，自由度 df = n − 1
+CI = <i>x̄</i> ± t × <span class="frac"><span class="num">SD</span><span class="den">\(\sqrt{n}\)</span></span>，自由度 df = n − 1
 <span class="note">Nielsen 式 (4.10)：t 值查 Table 4.3，或用 R 的 qt()</span>
 </div>
 <p><strong>水分範例（n=4，df=3，95%）</strong>：t = 3.18<br>
-CI = 64.72 ± 3.18 × 0.2927/√4 = <strong>64.72 ± 0.465%</strong>，即 64.255 ~ 65.185%。<br>
+CI = 64.72 ± 3.18 × 0.2927/\(\sqrt{4}\) = <strong>64.72 ± 0.465%</strong>，即 64.255 ~ 65.185%。<br>
 注意：同樣的數據，小樣本的 ±0.465% 遠寬於 n=25 時的 ±0.115% —— 這就是「重複次數的價值」。</p>
 
 <pre class="rcode" data-file="ch02_ex2.R">moisture &lt;- c(64.53, 64.45, 65.10, 64.78)
@@ -72,6 +90,11 @@ round(xbar + c(-1,1) * half, 3)
 
 # 標準誤 SEM
 s / sqrt(n)                    #&gt; 0.1463</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">[1] 3.182446
+[1] 0.466
+[1] 64.249 65.181
+[1] 0.1463159</pre></div>
 
 <h2>2.4 動手驗證：「95% 信心」是真的嗎？</h2>
 <p>我們讓電腦重複做 1000 次實驗（每次抽 4 個數據、算一個 95% CI），
@@ -87,14 +110,29 @@ for (i in 1:1000) {
 }
 hits / 1000
 #&gt; [1] 0.944   -> 94.4%，接近 95%：理論兌現！</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">[1] 0.944</pre></div>
 
 <div class="callout"><span class="t">🧠 正確解讀</span>
 95% 信賴區間的意思<strong>不是</strong>「真值有 95% 機率落在這個區間」（真值是固定數），
 而是「<strong>這種建構方法</strong>長期而言約 95% 的區間會蓋住真值」。模擬實驗正是驗證這件事。</div>
 
 <div class="callout ok"><span class="t">📈 n 要不要一直增加？</span>
-SEM = SD/√n：n 從 4 → 16，SEM 減半；16 → 64，再減半。
+SEM = SD/\(\sqrt{n}\)：n 從 4 → 16，SEM 減半；16 → 64，再減半。
 報酬遞減！一般食品分析 3~7 次重複即可，把成本花在「減少系統誤差」更划算。</div>
+
+<h2>📊 Excel 也會算：信賴區間</h2>
+<div class="callout ok"><span class="t">📊 沒有 R 也能動手</span>
+水分資料放 <code>A1:A4</code>。小樣本用 t 分布（<code>T.INV</code>），大樣本或已知 σ 才用 Z（<code>NORM.S.INV</code>）。<br>
+<table>
+<tr><th>任務</th><th>Excel 公式</th><th>說明</th></tr>
+<tr><td>t 值 (df=3, 95%)</td><td><code>=T.INV.2T(0.05, 3)</code></td><td>→ 3.182（雙尾）</td></tr>
+<tr><td>95% CI 半寬</td><td><code>=T.INV.2T(0.05,3)*STDEV(A1:A4)/SQRT(4)</code></td><td>→ 0.465</td></tr>
+<tr><td>CI 下/上限</td><td><code>=AVERAGE(A1:A4)±半寬</code></td><td>64.255 ~ 65.185</td></tr>
+<tr><td>標準誤 SEM</td><td><code>=STDEV(A1:A4)/SQRT(4)</code></td><td>→ 0.1463</td></tr>
+<tr><td>常態機率 68/95/99.7</td><td><code>=NORM.S.DIST(1,TRUE)-NORM.S.DIST(-1,TRUE)</code></td><td>→ 0.6827</td></tr>
+</table>
+<strong>提醒</strong>：<code>T.INV.2T(0.05,df)</code> 直接給雙尾 95% 的 t；若用 <code>T.INV(0.975,df)</code> 也行，兩者同值。</div>
 
 <div class="quiz" id="quiz"></div>
 <script>
@@ -104,10 +142,10 @@ const QUIZ = [
    exp: "±1σ→68%、±2σ→95%、±3σ→99.7%。R 可用 pnorm(2)-pnorm(-2)=0.9545 驗證。" },
  { q: "n=4、SD=0.2927、95% 信賴水準，計算信賴區間半寬要用哪一個乘數？",
    opts: ["Z=1.96", "t=3.18 (df=3)", "t=2.78 (df=4)", "Q=0.76"], ans: 1,
-   exp: "小樣本用 t，df=n−1=3，t₀.₉₇₅,₃=3.18。半寬=3.18×0.2927/√4=0.465。Z 只適用大樣本；Q 是異常值檢定。" },
- { q: "標準誤（SEM）= SD/√n。若重複次數從 4 次增加到 16 次，SEM 會：",
+   exp: "小樣本用 t，df=n−1=3，t₀.₉₇₅,₃=3.18。半寬=3.18×0.2927/\\(\\sqrt{4}\\)=0.465。Z 只適用大樣本；Q 是異常值檢定。" },
+ { q: "標準誤（SEM）= SD/\\(\\sqrt{n}\\)。若重複次數從 4 次增加到 16 次，SEM 會：",
    opts: ["變 4 倍", "減半", "變 1/4", "不變"], ans: 1,
-   exp: "√16/√4 = 4/2 = 2，SEM 減半。SEM 與 1/√n 成正比，報酬遞減。" },
+   exp: "\\(\\sqrt{16}\\)/\\(\\sqrt{4}\\) = 4/2 = 2，SEM 減半。SEM 與 1/\\(\\sqrt{n}\\) 成正比，報酬遞減。" },
  { q: "「95% 信賴區間」的正確解讀是：",
    opts: ["真值有 95% 機率在此區間內", "此區間涵蓋 95% 的量測數據", "用此方法建構的區間，長期而言約 95% 會蓋住真值", "此方法有 95% 的精密度"], ans: 2,
    exp: "真值是固定值（沒有機率可言）；區間涵蓋 95% 數據是 ±2SD 的事。正確解讀是對「建構程序」的長期性質，本章模擬（94.4%）示範了這一點。" },
@@ -115,11 +153,21 @@ const QUIZ = [
    opts: ["變窄", "變寬", "不變", "變不對稱"], ans: 1,
    exp: "信心越高，需要的 t/Z 越大（3.18→5.84, df=3），區間越寬。天下沒有免費的信心。" },
  { q: "報告「64.72 ± 0.46%（95%, n=4）」時，0.46 這個數字是：",
-   opts: ["標準差 SD", "相對誤差", "信賴區間半寬 t·SD/√n", "變異係數"], ans: 2,
-   exp: "這是 95% CI 的半寬。SD=0.293；CV=0.452%；相對誤差要與真值比較才知道。專業報告務必附上信心水準與 n。" }
+   opts: ["標準差 SD", "相對誤差", "信賴區間半寬 t·SD/\\(\\sqrt{n}\\)", "變異係數"], ans: 2,
+   exp: "這是 95% CI 的半寬。SD=0.293；CV=0.452%；相對誤差要與真值比較才知道。專業報告務必附上信心水準與 n。" },
+ { q: "若要在 R 軟體中計算 95% 信賴區間所需要的 t 值（自由度 df = 3），下列哪一個指令正確？",
+   opts: ["qt(0.95, 3)", "qt(0.975, df = 3)", "t.test(0.95, 3)", "pnorm(0.975, 3)"], ans: 1,
+   exp: "要得到 95% 雙尾區間的 t 值，累積機率需設定為 0.975，即 qt(0.975, df = 3)。" },
+ { q: "在 Excel 中，若要直接計算雙尾 95%、自由度 3 的 t 值，應使用哪一個函數？",
+   opts: ["=T.INV(0.05, 3)", "=T.INV.2T(0.05, 3)", "=NORM.S.INV(0.05)", "=T.DIST(0.95, 3)"], ans: 1,
+   exp: "Excel 的 T.INV.2T(0.05, 3) 可以直接給出雙尾（2T）α=0.05（即 95% 信心水準）的 t 值，結果為 3.182。" },
+ { q: "關於平均數標準誤 (SEM) 的計算，Excel 的 =STDEV(A1:A4)/SQRT(4) 相當於 R 的哪段程式碼？",
+   opts: ["sd(moisture) / sqrt(4)", "var(moisture) / 4", "mean(moisture) / sqrt(4)", "SEM(moisture, 4)"], ans: 0,
+   exp: "標準誤的公式是 SD / \\(\\sqrt{n}\\)，在 Excel 中對應 STDEV() / SQRT()，在 R 中則是 sd() / sqrt()。" }
 ];
 </script>
 <script src="assets/app.js"></script>
+<script src="assets/js/showout.js"></script>
 
 <nav class="pager">
 <a href="ch01.html"><small>上一章</small>Ch1 統計入門</a>

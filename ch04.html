@@ -5,18 +5,32 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ch04 標準曲線與線性迴歸</title>
 <link rel="stylesheet" href="assets/style.css">
+
+<!-- KaTeX -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\[', right: '\]', display: true}]});"></script>
 </head>
 <body>
 <header class="topbar"><div class="inner">
 <a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
 <nav class="topnav">
-<a href="index.html">首頁</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a>
+<a href="index.html">首頁</a><a href="ch00.html">Ch0 入門</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a><a href="ch13.html">Ch13 FDC配方</a><a href="ch14.html">Ch14 DOE/RSM</a>
 </nav></div></header>
 
 <main>
 <div class="crumbs">Part 1 數據品管統計（Nielsen's Food Analysis 第4章）／第 4 章</div>
 <h1>標準曲線與線性迴歸
 <span class="en">Curve Fitting: Linear Regression, r &amp; r², Inverse Prediction</span></h1>
+
+<p class="lede">儀器只會給你「峰面積」，但法規要的是「濃度」。中間那道換算手續——標準曲線——做錯一步，後面全部白算。</p>
+
+<div class="callout"><span class="t">🔑 課前暖身</span>
+標準曲線就像「<strong>用已知的尺量未知的東西</strong>」：先配五個已知濃度畫出一條直線，
+再用未知樣品的訊號反推濃度。迴歸就是找出「最貼近所有點的那條線」。<br>
+<strong>本章新詞先認識</strong>：<em>最小平方法</em>＝找最佳直線的數學；<em>r²</em>＝點貼線的程度（愈接近 1 愈好）；<em>殘差</em>＝每個點離線多遠；<em>外插</em>＝超出資料範圍亂延伸（危險！）。<br>
+<small>名詞卡住了？回 <a href="ch00.html">Ch0 名詞圖鑑</a> 查白話解釋與比喻。</small></div>
 
 <div class="goals"><b>學習目標</b>
 <ul>
@@ -48,6 +62,57 @@
 <img src="assets/img/fig_calib_ci.png" alt="標準曲線與信賴帶">
 <div class="cap">圖 4-1 鈉標準曲線與 95% 信賴帶：中間最窄、兩端變寬</div>
 </div>
+
+<h2>4.2.1 動手做：R 與 Excel 算出同一條線</h2>
+<p>同一組數據，用兩種工具各做一次——結果會一模一樣，這就是「統計方法是相通的」最好的證明。</p>
+<div class="grid2">
+<div class="card"><strong>🅁 用 R 語言實作</strong>
+<p>在 R 中，主要使用 <code>lm()</code> (Linear Model) 函數來進行線性迴歸。</p>
+<pre class="rcode" data-file="ch04_groupA.R"># 1. 建立數據向量
+x &lt;- c(1, 3, 5, 10, 20)
+y &lt;- c(.050, .140, .242, .521, .998)
+
+# 2. 建立線性迴歸模型 (y 對 x)
+fit &lt;- lm(y ~ x)
+
+# 3. 取得方程式參數
+coef(fit)                       # 輸出截距 (-0.0029) 與斜率 (0.0504)
+summary(fit)$r.squared          # 輸出 r² (0.9990)
+cor(x, y)                       # 輸出 r (0.9995)
+
+# 4. 反推未知濃度 (假設未知樣品訊號為 0.555)
+# 公式：x = (y - 截距) / 斜率
+(0.555 - coef(fit)[1]) / coef(fit)[2]   # 算出濃度約 11.07 μg/mL</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">&gt; coef(fit)
+(Intercept)           x
+-0.002915945 0.050399480
+&gt; summary(fit)$r.squared
+[1] 0.9990253
+&gt; cor(x, y)
+[1] 0.9995125
+&gt; (0.555 - coef(fit)[1]) / coef(fit)[2]
+      x
+11.06988</pre></div>
+<small>r² = 0.9990、r = 0.9995（r = \(\sqrt{r^2}\)）。注意 r 才是拿來對照「≥ 0.997」的那個。</small></div>
+
+<div class="card"><strong>📊 用 Excel 實作</strong>
+<p>把濃度輸入 <code>A1:A5</code>、發射值輸入 <code>B1:B5</code>，可以利用內建函數或圖表功能來快速求得直線方程式：</p>
+<table>
+<tr><th>結果</th><th>Excel 公式解法</th></tr>
+<tr><td>斜率 a</td><td><code>=SLOPE(B1:B5,A1:A5)</code> → 0.0504</td></tr>
+<tr><td>截距 b</td><td><code>=INTERCEPT(B1:B5,A1:A5)</code> → −0.0029</td></tr>
+<tr><td>r²</td><td><code>=RSQ(B1:B5,A1:A5)</code> → 0.9990</td></tr>
+<tr><td>r</td><td><code>=CORREL(A1:A5,B1:B5)</code> → 0.9995</td></tr>
+<tr><td>反推濃度<br>(訊號 0.555)</td><td><code>=(0.555−INTERCEPT(...))/SLOPE(...)</code> → 11.07</td></tr>
+</table>
+<strong>圖表解法</strong>：<br>
+1. 選取 A、B 兩欄數據 → 插入「散佈圖」。<br>
+2. 對任一點按右鍵選「加上趨勢線」。<br>
+3. 勾選「顯示方程式」與「顯示 R 平方值」，圖上就會印出 <code>y = 0.0504x − 0.0029</code> 與 <code>R² = 0.9990</code>（等同本頁圖 4-1 的紅線）。</div>
+</div>
+<div class="callout ok"><span class="t">✅ 重點比較</span>
+兩種工具的斜率、截距、r² <strong>完全相同</strong>（0.0504 / −0.0029 / 0.9990），因為底層都是同一個最小平方法公式（Nielsen 式 4.20–4.21）。Excel 適合快速求一條線；R 適合後續接信賴帶、殘差診斷與批次處理（本章後面與 Ch11 會用到）。</div>
 
 <h2>4.3 r 與 r²：直線有多「直」？</h2>
 <ul>
@@ -97,10 +162,32 @@ nx &lt;- seq(1, 20, length.out = 100)
 ci &lt;- predict(fit, data.frame(x = nx), interval = "confidence")
 matplot(nx, ci[, c("lwr","upr")], type="l", lty=2, col="grey40")
 abline(fit, col="red"); points(x, y, pch=19)</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">(Intercept)            x 
+-0.002915945  0.050399480 
+[1] 0.9990253
+[1] 0.9995125
+(Intercept) 
+   11.06988 
+           1            2            3            4            5 
+ 0.002516464 -0.008282496 -0.007081456  0.019921144 -0.007073657</pre></div>
 
 <div class="callout ok"><span class="t">🔗 通往 Part 2</span>
 「反推濃度」本身就有不確定度（斜率、截距、殘差都會傳播進去）。
 QUAM 附錄 E.4 給了完整公式，我們在第 11 章綜合案例會用 R 實作它。</div>
+
+<h2>📊 Excel 也會算：標準曲線迴歸</h2>
+<div class="callout ok"><span class="t">📊 沒有 R 也能動手</span>
+已知濃度放 <code>A1:A5</code>（x）、儀器訊號放 <code>B1:B5</code>（y）。Excel 的 SLOPE/INTERCEPT 就是最小平方法，與 R 的 <code>lm()</code> 一致。<br>
+<table>
+<tr><th>任務</th><th>Excel 公式</th><th>說明</th></tr>
+<tr><td>斜率 a</td><td><code>=SLOPE(B1:B5,A1:A5)</code></td><td>靈敏度</td></tr>
+<tr><td>截距 b</td><td><code>=INTERCEPT(B1:B5,A1:A5)</code></td><td>空白背景</td></tr>
+<tr><td>r²</td><td><code>=RSQ(B1:B5,A1:A5)</code></td><td>貼線程度</td></tr>
+<tr><td>反推未知濃度</td><td><code>=(未知訊號−b)/a</code></td><td>x=(y−b)/a</td></tr>
+<tr><td>殘差</td><td><code>=B1−(截距+斜率*A1)</code></td><td>逐點下拉</td></tr>
+</table>
+<strong>畫圖</strong>：選 A、B 兩欄 → 插入散佈圖 → 對點按右鍵「加上趨勢線」→ 勾選「顯示公式與 R²」。一次得到圖、方程式、r²。</div>
 
 <div class="quiz" id="quiz"></div>
 <script>
@@ -113,7 +200,7 @@ const QUIZ = [
    exp: "(0.555−(−0.0029))/0.0504 = 0.5579/0.0504 ≈ 11.1 μg/mL（Nielsen 習題解答）。注意截距是 −0.0029，減去負號等於加。" },
  { q: "標準曲線 A 的 r = 0.9970；曲線 B 的 r² = 0.9950。哪一條直線性較好？",
    opts: ["A", "B", "一樣好", "無法比較"], ans: 1,
-   exp: "換算後比較：B 的 r = √0.9950 = 0.9975 &gt; A 的 0.9970，B 較好。這是 Nielsen 章末習題 8——比較前必須先換算成同一個指標！" },
+   exp: "換算後比較：B 的 r = \\(\\sqrt{0.9950}\\) = 0.9975 &gt; A 的 0.9970，B 較好。這是 Nielsen 章末習題 8——比較前必須先換算成同一個指標！" },
  { q: "殘差圖呈現明顯的 U 形曲線，代表：",
    opts: ["數據非常完美", "應該改用曲線擬合（直線假設錯誤）", "有異常值要刪除", "斜率算錯了"], ans: 1,
    exp: "殘差應隨機散布在 0 附近。系統性 U 形＝真實關係是曲線，硬用直線會在兩端高估/低估。" },
@@ -122,10 +209,20 @@ const QUIZ = [
    exp: "外插違反線性假設（高濃度常飽和）。稀釋後重測是唯一專業做法（Nielsen Fig 4.8 討論）。" },
  { q: "關於 r² = 0.9989 的解讀，正確的是：",
    opts: ["有 99.89% 的樣品測對了", "y 變異的 99.89% 可由 x 的線性關係解釋，其餘 0.11% 來自隨機變異", "誤差是 0.11%", "斜率可靠度 99.89%"], ans: 1,
-   exp: "r² 是「被解釋變異比例」。Nielsen 4.4.2：0.11% 的變異不隨 x 改變，屬於正常的隨機（不確定/indeterminate）變異。" }
+   exp: "r² 是「被解釋變異比例」。Nielsen 4.4.2：0.11% 的變異不隨 x 改變，屬於正常的隨機（不確定/indeterminate）變異。" },
+ { q: "若要在 R 語言中進行標準曲線的線性迴歸（濃度為 x，訊號為 y），應使用哪一個指令？",
+   opts: ["fit <- cor(y, x)", "fit <- lm(y ~ x)", "fit <- slope(y, x)", "fit <- rsq(y, x)"], ans: 1,
+   exp: "lm() 是 R 語言中建立線性模型 (Linear Model) 的函數，波浪號 ~ 左邊放 y (訊號)，右邊放 x (濃度)。" },
+ { q: "關於 Excel 求取標準曲線參數的函數，下列對應何者「錯誤」？",
+   opts: ["截距 = INTERCEPT(y數據, x數據)", "斜率 = SLOPE(y數據, x數據)", "判定係數 (r²) = CORREL(y數據, x數據)", "相關係數 (r) = CORREL(x數據, y數據)"], ans: 2,
+   exp: "判定係數 (r²) 在 Excel 中使用的是 RSQ() 函數；CORREL() 是用來計算相關係數 (r) 的。" },
+ { q: "不論是使用 R 語言的 lm()，還是 Excel 的 SLOPE() 與 INTERCEPT()，輸入同一組標準曲線數據算出的結果會：",
+   opts: ["R 語言算出的結果比較準確", "Excel 算出的結果比較準確", "兩者結果完全相同", "視數據大小而定"], ans: 2,
+   exp: "這兩種工具底層都是採用相同的統計原理「最小平方法 (Least Squares Method)」，因此算出來的參數必定完全一致。" }
 ];
 </script>
 <script src="assets/app.js"></script>
+<script src="assets/js/showout.js"></script>
 
 <nav class="pager">
 <a href="ch03.html"><small>上一章</small>Ch3 LOD、LOQ 與品質管制圖</a>

@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ch13 實戰應用：USDA FoodData Central 與配方計算</title>
+<link rel="stylesheet" href="assets/style.css">
+
+<!-- KaTeX -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\[', right: '\]', display: true}]});"></script>
+</head>
+<body>
+<header class="topbar"><div class="inner">
+<a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
+<nav class="topnav">
+<a href="index.html">首頁</a><a href="ch00.html">Ch0 入門</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a><a href="ch13.html">Ch13 FDC配方</a><a href="ch14.html">Ch14 DOE/RSM</a>
+</nav></div></header>
+
+<main>
+<div class="crumbs">Part 3 進階延伸／第 13 章（建議先修：Ch1–Ch2 統計基礎）</div>
+<h1>實戰應用：USDA FoodData Central 與配方計算
+<span class="en">From Open Data to Formulation — Replicating TechWizard™ Workflows with Free Tools</span></h1>
+
+<p class="lede">老闆：「配方軟體一年授權 30 萬，你能不能不用它就做出營養標籤和最低成本配方？」這一章之後，你可以。</p>
+
+<div class="callout"><span class="t">🔑 課前暖身</span>
+配方軟體很貴，但它的<strong>資料庫是免費公開的</strong>！USDA FoodData Central 收錄數十萬筆食品成分數據
+（CC0 免費授權）。本章用免費資料＋基礎代數，重現商業軟體的招牌功能：最低成本配方、營養標籤、逆向工程。<br>
+<strong>本章新詞先認識</strong>：<em>FDC</em>＝USDA 食品成分資料庫；<em>質量平衡</em>＝進＝出的質量守恆列式法；<em>線性規劃</em>＝在限制條件下找最便宜組合；<em>overrun</em>＝冰淇淋打入的空氣比例。<br>
+<small>名詞卡住了？回 <a href="ch00.html">Ch0 名詞圖鑑</a> 查白話解釋與比喻。</small></div>
+
+<div class="goals"><b>學習目標</b>
+<ul>
+<li>認識 <strong>USDA FoodData Central（FDC）</strong>的五種資料型、API 與整包 CSV 下載（CC0 公眾領域）</li>
+<li>理解業界配方軟體 <strong>TechWizard™</strong> 的兩大招牌功能，其實就是<strong>質量平衡聯立方程 + 加權平均</strong></li>
+<li>會用 R 的 <code>solve()</code> 做<strong>目標導向配方</strong>（冰淇淋規格：脂肪 12%、MSNF 11%…）</li>
+<li>會做<strong>最低成本配方</strong>，並理解線性規劃「最佳解在端點」的直覺</li>
+<li>會把配方加權成<strong>營養標籤</strong>（台灣每 100 g / 美國每份 66 g），並用 Atwater 4-4-9 檢核</li>
+<li>會做<strong>逆向工程</strong>：由競品檢驗值反推等效配方，並指出解為何不唯一</li>
+</ul></div>
+
+<div class="callout"><span class="t">🧪 情境</span>
+<a href="https://owlsoft.com/techwizard/" target="_blank" rel="noopener">TechWizard™</a>
+是食品業的配方／標籤／成本計算軟體，它的原料資料庫<strong>內建整套 USDA 食品成分資料庫</strong>。
+本章用免費的 <a href="https://fdc.nal.usda.gov/" target="_blank" rel="noopener">FoodData Central</a> + R，
+把官網六個付費範例中最核心的兩個工作流——
+<a href="https://owlsoft.com/techwizard/techwizard-examples/" target="_blank" rel="noopener">Ice Cream 配方與 Reverse Engineering</a>——完整重現一遍。
+你會發現：商業軟體沒有魔法，只有你已經學過的統計與代數。</div>
+
+<h2>13.1 FoodData Central：免費的世界級食品成分資料庫</h2>
+<p>FDC 是美國農業部（USDA）維護的食品成分資料庫總入口，資料以 <strong>CC0 公眾領域</strong>釋出
+（使用只需註明出處），提供<strong>網頁搜尋、整包 CSV 下載、免費 API</strong> 三種取得方式。
+五種資料型的品質定位截然不同——這正是 Ch3「數據品質」觀念的活教材：</p>
+<table>
+<tr><th>資料型</th><th>內容</th><th>更新</th><th>教學定位</th></tr>
+<tr class="hl"><td><strong>Foundation Foods</strong></td><td>USDA 自行分析，樣品層級＋完整採樣/分析後設資料</td><td>每年兩次</td><td>方法對照真值、不確定度討論的最佳素材</td></tr>
+<tr><td><strong>SR Legacy</strong></td><td>傳統營養資料庫（分析+文獻+計算彙編），2018 年定稿</td><td>不再更新</td><td>配方計算最常用（<strong>本章採用</strong>）</td></tr>
+<tr><td>Survey (FNDDS)</td><td>國民營養調查 NHANES 用的食品/飲品</td><td>每兩年</td><td>膳食攝取評估</td></tr>
+<tr><td>Experimental</td><td>與 USDA 合作的期刊研究數據</td><td>不定期</td><td>研究選讀</td></tr>
+<tr><td>Branded</td><td>全球市售包裝食品的標籤資料</td><td>每月</td><td>標籤比較、逆向工程的題庫</td></tr>
+</table>
+<div class="callout warn"><span class="t">⚡ 資料品質不等於資料新</span>
+SR Legacy 雖然 2018 年後不再更新，仍是配方業界最常用的基底；
+Foundation Foods 最新但食品項目較少。<strong>「哪一筆資料可信」比「資料新不新」更重要</strong>——
+每筆 Foundation 資料都附 dataPoints、min/max 與分析方法的後設資料，
+就像 Ch3 的 QC 紀錄，讓你能判斷它的精密度與準確度。</div>
+
+<h2>13.2 教學對照表：把 TechWizard 的功能免費重現</h2>
+<table>
+<tr><th>TechWizard™ 功能</th><th>官網對應範例</th><th>本章的免費重現（R 內建函數）</th></tr>
+<tr><td>目標導向配方</td><td>Ice Cream</td><td><code>solve()</code> 解質量平衡聯立方程（13.3）</td></tr>
+<tr><td>最低成本配方（AI 引擎）</td><td>Processed Cheese</td><td>成本函數＋可行線段端點搜尋（13.4）</td></tr>
+<tr><td>營養標籤 / 規格書</td><td>BBQ Sauce、Spice Blend</td><td>配方加權平均＋捨入規則（13.5）</td></tr>
+<tr><td>逆向工程</td><td>Reverse Engineer Ice Cream</td><td>檢驗值→目標組成→再解一次配方（13.6）</td></tr>
+<tr><td>原料資料庫維護</td><td>Ingredient Request Wizard™</td><td>FDC API / CSV ＋ 供應商規格書（13.7）</td></tr>
+</table>
+<div class="callout ok"><span class="t">💡 為什麼值得教？</span>
+TechWizard 官網的每個範例（BBQ Sauce、Pizza、Spice Blend、Ice Cream、Reverse Engineering、
+Processed Cheese、Blueberry Protein Drink）都有 PDF 與影片可當課堂引言；
+本章則讓學生<strong>親手算出同樣的東西</strong>——理解原理之後，用哪套軟體都一樣。</div>
+
+<h2>13.3 目標導向配方：冰淇淋的質量平衡</h2>
+<p>對照 TechWizard 官網 Ice Cream 範例的規格（每 100 kg 配方）：
+<strong>脂肪 12%、非脂乳固形（MSNF）11%、砂糖 14%、玉米糖漿 3%、安定劑/乳化劑 0.5%</strong>，
+剩下的 82.5 kg 由「乳原料＋水」湊足。設 c=鮮奶油、m=全脂鮮乳、s=脫脂奶粉、w=水：</p>
+<div class="formula">
+總質量：c + m + s + w = 82.5
+<br>脂　肪：0.3608c + 0.0325m + 0.0077s = 12
+<br>MSNF：0.0545c + 0.0865m + 0.9607s = 11
+<span class="note">係數來自下表原料的 FDC 組成值（質量分數）</span>
+</div>
+<p><strong>4 個未知數、只有 3 條方程式 → 存在「一個自由度」的整個配方家族！</strong>
+這是配方設計的本質：規格只給出可行範圍，還需要一個額外準則（例如成本最低）才能選出唯一配方。</p>
+<h3>迷你原料資料庫（摘錄自 FDC / SR Legacy）</h3>
+<table>
+<tr><th>原料</th><th>NDB 編號</th><th class="num">脂肪 %</th><th class="num">MSNF %</th><th class="num">水分 %</th><th class="num">單價 元/kg（示教用虛構）</th></tr>
+<tr><td>鮮奶油（36%）</td><td>01053</td><td class="num">36.08</td><td class="num">5.45</td><td class="num">57.71</td><td class="num">230</td></tr>
+<tr><td>全脂鮮乳</td><td>01077</td><td class="num">3.25</td><td class="num">8.65</td><td class="num">88.10</td><td class="num">38</td></tr>
+<tr><td>脫脂奶粉</td><td>01095</td><td class="num">0.77</td><td class="num">96.07</td><td class="num">3.20</td><td class="num">280</td></tr>
+<tr><td>砂糖</td><td>19335</td><td class="num">0</td><td class="num">—</td><td class="num">0</td><td class="num">42</td></tr>
+<tr><td>玉米糖漿</td><td>供應商規格</td><td class="num">0</td><td class="num">—</td><td class="num">20</td><td class="num">55</td></tr>
+<tr><td>安定劑/乳化劑</td><td>供應商規格</td><td class="num">0</td><td class="num">—</td><td class="num">0</td><td class="num">850</td></tr>
+</table>
+<div class="callout warn"><span class="t">⚡ FDC 覆蓋不了的部分，就是供應商規格書的價值</span>
+玉米糖漿、安定劑這類<strong>複合加工原料</strong>在 FDC 沒有對應品項（或只有籠統值）——
+實務上必須向供應商索取規格書（COA）。這正是 TechWizard 內建
+「Ingredient Request Wizard™」的原因：<strong>資料庫 + 供應商文件 = 完整的原料檔案</strong>。</div>
+
+<h2>13.4 最低成本配方：線性規劃的端點直覺</h2>
+<p>把「一個自由度」參數化成脫脂奶粉用量 s，每個 s 解一次 3×3 聯立方程（R 的 <code>solve()</code>），
+就得到整條可行配方家族；再算每個配方的原料成本：</p>
+<div class="formula">
+成本 = 230·c + 38·m + 280·s + 0.5·w +（砂糖、糖漿、安定劑的固定成本）
+<span class="note">成本是各項用量的「線性」函數 → 線性規劃（LP）：極值必出現在可行區域的頂點。
+本題可行集合是一條線段 → 最佳解必在兩端之一！</span>
+</div>
+<div class="figure">
+<img src="assets/img/fig_fdc_cost.png" alt="最低成本配方：成本曲線與兩配方比較">
+<div class="cap">圖 13-1 左：成本隨脫脂奶粉用量單調上升，最便宜解在「水→0」的端點；右：兩個等效配方的用料比較（逆向工程結果）</div>
+</div>
+<table>
+<tr><th>方案</th><th class="num">鮮奶油</th><th class="num">全脂鮮乳</th><th class="num">脫脂奶粉</th><th class="num">水</th><th class="num">成本 元/100 kg</th></tr>
+<tr class="hl"><td><strong>最便宜</strong>（水→0 的端點）</td><td class="num">28.8</td><td class="num">47.9</td><td class="num">5.5</td><td class="num">0.3</td><td class="num"><strong>11,169</strong></td></tr>
+<tr><td>最貴（鮮乳→0 的端點）</td><td class="num">33.0</td><td class="num">0.3</td><td class="num">9.6</td><td class="num">39.6</td><td class="num">11,480</td></tr>
+</table>
+<p>同一個規格，配方成本可以差 <strong>311 元/100 kg（+2.8%）</strong>——
+食品廠的毛利就藏在這種計算裡。TechWizard 的「AI 配方引擎」= 同樣邏輯，
+只是原料與限制式多到需要單純法（simplex method）自動求解。</p>
+
+<h2>13.5 加權營養計算 → 營養標籤</h2>
+<p>TechWizard 標籤功能的本質：<strong>配方加權平均</strong>出每 100 g 營養值，再換算每份、套法規捨入規則。
+把 13.4 的最便宜配方加權（並用 Atwater 係數 4-4-9 驗算熱量）：</p>
+<div class="formula">
+熱量 = 4×蛋白質 + 4×碳水 + 9×脂肪 = 4×4.09 + 4×22.30 + 9×12.00 = <strong>213.6 kcal/100 g</strong>
+<span class="note">若與 FDC 資料庫的 Energy 差很多，通常是該筆資料用了「特定因子」（如乳品 3.87/4.27/8.79）——呼應 Ch4 的迴歸思維</span>
+</div>
+<table>
+<tr><th>營養素</th><th class="num">每 100 g（台灣格式）</th><th class="num">每份 66 g（美國 FDA 格式）</th></tr>
+<tr><td>熱量</td><td class="num">214 kcal</td><td class="num">140 kcal</td></tr>
+<tr><td>蛋白質</td><td class="num">4.1 g</td><td class="num">3 g</td></tr>
+<tr><td>脂肪</td><td class="num">12.0 g</td><td class="num">8 g</td></tr>
+<tr><td>碳水化合物</td><td class="num">22.3 g</td><td class="num">15 g</td></tr>
+<tr><td>糖</td><td class="num">20.7 g</td><td class="num">14 g</td></tr>
+<tr><td>鈉</td><td class="num">85 mg</td><td class="num">55 mg</td></tr>
+</table>
+<div class="callout warn"><span class="t">📋 捨入規則（教學簡化版）</span>
+台灣：每 100 g 含量未滿 0.5 g 得標示為 0，一般標至整數；
+美國 FDA：熱量 &gt;50 取 10 的倍數、鈉 5–140 mg 取 5 的倍數、營養素 &lt;0.5 g 標 0。
+<strong>本表為教學簡化，實際以最新法規為準。</strong>算出來的標籤（140 kcal / 8 g 脂肪 / 14 g 糖）
+與市售香草冰淇淋幾乎一模一樣——因為市售產品就是這樣算出來的。</div>
+<div class="callout ok"><span class="t">🍦 為什麼美國每份是 66 g？</span>
+冰淇淋打入了空氣（overrun），同體積比混合原料輕很多：若產品密度 0.56 g/mL，
+overrun ≈ 95%。FDA 的每份參考量（RACC）2/3 杯換算成重量時<strong>已把空氣算進去</strong>，
+所以是 66 g 而不是 118 g。配方是「重量世界」，標籤份量是「體積世界」——橋樑就是 overrun。</div>
+
+<h2>13.6 逆向工程：從競品檢驗值反推配方</h2>
+<p>TechWizard 的招牌功能：買競品來檢驗，反推等效配方。情境：競品香草冰淇淋實驗室檢測
+<strong>脂肪 10.8%、蛋白質 4.4%</strong>。乳蛋白約占非脂乳固形的 36%，
+故 MSNF ≈ 4.4 / 0.36 = <strong>12.2%</strong>。把這兩個值當新目標，重跑一次 13.3 的聯立方程：</p>
+<table>
+<tr><th>配方</th><th class="num">鮮奶油</th><th class="num">全脂鮮乳</th><th class="num">脫脂奶粉</th><th class="num">水</th><th class="num">成本 元/100 kg</th></tr>
+<tr><td>我方設計（12%F / 11%M）</td><td class="num">28.8</td><td class="num">47.9</td><td class="num">5.5</td><td class="num">0.3</td><td class="num">11,169</td></tr>
+<tr class="hl"><td><strong>競品還原</strong>（10.8%F / 12.2%M）</td><td class="num">25.2</td><td class="num">50.4</td><td class="num">6.8</td><td class="num">0.1</td><td class="num"><strong>10,791</strong></td></tr>
+</table>
+<p>競品是「低脂高MSNF」結構，成本還便宜 378 元/100 kg——這就是競品分析的價值。</p>
+<div class="callout warn"><span class="t">⚡ 反推出的解為什麼「不唯一」？（呼應 Ch6–Ch8）</span>
+① 檢驗值本身有量測不確定度；② 標籤值經過捨入；③ MSNF 由蛋白質反推是<strong>模型假設</strong>；
+④ 原料組成有批次變異。所以逆向工程得到的是「等效近似解」，
+就像量測結果要帶 ±U 一起報告——<strong>配方也該帶著它的不確定度被解讀</strong>。</div>
+
+<h2>13.7 取得真資料：FDC API 與整包 CSV</h2>
+<div class="goals">
+<ol>
+<li>到 <a href="https://fdc.nal.usda.gov/api-key-signup" target="_blank" rel="noopener">fdc.nal.usda.gov/api-key-signup</a> 免費申請 API 金鑰</li>
+<li>用 <strong>foods/search</strong> 端點查詢（可限定資料型），例如奶油：
+<code>https://api.nal.usda.gov/fdc/v1/foods/search?api_key=KEY&amp;query=butter,salted&amp;dataType=SR%20Legacy&amp;pageSize=1</code></li>
+<li>R 不需 JSON 套件：<code>readLines(url(...))</code> 抓回文字，<code>regmatches + regexpr</code> 抽出
+<code>"value":717</code>（完整程式在下方，設 <code>RUN_ONLINE &lt;- TRUE</code> 即可體驗）</li>
+<li>要整包資料做統計：到 <a href="https://fdc.nal.usda.gov/download-datasets" target="_blank" rel="noopener">Download Datasets</a> 頁複製 ZIP 連結 →
+<code>download.file()</code> → <code>unzip()</code> → <code>read.csv("food.csv")</code>（數十萬列，Ch1 的 <code>mean()/sd()</code> 直接派上用場）</li>
+<li>引用格式（CC0 要求註明出處）：U.S. Department of Agriculture, Agricultural Research Service. <i>FoodData Central</i>. fdc.nal.usda.gov</li>
+</ol></div>
+
+<pre class="rcode" data-file="ch13_fdc.R"># ====== Ch13 USDA FDC x 配方計算 (完整版請下載 ch13_fdc.R) ======
+# --- Part 1. 迷你原料資料庫 (摘自 USDA FoodData Central, SR Legacy, CC0) ---
+ing &lt;- data.frame(
+  name    = c("鮮奶油","全脂鮮乳","脫脂奶粉","砂糖","玉米糖漿","安定劑"),
+  protein = c(2.05, 3.15, 36.16, 0, 0, 0),
+  fat     = c(36.08, 3.25, 0.77, 0, 0, 0),
+  carb    = c(2.79, 4.80, 51.99, 99.98, 78, 0),
+  ash     = c(0.61, 0.70, 7.92, 0, 0, 0),
+  price   = c(230, 38, 280, 42, 55, 850))  # 示教用虛構單價 元/kg
+ing$msnf &lt;- ing$protein + ing$carb + ing$ash   # 非脂乳固形 (乳品慣用指標)
+
+# --- Part 2+3. 目標導向 + 最低成本配方 (TechWizard Ice Cream 規格) ---
+# 規格: 脂肪12 MSNF11 砂糖14 玉米糖漿3 安定劑0.5 -&gt; 乳原料+水 = 82.5 kg
+f_c &lt;- .3608; f_m &lt;- .0325; f_s &lt;- .0077
+n_c &lt;- .0545; n_m &lt;- .0865; n_s &lt;- .9607
+A &lt;- rbind(c(1,1,1), c(f_c,f_m,0), c(n_c,n_m,0))  # 未知數(奶油,鮮乳,水)
+balance_mix &lt;- function(tf, tm, grid = seq(0, 12, .05)) {
+  out &lt;- data.frame(smp=grid, cream=NA, milk=NA, water=NA, ok=FALSE, cost=NA)
+  for (i in seq_along(grid)) {
+    b &lt;- c(82.5 - grid[i], tf - f_s*grid[i], tm - n_s*grid[i])
+    x &lt;- tryCatch(solve(A, b), error = function(e) rep(NA_real_, 3))
+    out[i, 2:4] &lt;- x
+    out$ok[i] &lt;- !any(is.na(x)) &amp;&amp; all(x &gt;= -1e-9)   # 用量不能是負的
+    if (out$ok[i]) out$cost[i] &lt;- 230*x[1] + 38*x[2] + 280*grid[i] +
+                     0.5*max(x[3], 0) + (14*42 + 3*55 + 0.5*850)
+  }
+  out
+}
+sol &lt;- balance_mix(12, 11)
+range(sol$smp[sol$ok])                 #&gt; 5.50 ~ 9.55 kg 的可行線段
+best &lt;- sol[which.min(sol$cost), ]
+round(best[c("cream","milk","smp","water")], 1)
+#&gt; 奶油 28.8 | 鮮乳 47.9 | 奶粉 5.5 | 水 0.3
+best$cost                              #&gt; 11169 元/100kg (整個家族最低)
+plot(cost ~ smp, data = sol, subset = ok, type = "l", lwd = 2,
+     col = "#1565C0", xlab = "脫脂奶粉 (kg)", ylab = "成本 (元/100kg)")
+points(best$smp, best$cost, pch = 19, col = "red")
+# 成本沿線段線性遞增 -&gt; LP 最佳解必在端點 (TechWizard 配方引擎的核心直覺)
+
+# --- Part 4. 加權營養計算 -&gt; 標籤 ---
+wt   &lt;- unlist(best[c("cream","milk","smp")])
+prot &lt;- sum(wt*c(2.05, 3.15, 36.16))/100
+carb &lt;- (sum(wt*c(2.79, 4.80, 51.99)) + 14*99.98 + 3*78)/100
+sugar&lt;- 14 + sum(wt*c(2.79, 4.80, 51.99))/100 + 3*0.26
+na   &lt;- sum(wt*c(30, 43, 1010))/100
+kcal &lt;- 4*prot + 4*carb + 9*12         #&gt; Atwater 4-4-9 = 213.6 kcal
+serv &lt;- 66/100    # FDA 冰淇淋每份 2/3 杯 = 66 g (已含 overrun 的空氣)
+c(熱量 = floor(kcal*serv/10)*10, 蛋白質 = round(prot*serv),
+  脂肪 = round(12*serv), 碳水 = round(carb*serv),
+  糖   = round(sugar*serv), 鈉mg = round(na*serv/5)*5)
+#&gt; 140 kcal / 蛋白質3 / 脂肪8 / 碳水15 / 糖14 / 鈉55 —— 市售標籤就是這樣來的!
+
+# --- Part 5. 逆向工程：由競品檢驗值反推配方 ---
+msnf_est &lt;- 4.4 / 0.36                 #&gt; 乳蛋白約占非脂固形 36% -&gt; 12.2%
+best_re  &lt;- balance_mix(10.8, msnf_est)
+best_re[which.min(best_re$cost), c("cream","milk","smp","water","cost")]
+#&gt; 奶油25.2 鮮乳50.4 奶粉6.8 水0.1, 約 10,791 元 (低脂結構反而更便宜)
+# 解不唯一: 檢驗不確定度 + 標籤捨入 + MSNF 推估假設 (呼應 Ch6~Ch8)
+
+# --- Part 6. 有網路時：FDC API 抓真資料 (金鑰免費申請) ---
+# key &lt;- "你的金鑰"   # fdc.nal.usda.gov/api-key-signup
+# u &lt;- paste0("https://api.nal.usda.gov/fdc/v1/foods/search?api_key=", key,
+#             "&amp;query=butter%2Csalted&amp;dataType=SR%20Legacy&amp;pageSize=1")
+# txt &lt;- paste(readLines(url(u), warn = FALSE), collapse = "")
+# regmatches(txt, regexpr('"nutrientName":"Energy"[^}]*"value":[0-9.]+', txt))
+#&gt; 奶油 Energy "value":717 kcal (整包 CSV 則到 Download Datasets 頁)</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">[1] 5.50 9.55
+    cream milk smp water
+111  28.8 47.9 5.5   0.3
+[1] 11168.97
+  熱量 蛋白質   脂肪   碳水     糖   鈉mg 
+   140      3      8     15     14     55 
+       cream     milk  smp      water     cost
+136 25.24753 50.42204 6.75 0.08042593 10791.01</pre></div>
+
+<div class="callout danger"><span class="t">🎯 配方計算的行動清單</span>
+① 先寫下<strong>目標規格</strong>（脂肪/MSNF/糖…），再列<strong>質量平衡方程式</strong>——缺一條就多一個自由度<br>
+② 自由度用<strong>成本最低</strong>收斂：線性目標函數的最佳解在端點，先檢查端點再談最佳化<br>
+③ 標籤 = <strong>加權平均 + 法規捨入</strong>；熱量用 Atwater 4-4-9 交叉檢核<br>
+④ 逆向工程的解必須<strong>連同不確定度</strong>一起解讀，別把它當唯一真值<br>
+⑤ 原料資料 = FDC 公開資料 + <strong>供應商規格書</strong>，兩者缺一不可</div>
+
+<h2>📊 Excel 也會算：配方計算</h2>
+<div class="callout ok"><span class="t">📊 沒有 R 也能動手</span>
+配方計算的核心是「解聯立方程」與「線性規劃」——Excel 用 <strong>規劃求解（Solver）</strong> 就能做，不用寫程式：<br>
+<table>
+<tr><th>任務</th><th>Excel 做法</th></tr>
+<tr><td>質量平衡配方</td><td>設各原料用量為變數格，營養合計用 <code>=SUMPRODUCT(用量欄, 成分欄)</code>，開 Solver 設目標＋限制</td></tr>
+<tr><td>最低成本配方</td><td>目標儲存格=<code>SUMPRODUCT(用量,單價)</code>，Solver「最小化」，限制=營養規格上下限</td></tr>
+<tr><td>營養標籤</td><td>各原料「每100g 成分」× 用量加總：<code>=SUMPRODUCT(...)</code></td></tr>
+</table>
+<strong>Solver 開啟</strong>：檔案→選項→增益集→「規劃求解載入項」。本章 R 的 <code>solve()</code>（解方程）與端點搜尋，在 Excel 就是 Solver 的「求解」。兩者答案相同——驗證了「商業軟體沒有魔法」。</div>
+
+<div class="quiz" id="quiz"></div>
+<script>
+const QUIZ = [
+ { q: "TechWizard™ 的原料資料庫與 USDA FoodData Central 的關係是：",
+   opts: ["完全無關", "TechWizard 內建整套 USDA 食品成分資料庫，所以可用免費的 FDC 重現其工作流", "FDC 是 TechWizard 的子公司", "兩者格式不相容"], ans: 1,
+   exp: "TechWizard 官網明載其原料檔內含整個 USDA Food Composition database。FDC 以 CC0 釋出，教學上用 R 即可免費重現配方、標籤、逆向工程等工作流。" },
+ { q: "FDC 五種資料型中，附完整採樣與分析後設資料、最適合當方法對照真值的是：",
+   opts: ["Branded", "SR Legacy", "Foundation Foods", "Survey (FNDDS)"], ans: 2,
+   exp: "Foundation Foods 是 USDA 自行分析、樣品層級並附 dataPoints/min/max 等後設資料的資料型——品質判斷的依據，就像 QC 紀錄。SR Legacy 雖最常用於配方但 2018 年已定稿。" },
+ { q: "冰淇淋配方 4 個未知數卻只有 3 條質量平衡方程式，代表：",
+   opts: ["無解", "唯一解", "存在一個自由度的配方家族，需要額外準則（如成本最低）才能選出唯一配方", "必須改用 Monte Carlo"], ans: 2,
+   exp: "規格只圈出可行範圍。1 個自由度 = 一條可行線段上的整個配方家族；「最低成本」就是那個把問題收斂到唯一解的額外準則。" },
+ { q: "為什麼最低成本解落在可行線段的端點？",
+   opts: ["因為成本函數是二次曲線", "因為線性目標函數在凸可行區域的極值必出現在頂點（本題可行集合是線段）", "電腦隨機挑的", "因為端點的水最少"], ans: 1,
+   exp: "這是線性規劃的基本定理。本題成本沿線段單調遞增，最便宜解在「水→0」端點；TechWizard 的 AI 引擎只是把同樣邏輯自動化到多原料多限制式。" },
+ { q: "美國營養標籤上冰淇淋「每份 66 g」的 66 g 是：",
+   opts: ["一杯牛奶的重量", "FDA 的 RACC 2/3 杯換算的重量，已把打入的空氣（overrun）算進去", "配方原料總重", "法規隨機規定"], ans: 1,
+   exp: "冰淇淋含大量空氣，密度可低至約 0.56 g/mL，2/3 杯的重量因此只有約 66 g。配方在「重量世界」、份量在「體積世界」，overrun 是兩者間的橋樑。" },
+ { q: "逆向工程反推出的配方為什麼「不唯一」？",
+   opts: ["因為 solve() 有隨機性", "因為檢驗不確定度、標籤捨入、MSNF 推估假設與原料批次變異，只能得到等效近似解", "因為 FDC 資料有版權限制", "因為成本每天都在變"], ans: 1,
+   exp: "呼應 Ch6–Ch8：量測與模型都帶不確定度，反推解是近似而非唯一真值——報告配方時也應像報告分析結果一樣附上可信範圍。" }
+,
+ { q: "在本章配方計算中，R 語言的 `solve()` 函數對應到 Excel 中的哪一項功能？",
+   opts: ["`VLOOKUP` (垂直查詢)", "`SUMPRODUCT` (乘積和)", "規劃求解 (Solver)", "目標搜尋 (Goal Seek)"], ans: 2,
+   exp: "R 的 `solve()` 用來解線性聯立方程，在 Excel 中進行多變數的限制條件尋優或解聯立方程，對應的強大工具是「規劃求解 (Solver)」。" },
+ { q: "在 Excel 中進行營養標籤加權計算，或計算配方總成本時，最適合使用下列哪一個函數來將「各原料用量」與「每單位成分/單價」相乘並加總？",
+   opts: ["`SUMIF`", "`SUMPRODUCT`", "`COUNTIFS`", "`VLOOKUP`"], ans: 1,
+   exp: "`SUMPRODUCT` 函數可以將兩個對應範圍的陣列元素相乘後直接加總，非常適合用於計算配方中各原料的營養貢獻總和與總成本。" },
+ { q: "在 R 語言的程式範例中，使用 `solve(A, b)` 解出原料用量後，必須加上 `all(x >= -1e-9)` 的邏輯判斷。這個判斷的實務意義是什麼？",
+   opts: ["因為配方的總成本不能是負的", "避免浮點數誤差導致的當機", "確保解出來的各項原料用量在物理上可行（不可為負數）", "用來去除單價過高的原料"], ans: 2,
+   exp: "數學上的聯立方程可能解出「負的原料用量」，但實體世界不可能加入負的鮮奶油。加上此條件可篩選出真正可行的配方解，`-1e-9` 是為了寬容浮點數運算的微小誤差。" }
+];
+</script>
+<script src="assets/app.js"></script>
+<script src="assets/js/showout.js"></script>
+
+<h2>13.8 參考文獻</h2>
+<ol class="refs">
+<li>U.S. Department of Agriculture, Agricultural Research Service. <i>FoodData Central</i>. <a href="https://fdc.nal.usda.gov/" target="_blank" rel="noopener">fdc.nal.usda.gov</a>（CC0 公眾領域；本章原料組成摘錄自 SR Legacy：NDB 01053、01077、01095、19335）.</li>
+<li>Owl Software. <i>TechWizard™ Examples</i>. <a href="https://owlsoft.com/techwizard/techwizard-examples/" target="_blank" rel="noopener">owlsoft.com/techwizard/techwizard-examples</a>（BBQ Sauce、Pizza、Spice Blend、Ice Cream、Reverse Engineer、Processed Cheese 六範例，附 PDF/影片）.</li>
+<li>Goff, H. D.; Hartel, R. W. <i>Ice Cream</i>, 7th ed.; Springer: New York, 2013.（冰淇淋質量平衡配方、MSNF 定義與 overrun 計算之依據）.</li>
+<li>Smith, J. S. Evaluation of Analytical Data. In <i>Nielsen’s Food Analysis</i>, 6th ed.; Ismail, B. P., Nielsen, S. S., Eds.; Springer, 2024; Chapter 4.（本課程數據品管統計之主軸教材）.</li>
+</ol>
+
+<nav class="pager">
+<a href="ch12.html"><small>上一章</small>Ch12 進階案例 LC-MS/MS</a>
+<a href="index.html"><small>返回</small>課程首頁</a>
+</nav>
+</main>
+<footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫 · 原料數據來自 USDA FoodData Central (CC0)</footer>
+</body>
+</html>

@@ -52,6 +52,8 @@ h1 {
   color: var(--c-primary);
 }
 h1 .en { display: block; font-size: .95rem; color: var(--c-muted); font-weight: 400; margin-top: 4px; }
+.lede { font-size: 1.08rem; color: var(--c-ink); line-height: 1.7; margin: 10px 0 14px;
+  padding: 12px 16px; background: #F4F8FC; border-left: 4px solid var(--c-primary); border-radius: 0 10px 10px 0; }
 h2 {
   margin: 2.2em 0 .6em; padding-left: 12px;
   border-left: 6px solid var(--c-accent); font-size: 1.45rem; color: #123;
@@ -96,6 +98,9 @@ hr { border: none; border-top: 1px dashed var(--c-line); margin: 2em 0; }
 .frac { display: inline-block; vertical-align: middle; text-align: center; margin: 0 3px; }
 .frac .num { display: block; padding: 0 6px; border-bottom: 1.5px solid var(--c-ink); }
 .frac .den { display: block; padding: 0 6px; }
+/* 根號：√ 後面接 .rad 內容，用 border-top 畫出跨整段的根號橫線 */
+.rad { display: inline-block; border-top: 1.5px solid var(--c-ink);
+  padding: 0 3px; margin-top: -1px; }
 var { font-style: italic; font-family: inherit; }
 
 /* ---------- 表格 ---------- */
@@ -133,10 +138,27 @@ pre.rcode .st { color: #A5D6A7; }        /* 字串 */
 pre.rcode .kw { color: #FFCC80; }        /* 關鍵字/函數 */
 pre.rcode .out { color: #9FCBEA; font-style: italic; }
 
+/* ---------- R 執行輸出（console 風） ---------- */
+.rout { margin: 2px 0 20px; border-radius: 10px; overflow: hidden;
+  box-shadow: var(--shadow); background: #0A1B29; }
+.routhead { display: flex; align-items: center; gap: 8px;
+  background: #10283C; color: #9FC4DE; padding: 6px 14px; font-size: .82rem;
+  border-bottom: 1px solid #16324B; }
+.routhead .dot { width: 9px; height: 9px; border-radius: 50%; background: #4CAF7D; }
+.routhead .term { font-family: var(--mono); color: #7FB6D9; }
+.routhead .spacer { flex: 1; }
+.routhead .tag { background: #16324B; padding: 1px 9px; border-radius: 9px; font-size: .75rem; }
+pre.rout-body { margin: 0; padding: 13px 18px; overflow-x: auto;
+  color: #E6F1FA; font-family: var(--mono); font-size: .86rem; line-height: 1.7; tab-size: 2; }
+pre.rout-body .prompt { color: #6FD3A7; font-weight: 700; }
+
 /* ---------- 圖片 ---------- */
-.figure { text-align: center; margin: 20px 0; }
+.figure { text-align: center; margin: 20px 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .figure img { max-width: 100%; border-radius: 10px; box-shadow: var(--shadow); background: #fff; }
 .figure .cap { color: var(--c-muted); font-size: .88rem; margin-top: 8px; }
+@media (max-width: 768px) {
+  .figure img.wide-img { max-width: none; width: 700px; margin: 0 auto; display: block; }
+}
 
 /* ---------- 測驗 ---------- */
 .quizbox {
@@ -204,3 +226,7 @@ footer { text-align: center; color: var(--c-muted); font-size: .85rem; padding: 
 ol.refs { padding-left: 22px; font-size: .93rem; }
 ol.refs li { margin: 8px 0; }
 ol.refs a { color: var(--c-primary-2); word-break: break-all; }
+
+sub, sup { font-size: 0.8em; line-height: 0; position: relative; vertical-align: baseline; }
+sub { bottom: -0.25em; }
+sup { top: -0.4em; }

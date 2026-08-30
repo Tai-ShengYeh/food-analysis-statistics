@@ -220,26 +220,37 @@ save_png("fig_pred_unc.png", {
        "校正點越密集處、靠近中心 => 反推最可靠", cex = .95)
 })
 
-# ---- fig12: 滴定魚骨圖 (QUAM Figure A2.6 簡化版) ----
+# ---- fig12: 滴定標定 (QUAM Figure A2.6 簡化版) ----
 save_png("fig_fishbone.png", w = 1500, h = 780, {
+  par(lheight = 1.3)
   plot(NA, xlim = c(0, 10), ylim = c(0, 6), axes = FALSE,
        xlab = "", ylab = "", main = "滴定標定的因果(魚骨)圖：不準度來源")
-  segments(0.3, 3, 8.2, 3, lwd = 3)                     # 主骨
-  text(8.55, 3, "c(NaOH)\n相對不準度", font = 2, cex = 1.15)
+  segments(0.3, 3, 9.0, 3, lwd = 3)                     # 主骨幹
+  text(9.2, 3, "c(NaOH)
+相對不準度", font = 2, cex = 1.15)
   rib <- function(x0, y0, x1, y1, label, side) {
     segments(x0, y0, x1, y1, lwd = 2)
-    text(x0 - 0.12, (y0 + y1)/2, label, pos = side, cex = 0.95)
+    # text to the left of the midpoint with a larger offset
+    text((x0 + x1)/2 - 0.25, (y0 + y1)/2, label, pos = 2, cex = 0.9)
   }
-  # 上方三根：重複性 / 稱重 / 純度
-  rib(2.0, 3, 2.6, 5.0, "重複性 rep\n(u=0.0005)", 2)
-  rib(3.6, 3, 4.4, 5.0, "稱重 m(KHP)\n校正+線性+重複\n(u=0.00013 g)", 2)
-  rib(5.2, 3, 5.8, 5.0, "純度 P(KHP)\n證書 ±0.0005\n矩形 -> 0.00029", 2)
-  # 下方兩根：莫耳質量 / 滴定體積
-  rib(1.8, 3, 2.4, 1.0, "莫耳質量 M\nIUPAC 原子量\n(0.000019, 可忽略)", 1)
-  rib(4.6, 3, 5.4, 1.0,
-      "滴定體積 V_T\n校正 0.004 + 溫度 0.009\n+ 終點 0.002 -> 0.013 mL", 1)
-  # 小骨裝飾
-  for (xx in seq(1.2, 7.8, by = 0.8))
+  # 上三骨
+  rib(2.5, 3, 3.5, 5.0, "重複性 rep
+(u=0.0005)", 2)
+  rib(5.0, 3, 6.0, 5.0, "稱重 m(KHP)
+校正+線性+重複
+(u=0.00013 g)", 2)
+  rib(7.5, 3, 8.5, 5.0, "純度 P(KHP)
+證書 ±0.0005
+矩形 -> 0.00029", 2)
+  # 下兩骨
+  rib(3.7, 3, 4.7, 1.0, "莫耳質量 M
+IUPAC 原子量
+(0.000019, 可忽略)", 2)
+  rib(6.2, 3, 7.2, 1.0, "滴定體積 V_T
+校正 0.004 + 溫度 0.009
++ 終點 0.002 -> 0.013 mL", 2)
+  # 小斜線
+  for (xx in seq(1.2, 8.5, by = 0.8))
     segments(xx, 3 - 0.35, xx + 0.3, 3, lwd = 1, col = "grey70")
   text(5.4, 0.55,
        "最大主因：滴定體積 V_T (52%) 與重複性 (27%)",
@@ -290,4 +301,114 @@ save_png("fig_lcmsms.png", w = 1500, h = 620, {
           border = NA, las = 1, ylim = c(0, 70),
           main = "LC-MS/MS 氯黴素：變異數占比",
           ylab = "%")
+})
+
+# ---- fig15: Ch13 FDC 配方 —— 成本曲線與等效配方比較 ----
+save_png("fig_fdc_cost.png", w = 1500, h = 620, {
+  par(mfrow = c(1, 2))
+  # (a) 成本 vs 脫脂奶粉用量：可行配方家族是一條線段，最適解在端點
+  f_c <- .3608; f_m <- .0325; f_s <- .0077
+  n_c <- .0545; n_m <- .0865; n_s <- .9607
+  A <- rbind(c(1, 1, 1), c(f_c, f_m, 0), c(n_c, n_m, 0))
+  grid <- seq(0, 12, by = 0.05)
+  cost <- rep(NA_real_, length(grid)); okv <- logical(length(grid))
+  for (i in seq_along(grid)) {
+    b <- c(82.5 - grid[i], 12 - f_s*grid[i], 11 - n_s*grid[i])
+    x <- tryCatch(solve(A, b), error = function(e) rep(NA_real_, 3))
+    okv[i] <- !any(is.na(x)) && all(x >= -1e-9)
+    if (okv[i]) cost[i] <- 230*x[1] + 38*x[2] + 280*grid[i] +
+                          0.5*max(x[3], 0) + (14*42 + 3*55 + 0.5*850)
+  }
+  ok <- which(okv)
+  plot(grid[ok], cost[ok], type = "l", lwd = 3, col = "#1565C0",
+       xlim = c(0, 12), ylim = range(cost[ok]) + c(-150, 250),
+       main = "最低成本配方：最佳解落在可行線段端點",
+       xlab = "脫脂奶粉用量 (kg / 100 kg 配方)",
+       ylab = "原料成本 (元 / 100 kg)")
+  i_min <- ok[which.min(cost[ok])]
+  points(grid[i_min], cost[i_min], pch = 19, col = "red", cex = 1.8)
+  text(grid[i_min] + 0.25, cost[i_min], "水 -> 0 的端點\n(最便宜)",
+       col = "#C62828", adj = 0, cex = 0.95, font = 2)
+  i_max <- ok[which.max(cost[ok])]
+  points(grid[i_max], cost[i_max], pch = 19, col = "#F6A21D", cex = 1.8)
+  text(grid[i_max] - 0.25, cost[i_max], "鮮乳 -> 0 的端點\n(最貴 +310 元)",
+       col = "#B26A00", adj = 1, cex = 0.95, font = 2)
+  abline(v = range(grid[ok]), lty = 2, col = "grey55")
+  text(6, min(cost[ok]) - 110, "可行配方家族 (1 個自由度的線段)",
+       cex = 0.78, col = "grey35", font = 3)
+  # (b) 兩個等效配方的用料比較
+  ing_n <- c("鮮奶油", "全脂鮮乳", "脫脂奶粉", "水")
+  rec <- matrix(c(28.8, 47.9, 5.5, 0.3,
+                  25.2, 50.4, 6.8, 0.1),
+                nrow = 2, byrow = TRUE,
+                dimnames = list(c("我方設計\n脂肪12% / MSNF11%",
+                                  "競品還原\n脂肪10.8% / MSNF12.2%"),
+                                ing_n))
+  cols <- c("#EF6C00", "#43A047", "#1E88E5", "#BDBDBD")
+  barplot(rec, beside = TRUE, col = cols, ylim = c(0, 58), border = NA,
+          main = "逆向工程：兩個等效配方的用料比較",
+          ylab = "用量 (kg / 100 kg)")
+  legend("topright", ing_n, fill = cols, border = NA, cex = 0.85, bty = "n")
+})
+# ---- fig16: Ch14 DOE/RSM —— 交互作用圖與 RSM 等高線 ----
+save_png("fig_doe_rsm.png", w = 1500, h = 620, {
+  par(mfrow = c(1, 2))
+  true_y <- function(A, B, C)
+    60 + 5*A + 3*B + 2*C - 7*A^2 - 5*B^2 - 6*C^2 + 2.5*A*B
+  # (a) 2^3 因子實驗：交互作用 + 中心點曲率 (手動繪製，控制細節)
+  fac <- expand.grid(A = c(-1, 1), B = c(-1, 1), C = c(-1, 1))
+  set.seed(14)
+  fac$y <- round(true_y(fac$A, fac$B, fac$C) + rnorm(8, 0, 1.2), 1)
+  ctr <- data.frame(A = 0, B = 0, C = 0, y = round(rnorm(4, 60, 1.2), 1))
+  dat1 <- rbind(fac, ctr)
+  m <- tapply(dat1$y, list(dat1$A, dat1$B), mean)   # 各處理組合平均
+  plot(NA, xlim = c(-1.35, 1.35), ylim = range(dat1$y) + c(-2, 4),
+       xaxt = "n", xlab = "乙醇濃度 A (編碼值)", ylab = "DPPH 清除率 (%)",
+       main = "2^3 因子實驗：A×B 交互作用與中心點曲率")
+  axis(1, at = c(-1, 0, 1))
+  abline(v = 0, lty = 3, col = "grey70")
+  lines(c(-1, 1), m[c("-1", "1"), "-1"], lwd = 2.5, lty = 2,
+        col = "#1565C0")
+  points(c(-1, 1), m[c("-1", "1"), "-1"], pch = 21, cex = 1.5,
+         col = "#1565C0", bg = "white", lwd = 2)
+  lines(c(-1, 1), m[c("-1", "1"), "1"], lwd = 2.5, col = "#C62828")
+  points(c(-1, 1), m[c("-1", "1"), "1"], pch = 19, cex = 1.5,
+         col = "#C62828")
+  points(0, mean(ctr$y), pch = 18, cex = 2.2, col = "#2E7D32")
+  text(0.07, mean(ctr$y), sprintf("中心點 (0,0,0)：%.1f%%", mean(ctr$y)),
+       col = "#2E7D32", adj = 0, font = 2, cex = 0.9)
+  legend("topleft", inset = 0.02, bty = "n", cex = 0.85, lwd = 2.5,
+         lty = c(2, 1), pch = c(21, 19),
+         col = c("#1565C0", "#C62828"),
+         legend = c("溫度 B = 50°C (-1)", "溫度 B = 60°C (+1)"))
+  text(-1.3, min(dat1$y) - 1.2, "兩線不平行 = 交互作用", adj = 0,
+       cex = 0.85, col = "grey25", font = 3)
+  # (b) CCD 二階模型等高線
+  alpha <- 2^(3/4)
+  axi <- data.frame(A = c(-alpha, alpha, rep(0, 4)),
+                    B = c(0, 0, -alpha, alpha, 0, 0),
+                    C = c(0, 0, 0, 0, -alpha, alpha))
+  ccd <- rbind(fac[, c("A", "B", "C")], axi,
+               data.frame(A = 0, B = 0, C = 0)[rep(1, 6), ])
+  set.seed(15)
+  ccd$y <- round(true_y(ccd$A, ccd$B, ccd$C) + rnorm(20, 0, 1.2), 1)
+  fit2 <- lm(y ~ (A + B + C)^2 + I(A^2) + I(B^2) + I(C^2), data = ccd)
+  b <- coef(fit2); blin <- b[c("A", "B", "C")]
+  Bmat <- matrix(c(b["I(A^2)"], b["A:B"]/2, b["A:C"]/2,
+                   b["A:B"]/2, b["I(B^2)"], b["B:C"]/2,
+                   b["A:C"]/2, b["B:C"]/2, b["I(C^2)"]), 3, byrow = TRUE)
+  x0 <- as.numeric(-0.5 * solve(Bmat, blin))
+  gA <- seq(-1.7, 1.7, length.out = 60); gB <- seq(-1.7, 1.7, length.out = 60)
+  grid <- expand.grid(A = gA, B = gB); grid$C <- x0[3]
+  grid$yhat <- as.numeric(predict(fit2, grid))
+  image(50 + 10*gA, 50 + 10*gB, matrix(grid$yhat, nrow = length(gA)),
+        col = hcl.colors(14, "YlGnBu", rev = TRUE),
+        xlab = "乙醇濃度 (%)", ylab = "萃取溫度 (°C)",
+        main = sprintf("RSM 等高線 (超音波時間 = %.1f min)", 22.5 + 7.5*x0[3]))
+  contour(50 + 10*gA, 50 + 10*gB, matrix(grid$yhat, nrow = length(gA)),
+          add = TRUE, col = "grey35", lwd = 1.2)
+  points(50 + 10*x0[1], 50 + 10*x0[2], pch = 19, col = "red", cex = 1.7)
+  y0 <- as.numeric(b[1] + t(x0) %*% blin + t(x0) %*% Bmat %*% x0)
+  text(50 + 10*x0[1] + 0.8, 50 + 10*x0[2] - 1.2,
+       sprintf("駐點：預測 %.1f%%", y0), col = "white", font = 2, adj = 0)
 })

@@ -5,18 +5,32 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ch01 統計入門：平均數、標準差與變異係數</title>
 <link rel="stylesheet" href="assets/style.css">
+
+<!-- KaTeX -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\[', right: '\]', display: true}]});"></script>
 </head>
 <body>
 <header class="topbar"><div class="inner">
 <a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
 <nav class="topnav">
-<a href="index.html">首頁</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a>
+<a href="index.html">首頁</a><a href="ch00.html">Ch0 入門</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a><a href="ch13.html">Ch13 FDC配方</a><a href="ch14.html">Ch14 DOE/RSM</a>
 </nav></div></header>
 
 <main>
 <div class="crumbs">Part 1 數據品管統計（Nielsen's Food Analysis 第4章）／第 1 章</div>
 <h1>統計入門：平均數、標準差與變異係數
 <span class="en">Measures of Central Tendency &amp; Dispersion — 你的第一支 R 程式</span></h1>
+
+<p class="lede">你進檢驗室第一天，前輩遞給你 4 個數字：「同一塊肉的水分，幫我整理成報告上的一個數字。」這一章就是教你怎麼有憑有據地回答。</p>
+
+<div class="callout"><span class="t">🔑 課前暖身</span>
+你把同一塊肉的水分量了 4 次，得到 4 個不太一樣的數字——<strong>報告到底該寫哪一個？</strong>
+本章教你把一組重複數據濃縮成「一個共識」與「一個散布程度」，並用打靶圖搞懂準確度與精密度。<br>
+<strong>本章新詞先認識</strong>：<em>平均數</em>＝加總除以個數的共識值；<em>標準差 SD</em>＝數據彼此合不合群；<em>變異係數 CV</em>＝散布程度換成百分比；<em>R</em>＝免費統計軟體，本章只當計算機用。<br>
+<small>名詞卡住了？回 <a href="ch00.html">Ch0 名詞圖鑑</a> 查白話解釋與比喻。</small></div>
 
 <div class="goals"><b>學習目標</b>
 <ul>
@@ -48,6 +62,11 @@ moisture            # 輸入名稱按 Enter，R 會印出內容
 
 length(moisture)    # 資料筆數
 #&gt; [1] 4</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">&gt; moisture
+[1] 64.53 64.45 65.10 64.78
+&gt; length(moisture)
+[1] 4</pre></div>
 
 <div class="callout ok"><span class="t">💡 給完全新手</span>
 <span class="kbd">c</span> 是 combine（組合）的意思；<span class="kbd">&lt;-</span> 讀作「存到」。
@@ -66,7 +85,7 @@ length(moisture)    # 資料筆數
 <p><strong>標準差 SD</strong>衡量重複測定值的散布程度，是「精密度」最常用的指標。
 因為真實平均值未知，樣本標準差一律用 <strong>n−1</strong>（Nielsen 式 4.5）：</p>
 <div class="formula">
-SD = <span class="frac"><span class="num">√ Σ(<i>x<sub>i</sub></i> − <i>x̄</i>)²</span><span class="den">n − 1</span></span>
+SD = <span class="frac"><span class="num">\(\sqrt{\Sigma(x_i - \bar{x}\)^2}\)</span><span class="den">n − 1</span></span>
 = <span class="frac"><span class="num">√ 0.257</span><span class="den">3</span></span> = <strong>0.2927 %</strong>
 <span class="note">Σ(xᵢ−x̄)² = 0.0361+0.0729+0.1444+0.0036 = 0.257（Nielsen Table 4.1）</span>
 </div>
@@ -90,6 +109,12 @@ round(c(mean = xbar, SD = s, CV = cv), 3)
 dev &lt;- moisture - xbar          # 偏差
 sqrt(sum(dev^2) / (length(moisture) - 1))
 #&gt; [1] 0.2926317</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">&gt; round(c(mean = xbar, SD = s, CV = cv), 3)
+ mean    SD    CV
+64.715 0.293 0.452
+&gt; sqrt(sum(dev^2) / (length(moisture) - 1))
+[1] 0.2926317</pre></div>
 
 <h2>1.5 準確度 vs 精密度：打靶圖</h2>
 <div class="figure">
@@ -140,6 +165,26 @@ round(c(mean = mean(dry), SD = sd(dry),
         CV = sd(dry)/mean(dry)*100), 2)
 #&gt; mean    SD    CV
 #&gt; 87.19  3.34  3.83   # CV&lt;5% 但...82.20 看起來很可疑？第5章見分曉</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">&gt; round(c(Eabs = Eabs, Erel_pct = Erel), 3)
+  Eabs Erel_pct
+-0.335   -0.515
+&gt; round(c(mean = mean(dry), SD = sd(dry),
++         CV = sd(dry)/mean(dry)*100), 2)
+ mean    SD    CV
+87.19  3.34  3.83</pre></div>
+
+<h2>📊 Excel 也會算：描述統計對照</h2>
+<div class="callout ok"><span class="t">📊 沒有 R 也能動手</span>
+把水分 64.53、64.45、65.10、64.78 輸入 <code>A1:A4</code>，再用右表公式。Excel 的 <code>STDEV</code> 內建就是 n−1 版，與 R 的 <code>sd()</code> 完全一致。<br>
+<table>
+<tr><th>任務</th><th>Excel 公式</th><th>說明</th></tr>
+<tr><td>平均數</td><td><code>=AVERAGE(A1:A4)</code></td><td>→ 64.715</td></tr>
+<tr><td>標準差 SD</td><td><code>=STDEV(A1:A4)</code></td><td>→ 0.2927（樣本 n−1）</td></tr>
+<tr><td>中位數</td><td><code>=MEDIAN(A1:A4)</code></td><td>→ 64.655</td></tr>
+<tr><td>變異係數 CV%</td><td><code>=STDEV(A1:A4)/AVERAGE(A1:A4)*100</code></td><td>→ 0.452</td></tr>
+</table>
+<strong>練習</strong>：把習題的乾物質 88.62、88.74、89.20、82.20 放 <code>B1:B4</code>，同法算出 mean=87.19、SD=3.34、CV=3.83%。</div>
 
 <div class="quiz" id="quiz"></div>
 <script>
@@ -161,10 +206,20 @@ const QUIZ = [
    exp: "%Erel=(64.72−65.05)/65.05×100=−0.507%。保留負號表示偏低方向；−0.33 是絕對誤差。" },
  { q: "下列哪一個「不能」用來改善精密度？",
    opts: ["增加重複測定次數", "減少讀數判讀的主觀誤差", "校正天平與玻璃器皿", "以上都能改善精密度"], ans: 3,
-   exp: "校正器皿改善的是「系統誤差＝準確度」，不是精密度。精密度靠增加重複次數與降低隨機變異來改善——這是本課程最常考的觀念陷阱。" }
+   exp: "校正器皿改善的是「系統誤差＝準確度」，不是精密度。精密度靠增加重複次數與降低隨機變異來改善——這是本課程最常考的觀念陷阱。" },
+ { q: "在 R 語言中，若要將一組數字合併存成向量，應該使用下列哪個函數？",
+   opts: ["c()", "v()", "vector()", "list()"], ans: 0,
+   exp: "R 語言中使用 c() 函數（combine）將多個數值組合成一個向量。" },
+ { q: "要在 R 語言與 Excel 中計算樣本標準差（分母為 n-1），下列哪一組函數是對應的？",
+   opts: ["R: var(), Excel: VAR()", "R: sd(), Excel: STDEV()", "R: mean(), Excel: AVERAGE()", "R: stdev(), Excel: SD()"], ans: 1,
+   exp: "R 計算標準差的函數為 sd()，Excel 則為 STDEV()（或 STDEV.S），且兩者預設皆以 n-1 作為分母。" },
+ { q: "在計算變異係數 (CV%) 時，因為 R 和 Excel 預設皆無直接的 CV 函數，我們應如何組合指令計算？",
+   opts: ["R: mean()/sd()*100, Excel: =AVERAGE()/STDEV()*100", "R: sd()/mean()*100, Excel: =STDEV()/AVERAGE()*100", "R: sd()/median()*100, Excel: =STDEV()/MEDIAN()*100", "R: var()/mean()*100, Excel: =VAR()/AVERAGE()*100"], ans: 1,
+   exp: "變異係數的公式為「標準差 ÷ 平均數 × 100」，因此在 R 寫作 sd()/mean()*100，在 Excel 寫作 =STDEV()/AVERAGE()*100。" }
 ];
 </script>
 <script src="assets/app.js"></script>
+<script src="assets/js/showout.js"></script>
 
 <nav class="pager">
 <a href="index.html"><small>上一頁</small>課程首頁</a>

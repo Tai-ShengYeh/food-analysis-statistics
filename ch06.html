@@ -5,18 +5,33 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ch06 量測不確定度：概念與 GUM 流程</title>
 <link rel="stylesheet" href="assets/style.css">
+
+<!-- KaTeX -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\[', right: '\]', display: true}]});"></script>
 </head>
 <body>
 <header class="topbar"><div class="inner">
 <a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
 <nav class="topnav">
-<a href="index.html">首頁</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a>
+<a href="index.html">首頁</a><a href="ch00.html">Ch0 入門</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a><a href="ch13.html">Ch13 FDC配方</a><a href="ch14.html">Ch14 DOE/RSM</a>
 </nav></div></header>
 
 <main>
 <div class="crumbs">Part 2 量測不確定度（EURACHEM/CITAC QUAM:2012.P1）／第 6 章</div>
 <h1>量測不確定度：概念與 GUM 四步驟
 <span class="en">Uncertainty vs Error — The GUM Estimation Process</span></h1>
+
+<p class="lede">你的報告寫「水分 12.3%」，隔壁實驗室寫「12.3 ± 0.4%」。客戶只信後者——這一章開始，你的報告也要長這樣。</p>
+
+<div class="callout"><span class="t">🔑 課前暖身</span>
+導航說「<strong>25 ± 5 分鐘</strong>」——這就是不確定度的日常版。
+誤差是「事後才知道的單一差距」，不確定度是「事前就能給的合理範圍」。
+本章是全課程最重要的觀念轉換點，慢慢讀。<br>
+<strong>本章新詞先認識</strong>：<em>被測量</em>＝你到底在量什麼（要先講清楚）；<em>GUM</em>＝國際通用的不確定度計算流程；<em>隨機/系統誤差</em>＝上上下下的 vs 固定偏一邊的。<br>
+<small>名詞卡住了？回 <a href="ch00.html">Ch0 名詞圖鑑</a> 查白話解釋與比喻。</small></div>
 
 <div class="goals"><b>學習目標</b>
 <ul>
@@ -85,7 +100,7 @@
 <p>從模型方程式的每個參數長出「大骨」，再往下分「小骨」（校正、溫度、重複性…）。
 以第 10 章的滴定案例為例：</p>
 <div class="figure">
-<img src="assets/img/fig_fishbone.png" alt="滴定魚骨圖">
+<img src="assets/img/fig_fishbone.png" alt="魚骨圖" class="wide-img">
 <div class="cap">圖 6-1 NaOH 標定的因果圖（依 QUAM Figure A2.6 簡化重繪）</div>
 </div>
 <div class="callout warn"><span class="t">✍️ 動手練習</span>
@@ -108,6 +123,26 @@ abline(v = mean(results), col = "red", lwd = 2, lty = 2)
 u &lt;- sd(results)
 arrows(mean(results)-2*u, .08, mean(results)+2*u, .08,
        code = 3, angle = 90, lwd = 2, col = "purple") # ±U 區間</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">[1] 101.8587
+[1] 2.943092</pre></div>
+
+<h2>📊 R vs Excel：不確定度評估的兩大利器</h2>
+<p>在實務上，評估不確定度與理解其概念時，R 與 Excel 各有其不可替代的角色：</p>
+<div class="grid2">
+<div class="card"><strong>R 語言：模擬與視覺化</strong>
+<ul>
+<li><strong>生成與探索</strong>：適合用 <code>rnorm()</code> 生成含特定誤差的模擬數據，並用 <code>sd()</code> 估算隨機效應的不確定度。</li>
+<li><strong>視覺化</strong>：透過 <code>hist()</code>, <code>abline()</code>, <code>arrows()</code>，能直觀畫出真值、偏倚（系統誤差）與不確定度區間的關係，有助理解抽象概念。</li>
+</ul></div>
+<div class="card"><strong>Excel：不確定度預算表</strong>
+<ul>
+<li><strong>表格作業</strong>：GUM 流程最後的「合成」，本質上是表格作業，Excel 是天然工具。</li>
+<li><strong>公式計算</strong>：將各來源不確定度平方（<code>=C2^2</code>），再用 <code>=SQRT(SUM(D2:D10))</code> 求出合成不確定度 u<sub>c</sub>，最後乘擴展因子（<code>=2*uc</code>）得擴展不確定度。</li>
+</ul></div>
+</div>
+<div class="callout ok"><span class="t">📊 實驗室實務</span>
+業界與實驗室認證（ISO 17025）最常繳交的格式正是 Excel 的「不確定度預算表（uncertainty budget）」。第 8 章會有完整實作。</div>
 
 <div class="quiz" id="quiz"></div>
 <script>
@@ -117,7 +152,7 @@ const QUIZ = [
    exp: "QUAM §2.4.1–2.4.3：誤差是理想化概念（真值不可知）；不確定度以區間描述「值的離散性」，可以估計，且不可用來修正結果。" },
  { q: "關於隨機誤差與系統誤差，何者正確？",
    opts: ["兩者都能靠增加重複次數消除", "隨機誤差可藉增加次數縮小；系統誤差不行，必須修正", "系統誤差可用統計平均消除", "兩者都無法處理"], ans: 1,
-   exp: "QUAM §2.4.6–2.4.7：隨機誤差隨 n 增大而縮小（√n 效應）；系統誤差與 n 無關，只能靠校正/修正，且修正值的不確定度仍須計入。" },
+   exp: "QUAM §2.4.6–2.4.7：隨機誤差隨 n 增大而縮小（\\(\\sqrt{n}\\) 效應）；系統誤差與 n 無關，只能靠校正/修正，且修正值的不確定度仍須計入。" },
  { q: "GUM 流程的第一步是：",
    opts: ["列出所有誤差來源", "定義被測量並寫出量測模型方程式", "做重複實驗", "計算合成不確定度"], ans: 1,
    exp: "Step 1 = Specify the measurand：明確定義「測什麼」並寫下 y 與輸入量的數學關係（寫進 SOP）。沒有模型，後面無從展開。" },
@@ -129,10 +164,17 @@ const QUIZ = [
    exp: "QUAM §2.4.11–2.4.12：疏失（人為失誤/儀器故障）使量測無效，確認後應捨棄，不可納入任何統計分析。（可修正的抄錯如首碼錯位除外）" },
  { q: "QUAM 建議的省力原則是：",
    opts: ["每個來源都要精密實驗量化", "集中火力量化最大貢獻項，小項粗估即可", "全部用專業判斷", "只算重複性"], ans: 1,
-   exp: "合成不確定度幾乎完全由最大項控制（平方和開根號的數學性質）。QUAM 前言明言：集中努力於最大貢獻即可獲得良好估計。" }
+   exp: "合成不確定度幾乎完全由最大項控制（平方和開根號的數學性質）。QUAM 前言明言：集中努力於最大貢獻即可獲得良好估計。" },
+ { q: "在本章中，R 語言與 Excel 在不確定度評估上各有擅長之處，下列敘述何者最正確？",
+   opts: ["Excel 只能畫直方圖，不能算標準差", "R 適合用 rnorm() 等函數進行模擬與視覺化，Excel 則是建立預算表的天然工具", "R 內建 SQRT(SUM()) 函數專門處理表格", "兩者都無法處理不確定度預算表"], ans: 1,
+   exp: "R 語言強項在於模擬與繪圖（如 hist, abline），而 Excel 的表格結構非常適合整理各項不確定度來源並以 SQRT(SUM()) 進行合成。" },
+ { q: "在 Excel 中建立不確定度預算表時，計算「合成不確定度（uc）」最常使用的公式組合是：",
+   opts: ["=AVERAGE(D2:D10)", "=SUM(D2:D10)", "=SQRT(SUM(D2:D10))", "=STDEV(D2:D10)"], ans: 2,
+   exp: "合成標準不確定度是各成分「變異數（標準不確定度的平方）」的總和再開根號，因此在 Excel 中通常用 =SQRT(SUM(D2:D10)) 來計算。" }
 ];
 </script>
 <script src="assets/app.js"></script>
+<script src="assets/js/showout.js"></script>
 
 <nav class="pager">
 <a href="ch05.html"><small>上一章</small>Ch5 有效數字與異常值檢定</a>
