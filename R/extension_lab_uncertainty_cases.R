@@ -1,5 +1,5 @@
 # =====================================================================
-# 選修案例庫：天平、酸鹼滴定與 HPLC 量測不準度
+# 選修案例庫：天平、酸鹼滴定與 HPLC 量測不確定度
 # 教學用 bottom-up 範例；正式數值須換成實驗室證書、驗證與品管資料
 # =====================================================================
 
@@ -40,7 +40,7 @@ u_V_cert <- 0.030 / 2                   # 滴定管證書 U, k=2
 u_V_res <- 0.01 / sqrt(12)
 u_endpoint <- 0.020 / sqrt(3)           # 終點判讀界限 ±0.020 mL
 u_V <- sqrt(u_V_repeat^2 + u_V_cert^2 + u_V_res^2 + u_endpoint^2)
-u_C <- 0.00020                          # NaOH 標定標準不準度 mol/L
+u_C <- 0.00020                          # NaOH 標定標準不確定度 mol/L
 u_m <- 0.001 / sqrt(3)                  # 天平界限 ±0.001 g
 rel_acidity <- c(volume = u_V / V, standardization = u_C / C_NaOH,
                   sample_mass = u_m / m_sample)
@@ -59,7 +59,7 @@ DF <- 5
 x_vial <- (mean(sample_area) - coef(fit)[1]) / coef(fit)[2]
 caffeine <- x_vial * DF
 
-# 分開估計校正曲線、樣品重複性、稀釋與回收率的標準不準度
+# 分開估計校正曲線、樣品重複性、稀釋與回收率的標準不確定度
 s_yx <- sigma(fit)
 Sxx <- sum((std_conc - mean(std_conc))^2)
 u_curve_vial <- s_yx / abs(coef(fit)[2]) *
@@ -67,7 +67,7 @@ u_curve_vial <- s_yx / abs(coef(fit)[2]) *
 u_repeat_vial <- sd(sample_area) / sqrt(length(sample_area)) /
   abs(coef(fit)[2])
 u_DF_rel <- sqrt((0.006 / 1.000)^2 + (0.08 / 5.00)^2) # 移液管與容量瓶
-u_recovery_rel <- 0.010                               # 驗證資料的回收率標準不準度
+u_recovery_rel <- 0.010                               # 驗證資料的回收率標準不確定度
 u_hplc <- c(
   calibration_curve = u_curve_vial * DF,
   sample_repeatability = u_repeat_vial * DF,

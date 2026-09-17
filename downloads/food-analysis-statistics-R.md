@@ -1,4 +1,4 @@
-# 食品分析數據品管與量測不準度：R 程式全集
+# 食品分析數據品管與量測不確定度：R 程式全集
 
 > 適用對象：沒有程式基礎的大學生。必修課程與實務案例使用 R 內建函數；選修 metRology 工具箱需要額外套件。
 
@@ -125,11 +125,11 @@ qnorm(0.99 + 0.005)     # 2.5758 ~ 2.58
 # 課本範例：假設水分測了 25 次，x_bar=64.72, SD=0.2927
 n_big <- 25; xbar <- 64.72; s <- 0.2927
 ci_z <- xbar + c(-1, 1) * qnorm(0.975) * s / sqrt(n_big)
-round(ci_z, 2)          # -> 64.60  64.84，即 64.72 ± 0.115%
+round(ci_z, 2)          # -> 64.61  64.83，即 64.72 ± 0.115%
 
 # 標準誤 (Standard Error of the Mean, SEM)
 sem <- s / sqrt(n_big)
-sem                     # 平均數的「不準度」，n 越大 SEM 越小
+sem                     # 平均數的「不確定度」，n 越大 SEM 越小
 
 # ---------- 3. t 值：小樣本(n<30)才是食品分析的日常 ----------
 # 分析通常只做 3~5 次重複，必須用 t 分布代替常態
@@ -145,8 +145,8 @@ moisture <- c(64.53, 64.45, 65.10, 64.78)
 xbar <- mean(moisture); s <- sd(moisture); n <- length(moisture)
 t_crit <- qt(0.975, df = n - 1)         # 3.182
 half_width <- t_crit * s / sqrt(n)
-half_width                              # -> 0.4646（課本 0.465）
-c(xbar - half_width, xbar + half_width) # 65.185 ~ 64.255
+half_width                              # -> 0.4656（課本用查表值 t=3.18 手算得 0.465）
+c(xbar - half_width, xbar + half_width) # -> 64.249 ~ 65.181
 
 cat(sprintf("95%% CI = %.2f ± %.3f %%", xbar, half_width))
 
@@ -206,7 +206,7 @@ round(c(blank_mean = x_blk, blank_sd = s_blk, LOD = LOD, LOQ = LOQ), 4)
 spiked <- c(1.02, 0.98, 1.05, 0.99, 1.01, 0.97, 1.03)  # 7 次加標樣品
 n <- length(spiked)
 mdl <- qt(0.99, n - 1) * sd(spiked)
-round(mdl, 3)      # -> 約 0.068 mg/L（涵蓋整個方法流程的變異）
+round(mdl, 3)      # -> 約 0.090 mg/L（涵蓋整個方法流程的變異）
 
 # ---------- 3. Shewhart 管制圖 ----------
 # 情境：實驗室每天用標準品(蛋白質 12.0%)監控方法是否穩定
@@ -246,8 +246,9 @@ plot(qc_days, csum, type = "b", pch = 19, col = "darkgreen",
      main = "CuSum 管制圖",
      xlab = "分析日", ylab = "累積偏差 (CuSum)")
 abline(h = 0, lty = 2)
-# 解讀：第 8~11 天的 +0.28 漂移在 Shewhart 圖上只是「靠近警告線」，
-# 但 CuSum 的斜率明顯轉正 —— 小而持續的偏移無所遁形。
+# 解讀：第 8~11 天的 +0.28 漂移，在 Shewhart 圖上第 9 天先觸及 ±2s 警告線、
+# 第 10 天已衝出 ±3s 行動界限；但 CuSum 的斜率早在第 8 天就明顯轉正並持續攀升 ——
+# 比 Shewhart 更早、更清楚地顯示這是小而持續的系統性偏移，而非單點雜訊。
 
 # ---------- 5. 其他日常 QC 手段（名詞認識）----------
 # 空白試驗 blank        : 抓污染與背景干擾
@@ -452,11 +453,11 @@ q_test <- function(x) {
 # 範例 1：水分測定出現可疑低值 55.31 (Nielsen 式 4.27)
 moisture_bad <- c(64.53, 64.45, 65.10, 64.78, 55.31)
 q_test(moisture_bad)
-# Q = (64.45-55.31)/(64.78-55.31) = 0.97 > 0.76 (n=5? 注意!)
+# Q = (64.45-55.31)/(65.10-55.31) = 9.14/9.79 = 0.934 > 0.64 (n=5, 90% 信賴) -> 捨棄 55.31
 # 課本原例是「先算好4筆正常值的平均」情境，此處示範含異常值的5筆版本。
 # 若只拿 55.31 + 三筆最近值做 n=4 檢驗：
 moisture_4 <- c(64.78, 64.53, 64.45, 55.31)
-q_test(moisture_4)               # Q=0.969 > 0.76 -> 捨棄 55.31
+q_test(moisture_4)               # Q=0.965 > 0.76 -> 捨棄 55.31
 
 # 範例 2：乾物質數據 (Nielsen 習題 3)
 dry <- c(88.62, 88.74, 89.20, 82.20)
@@ -484,7 +485,7 @@ grubbs_test <- function(x, alpha = 0.05) {
        value = x[which.max(abs(x - mean(x)))])
 }
 
-grubbs_test(dry)                  # G=2.60 > 1.46 -> 82.20 是異常值
+grubbs_test(dry)                  # G=1.496 > 1.481 -> 82.20 是異常值（勉強超過，差距極小）
 sapply(3:10, grubbs_crit)         # 看看不同 n 的臨界值
 
 # ---------- 4. 學術倫理提醒 ----------
@@ -501,13 +502,13 @@ sapply(3:10, grubbs_crit)         # 看看不同 n 的臨界值
 
 ```r
 # =====================================================================
-# Ch06 量測不準度的概念：誤差 vs 不確定度 (QUAM 2012 第2章)
+# Ch06 量測不確定度的概念：誤差 vs 不確定度 (QUAM 2012 第2章)
 # EURACHEM/CITAC Guide CG4 "Quantifying Uncertainty in Analytical Measurement"
 # =====================================================================
 
-# ---------- 1. 用模擬理解「誤差」與「不準度」的差別 ----------
+# ---------- 1. 用模擬理解「誤差」與「不確定度」的差別 ----------
 # 誤差 error    : 單一結果與真值的差（一個數，有正負，實務上未知）
-# 不準度 uncertainty: 描述「真值可能落在哪個範圍」的參數（一個區間）
+# 不確定度 uncertainty: 描述「真值可能落在哪個範圍」的參數（一個區間）
 #
 # 模擬情境：真值 = 100.0 mg/L，方法有 +2 的系統誤差(偏倚)，
 #           隨機誤差 SD = 3
@@ -521,30 +522,30 @@ results <- rnorm(30, mean = true_value + bias, sd = random_sd)
 mean(results)              # 觀測平均 ~102 -> 與真值差約 +2 = 誤差
 sd(results)                # 散布程度 ~3   -> 隨機效應的大小
 
-# 畫圖看「誤差」與「不準度」
+# 畫圖看「誤差」與「不確定度」
 hist(results, breaks = 8, col = "lightblue",
-     main = "誤差 vs 不準度",
+     main = "誤差 vs 不確定度",
      xlab = "量測結果 (mg/L)", freq = FALSE)
 abline(v = true_value, col = "darkgreen", lwd = 3)      # 真值
 abline(v = mean(results), col = "red", lwd = 2, lty = 2) # 測得平均
 u <- sd(results)
 arrows(mean(results) - 2*u, 0.08, mean(results) + 2*u, 0.08,
        code = 3, angle = 90, length = 0.05, lwd = 2, col="purple")
-text(mean(results), 0.10, "±U (不準度區間)", col = "purple", pos = 3)
+text(mean(results), 0.10, "±U (不確定度區間)", col = "purple", pos = 3)
 
 # 重點：
-# - 誤差是單點、不可知；不準度是區間、可估計
+# - 誤差是單點、不可知；不確定度是區間、可估計
 # - 隨機誤差可用增加重複次數縮小；系統誤差不行，必須校正/加回收修正
 # - spurious error (人為疏失如抄錄數字) 一經確認應整筆捨棄，
 #   不可以納入任何統計處理！
 
-# ---------- 2. ISO/IEC 17025 為什麼要求不準度 ----------
-# 實驗室報告若無不準度，「12.5 mg/kg 是否超標 10 mg/kg」根本無從判定。
+# ---------- 2. ISO/IEC 17025 為什麼要求不確定度 ----------
+# 實驗室報告若無不確定度，「12.5 mg/kg 是否超標 10 mg/kg」根本無從判定。
 # 合規判定需要知道：結果 ± U 與法規限值的相對位置（見 ch08）。
 
 # ---------- 3. GUM 四步驟流程預覽 (QUAM 第4章 Figure 1) ----------
 # Step 1 Specify the measurand     明確定義被測量(寫出計算式!)
-# Step 2 Identify uncertainty sources 列出所有不準度來源(魚骨圖)
+# Step 2 Identify uncertainty sources 列出所有不確定度來源(魚骨圖)
 # Step 3 Quantify components        把每個來源換算成標準差 u(x_i)
 # Step 4 Calculate combined U       合成 uc 再乘涵蓋因子 k 得 U
 cat("GUM 流程: Step1 定義 -> Step2 找來源 -> Step3 量化 -> Step4 合成\n")
@@ -552,7 +553,7 @@ cat("GUM 流程: Step1 定義 -> Step2 找來源 -> Step3 量化 -> Step4 合成
 # ---------- 4. 小練習：寫出你的被測量 ----------
 # 例：以 HPLC 測咖啡飲料之咖啡因含量
 # c(mg/L) = (由標準曲線內插濃度) * 稀釋倍數 / 樣品體積
-# 想想看哪些參數會帶進不準度？
+# 想想看哪些參數會帶進不確定度？
 #   校正曲線斜率截距、稀釋用容量瓶/移液管、進樣重複性、基質效應...
 ```
 
@@ -562,15 +563,15 @@ cat("GUM 流程: Step1 定義 -> Step2 找來源 -> Step3 量化 -> Step4 合成
 
 ```r
 # =====================================================================
-# Ch07 不準度的量化：Type A / Type B 與分布轉換
+# Ch07 不確定度的量化：Type A / Type B 與分布轉換
 # (QUAM 2012 第7章 + 附錄 E.1 分布函數)
 # =====================================================================
 
 # ---------- 1. Type A：由重複量測的統計得出 ----------
-# 直接用實驗標準差當標準不準度 u(x)
+# 直接用實驗標準差當標準不確定度 u(x)
 # 例：天平重複稱同一樣品 5 次 (mg)
 repeats <- c(1001.2, 1000.8, 1001.5, 1001.0, 1000.9)
-u_A <- sd(repeats)          # 單次量測的標準不準度 = 0.27 mg
+u_A <- sd(repeats)          # 單次量測的標準不確定度 = 0.27 mg
 u_A
 # 若結果是 n 次的平均，則用平均值標準誤：
 u_A_mean <- sd(repeats)/sqrt(length(repeats))
@@ -580,7 +581,7 @@ u_A_mean
 # 關鍵：把「界限 ±a」換算成等效標準差 u(x)
 #
 # 選擇分布前先問「±a 代表什麼」：
-# 1. 證書直接給擴展不準度 U 與涵蓋因子 k：u = U/k
+# 1. 證書直接給擴展不確定度 U 與涵蓋因子 k：u = U/k
 # 2. 明確寫成常態分布的中央 95% 區間：u 約為 a/1.96
 # 3. 只知道最大允差 ±a，界限內各值同樣可能：u = a/sqrt(3)
 # 4. 有證據顯示中央最可能、越靠近界限越少見：u = a/sqrt(6)
@@ -639,13 +640,13 @@ for (i in seq_len(nrow(items))) {
     rect       = u_rect(items$a[i]),
     normal95   = u_norm95(items$a[i]))
 }
-round(items$u, 4)     # 每一項的標準不準度
+round(items$u, 4)     # 每一項的標準不確定度
 
-# ---------- 5. 相對標準不準度 ----------
+# ---------- 5. 相對標準不確定度 ----------
 # 很多時候用 RSD (u/x) 表示更方便合成 (乘除模型見 ch08)
 c_Cd  <- 1002.7        # QUAM Example A1 的鎘標準液 (mg/L)
 rel_u <- c(Purity = 0.000058, Mass = 0.05/100.28, Volume = 0.07/100.0)
-round(rel_u, 5)        # 純度、質量、體積的相對標準不準度
+round(rel_u, 5)        # 純度、質量、體積的相對標準不確定度
 ```
 
 ---
@@ -654,7 +655,7 @@ round(rel_u, 5)        # 純度、質量、體積的相對標準不準度
 
 ```r
 # =====================================================================
-# Ch08 合成與擴展不準度、結果報告與符合性判定
+# Ch08 合成與擴展不確定度、結果報告與符合性判定
 # (QUAM 2012 第8章 Step4 + 第9章 Reporting)
 # =====================================================================
 
@@ -669,7 +670,7 @@ uc1 <- sqrt(u_p^2 + u_q^2 + u_r^2)
 y1                 # 7.61
 round(uc1, 2)      # 0.26
 
-# ---------- 2. 合成規則 Rule 2：乘除模型 (用相對不準度) ----------
+# ---------- 2. 合成規則 Rule 2：乘除模型 (用相對不確定度) ----------
 # y = p*q/r -> uc(y)/y = sqrt( (u(p)/p)^2 + (u(q)/q)^2 + (u(r)/r)^2 )
 
 # QUAM 8.2.8 Example 2: y = o*p/(q*r)
@@ -681,11 +682,11 @@ uc2 <- y2 * rel_uc2
 y2                          # 0.557
 round(uc2, 3)               # 0.024
 
-# ---------- 3. 擴展不準度 Expanded uncertainty U = k * uc ----------
+# ---------- 3. 擴展不確定度 Expanded uncertainty U = k * uc ----------
 U1 <- 2 * uc1               # k = 2, 信賴水準約 95%
 cat(sprintf("y1 = %.2f ± %.2f  (k=2)\n", y1, U1))
 
-# 何時 k 不用 2？當合成不準度被「自由度很少」的項主導時
+# 何時 k 不用 2？當合成不確定度被「自由度很少」的項主導時
 # QUAM 8.3.4 範例：稱重 uc = sqrt(0.01^2 + 0.08^2) = 0.081 mg
 #   其中 s_obs=0.08 由 n=5 次觀測而來 (df = 5-1 = 4)
 uc_w <- sqrt(0.01^2 + 0.08^2)
@@ -704,7 +705,7 @@ report_expanded(3.52, 0.14, "g/100g")   # QUAM 氮含量範例
 # U 與 uc 通常取至多 2 位有效數字；結果位數須與 U 對齊
 
 # ---------- 5. 符合性判定 compliance against limits ----------
-# QUAM Figure 2：結果+不準度 與上限 L 的四種關係
+# QUAM Figure 2：結果+不確定度 與上限 L 的四種關係
 judge_compliance <- function(result, U, limit,
                              rule = c("conservative","simple")) {
   rule <- match.arg(rule)
@@ -779,7 +780,7 @@ contrib <- c(
 round(contrib, 3)              # 體積貢獻最大！
 
 barplot(contrib, col = c("tomato","gold","steelblue"),
-        main = "不準度預算 (uncertainty budget)",
+        main = "不確定度預算 (uncertainty budget)",
         ylab = "|u(y,x_i)| (mg/L)", las = 1)
 
 # ---------- 2. 方法二：Kragten 數值微分法 ----------
@@ -803,7 +804,7 @@ round(res_k$uc, 2)
 
 # ---------- 3. 方法三：Monte Carlo 模擬 (GUM Supplement 1) ----------
 # 把每個輸入量視為「分布」，隨機抽樣 N 次，算出 N 個可能的 y，
-# 直接用 y 的分布敘述不準度 —— 完全不需要偏微分！
+# 直接用 y 的分布敘述不確定度 —— 完全不需要偏微分！
 set.seed(2024)
 N <- 100000
 m_sim <- rnorm(N, m, u_m)      # Type A/常態來源用常態抽樣
@@ -820,7 +821,7 @@ abline(v = c_Cd, col = "red", lwd = 2)             # GUM 點估計
 mc_mean <- mean(y_mc)
 mc_interval <- quantile(y_mc, c(0.025, 0.975))
 round(mc_interval, 1)          # 95% 涵蓋區間
-sd(y_mc)                       # MC 的標準不準度 ~ 解析法 uc
+sd(y_mc)                       # MC 的標準不確定度 ~ 解析法 uc
 
 # 三種方法比較
 cat(sprintf("解析法   : %.3f mg/L\n", uc_analytic))
@@ -837,13 +838,13 @@ cat(sprintf("MC 95%% 區間 : [%.1f, %.1f]\n",
 
 ---
 
-## ch10_capstone：案例1 鎘標準液不準度預算 | 案例2 飼料粗纖維(QUAM A6)
+## ch10_capstone：案例1 鎘標準液不確定度預算 | 案例2 飼料粗纖維(QUAM A6)
 
 ```r
 # =====================================================================
 # Ch10 綜合案例：把所有工具串起來
-# 案例1 鎘標準液不準度預算 | 案例2 飼料粗纖維(QUAM A6)
-# 案例3 標準曲線內插的不準度(QUAM 附錄 E.4)
+# 案例1 鎘標準液不確定度預算 | 案例2 飼料粗纖維(QUAM A6)
+# 案例3 標準曲線內插的不確定度(QUAM 附錄 E.4)
 # =====================================================================
 
 # =============== 案例 2：粗纖維 (QUAM Example A6) ===============
@@ -858,7 +859,7 @@ sR_table <- data.frame(
   s_r    = c(0.198, 0.358, 0.264, 0.232, 0.391))
 print(sR_table)
 
-# 觀察：sR 約為纖維含量的線性函數 -> 相對標準不準度隨含量遞減
+# 觀察：sR 約為纖維含量的線性函數 -> 相對標準不確定度隨含量遞減
 plot(sR_table$fibre, sR_table$sR, pch = 19, col = "brown",
      main = "粗纖維：再現性標準差與含量的關係",
      xlab = "纖維含量 (% m/m)", ylab = "sR (% m/m)")
@@ -879,7 +880,7 @@ data.frame(fibre = fibre_levels,
            U  = round(U_levels, 2),
            U_percent = round(U_levels/fibre_levels*100))
 
-# =============== 案例 3：標準曲線內插的不準度 ===============
+# =============== 案例 3：標準曲線內插的不確定度 ===============
 # QUAM 附錄 E.4 Eq.E3.5：反推濃度的變異數
 # var(x_pred) = (S^2/b1^2) * ( 1/p + 1/n + (x_pred - xbar)^2 / Sxx )
 #   S  = 迴歸殘差標準差, b1 = 斜率, p = 未知樣品重複測定次數,
@@ -900,13 +901,13 @@ u_xpred <- sqrt(var_xpred)
 c(x_pred = x_pred, u = u_xpred, U_k2 = 2*u_xpred)
 # 報告：Na = 11.1 ± 0.4 ug/mL (k=2) 之類的格式
 
-# 畫出「內插濃度的不準度」隨濃度的變化 —— 兩端最寬!
+# 畫出「內插濃度的不確定度」隨濃度的變化 —— 兩端最寬!
 new_x <- seq(1, 20, length = 50)
 u_curve <- sapply(new_x, function(xp) {
   sqrt((S^2/b1^2) * (1/p_reps + 1/n + (xp - xbar)^2/Sxx))
 })
 plot(new_x, 2*u_curve, type = "l", lwd = 2, col = "purple",
-     main = "標準曲線反推濃度的 95% 不準度 (k=2)",
+     main = "標準曲線反推濃度的 95% 不確定度 (k=2)",
      xlab = "濃度 ug/mL", ylab = "±U (ug/mL)")
 abline(v = x_pred, lty = 2, col = "grey")
 
@@ -939,7 +940,7 @@ cat(sprintf("Step4 報告: c(Cd) = (%.1f ± %.1f) mg/L (k=2, 95%%)\n",
 
 ```r
 # =====================================================================
-# 選修案例庫：天平、酸鹼滴定與 HPLC 量測不準度
+# 選修案例庫：天平、酸鹼滴定與 HPLC 量測不確定度
 # 教學用 bottom-up 範例；正式數值須換成實驗室證書、驗證與品管資料
 # =====================================================================
 
@@ -980,7 +981,7 @@ u_V_cert <- 0.030 / 2                   # 滴定管證書 U, k=2
 u_V_res <- 0.01 / sqrt(12)
 u_endpoint <- 0.020 / sqrt(3)           # 終點判讀界限 ±0.020 mL
 u_V <- sqrt(u_V_repeat^2 + u_V_cert^2 + u_V_res^2 + u_endpoint^2)
-u_C <- 0.00020                          # NaOH 標定標準不準度 mol/L
+u_C <- 0.00020                          # NaOH 標定標準不確定度 mol/L
 u_m <- 0.001 / sqrt(3)                  # 天平界限 ±0.001 g
 rel_acidity <- c(volume = u_V / V, standardization = u_C / C_NaOH,
                   sample_mass = u_m / m_sample)
@@ -999,7 +1000,7 @@ DF <- 5
 x_vial <- (mean(sample_area) - coef(fit)[1]) / coef(fit)[2]
 caffeine <- x_vial * DF
 
-# 分開估計校正曲線、樣品重複性、稀釋與回收率的標準不準度
+# 分開估計校正曲線、樣品重複性、稀釋與回收率的標準不確定度
 s_yx <- sigma(fit)
 Sxx <- sum((std_conc - mean(std_conc))^2)
 u_curve_vial <- s_yx / abs(coef(fit)[2]) *
@@ -1007,7 +1008,7 @@ u_curve_vial <- s_yx / abs(coef(fit)[2]) *
 u_repeat_vial <- sd(sample_area) / sqrt(length(sample_area)) /
   abs(coef(fit)[2])
 u_DF_rel <- sqrt((0.006 / 1.000)^2 + (0.08 / 5.00)^2) # 移液管與容量瓶
-u_recovery_rel <- 0.010                               # 驗證資料的回收率標準不準度
+u_recovery_rel <- 0.010                               # 驗證資料的回收率標準不確定度
 u_hplc <- c(
   calibration_curve = u_curve_vial * DF,
   sample_repeatability = u_repeat_vial * DF,
@@ -1040,12 +1041,12 @@ stopifnot(all(is.finite(summary_table$U)), all(summary_table$U > 0))
 
 ---
 
-## extension_metrology_toolbox：GUM / Kragten / Monte Carlo / 不準度貢獻比較
+## extension_metrology_toolbox：GUM / Kragten / Monte Carlo / 不確定度貢獻比較
 
 ```r
 # =====================================================================
 # 延伸單元：metRology 專業工具箱
-# GUM / Kragten / Monte Carlo / 不準度貢獻比較
+# GUM / Kragten / Monte Carlo / 不確定度貢獻比較
 # =====================================================================
 
 # 本單元是選修；前 10 章仍只使用 base R。
@@ -1082,10 +1083,10 @@ gum <- metRology::uncert(
 
 gum                     # 完整輸出
 gum$y                   # 測量結果，約 1002.7 mg/L
-gum$u                   # 合成標準不準度 uc，約 0.864 mg/L
+gum$u                   # 合成標準不確定度 uc，約 0.864 mg/L
 metRology::contribs(gum) # 各來源的變異貢獻
 
-# GUM() 介面另外提供有效自由度、k 與擴展不準度 U。
+# GUM() 介面另外提供有效自由度、k 與擴展不確定度 U。
 gum_report <- metRology::GUM(
   var.name = c("m", "P", "V"),
   x.i = unlist(x),
@@ -1132,14 +1133,14 @@ print(comparison)
 # 此近線性案例三種 uc 應非常接近。
 stopifnot(max(comparison) - min(comparison) < 0.002)
 
-# ---------- 6. 不準度預算視覺化 ----------
+# ---------- 6. 不確定度預算視覺化 ----------
 variance_contributions <- metRology::contribs(gum)
 standard_contributions <- sqrt(variance_contributions)
 
 barplot(standard_contributions,
         col = c("tomato", "gold", "steelblue"),
-        main = "metRology：鎘標準液不準度貢獻",
-        ylab = "標準不準度貢獻 (mg/L)",
+        main = "metRology：鎘標準液不確定度貢獻",
+        ylab = "標準不確定度貢獻 (mg/L)",
         las = 1)
 
 # ---------- 7. 相關性示範 ----------
@@ -1168,4 +1169,4 @@ c(independent_uc = unname(gum$u),
 
 ## 建議的期末提交格式
 
-請提交：原始數據、可重現 R 程式、必要圖形、結果與單位、不準度及涵蓋資訊、品管判讀、決策規則，以及限制說明。
+請提交：原始數據、可重現 R 程式、必要圖形、結果與單位、不確定度及涵蓋資訊、品管判讀、決策規則，以及限制說明。

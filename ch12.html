@@ -10,14 +10,12 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
-  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\[', right: '\]', display: true}]});"></script>
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true}]});"></script>
 </head>
 <body>
 <header class="topbar"><div class="inner">
 <a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
-<nav class="topnav">
-<a href="index.html">首頁</a><a href="ch00.html">Ch0 入門</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a><a href="ch13.html">Ch13 FDC配方</a><a href="ch14.html">Ch14 DOE/RSM</a>
-</nav></div></header>
+<nav class="topnav" data-nav></nav></div></header>
 
 <main>
 <div class="crumbs">Part 3 進階延伸／第 12 章（建議先修：Ch4 迴歸、Ch9 模擬法、Ch10 案例③）</div>
@@ -41,9 +39,11 @@
 <li>完成氯黴素在蝦仁的完整預算與限量符合性判定</li>
 </ul></div>
 
+<div class="quiz" data-phase="pre"></div>
+
 <div class="callout"><span class="t">🧪 情境</span>
 以電噴灑電離（ESI）LC-MS/MS（三重四極柱，MRM 模式）測定<strong>蝦仁中氯黴素</strong>
-（chloramphenicol，禁藥，管制界限 MRPL   <strong>0.3 μg/kg</strong>）。
+（chloramphenicol，禁藥，管制界限 MRPL = <strong>0.3 μg/kg</strong>）。
 痕量層級 + 複雜基質 —— 這是 LC-MS/MS 的主場，也是不確定度評估最挑戰的戰場。</div>
 
 <h2>12.1 LC-MS/MS 有什麼不一樣？</h2>
@@ -72,9 +72,9 @@ Matuszewski, B. K.; Constanzer, M. L.; Chavez-Eng, C. M. "Strategies for the Ass
 <tr><td>C 添加後萃取</td><td>先添加再萃取（像真樣品）</td><td>電離 + 萃取損失</td></tr>
 </table>
 <div class="formula">
-ME%   (斜率<sub>B</sub>/斜率<sub>A</sub> − 1) × 100   (38400/45200 − 1)×100   <strong>−15.0%</strong>（離子壓制）
-<br><br>RE%   (斜率<sub>C</sub>/斜率<sub>B</sub> − 1) × 100   (34600/38400 − 1)×100   <strong>−9.9%</strong>（萃取回收）
-<br><br>PE%   (斜率<sub>C</sub>/斜率<sub>A</sub> − 1) × 100   <strong>−23.5%</strong>（整體流程效率）
+ME% = (斜率<sub>B</sub>/斜率<sub>A</sub> − 1) × 100 = (38400/45200 − 1)×100 = <strong>−15.0%</strong>（離子壓制）
+<br><br>RE% = (斜率<sub>C</sub>/斜率<sub>B</sub> − 1) × 100 = (34600/38400 − 1)×100 = <strong>−9.9%</strong>（萃取回收）
+<br><br>PE% = (斜率<sub>C</sub>/斜率<sub>A</sub> − 1) × 100 = <strong>−23.5%</strong>（整體流程效率）
 </div>
 
 <h3>同位素內標（SIL-IS）：LC-MS/MS 的護身符</h3>
@@ -105,7 +105,7 @@ ME%   (斜率<sub>B</sub>/斜率<sub>A</sub> − 1) × 100   (38400/45200 − 1)
 
 <h2>12.4 完整預算：氯黴素在蝦仁</h2>
 <p>量測模型（內部驗證法，同 Ch10 案例③的邏輯）：
-<strong>w   (儀器讀值 / Rec) × F<sub>hom</sub></strong>，儀器讀值已含 SIL-IS 同位素稀釋校正。</p>
+<strong>w = (儀器讀值 / Rec) × F<sub>hom</sub></strong>，儀器讀值已含 SIL-IS 同位素稀釋校正。</p>
 <table>
 <tr><th>成分</th><th>相對標準不確定度</th><th>來源與估法</th></tr>
 <tr class="hl"><td><strong>中間精密度</strong></td><td class="num">0.22</td><td>驗證期不同天/人/校正週期的樣品數據（SANTE 風格）</td></tr>
@@ -114,14 +114,14 @@ ME%   (斜率<sub>B</sub>/斜率<sub>A</sub> − 1) × 100   (38400/45200 − 1)
 <tr><td>回收率偏倚</td><td class="num">0.06</td><td>加標回收平均 90%，平均值的標準誤＋顯著性</td></tr>
 </table>
 <div class="formula">
-u<sub>c</sub>(w)/w   \(\sqrt{(0.22² + 0.15² + 0.08² + 0.06²)}\)   <strong>0.28</strong>
-<br><br>儀器讀值 0.19 μg/kg → 回收率修正 w   0.19/0.90   <strong>0.21 μg/kg</strong>
-<br><br>U   2 × 0.28 × 0.21   0.12 → 報告 <strong>(0.21 ± 0.12) μg/kg（k 2）</strong>
+u<sub>c</sub>(w)/w = \(\sqrt{(0.22² + 0.15² + 0.08² + 0.06²)}\) = <strong>0.28</strong>
+<br><br>儀器讀值 0.19 μg/kg → 回收率修正 w = 0.19/0.90 = <strong>0.21 μg/kg</strong>
+<br><br>U = 2 × 0.28 × 0.21 = 0.12 → 報告 <strong>(0.21 ± 0.12) μg/kg（k=2）</strong>
 <span class="note">變異數占比：中間精密度 60% &gt; 均勻性 28% ≫ 校正 8% ≫ 回收率 4%</span>
 </div>
 
 <h2>12.5 符合性判定與「決策支持」</h2>
-<p>MRPL   0.3 μg/kg：0.21 + 0.12   0.33 &gt; 0.3、0.21 − 0.12   0.09 &lt; 0.3
+<p>MRPL = 0.3 μg/kg：0.21 + 0.12 = 0.33 &gt; 0.3、0.21 − 0.12 = 0.09 &lt; 0.3
 → <strong>灰色地帶</strong>（情境 iii，第 8 章）。此時 Monte Carlo 可以給管理層更細的資訊：</p>
 <div class="formula">
 P(真值 &gt; 0.3) ≈ 7%
@@ -132,7 +132,7 @@ P(真值 &gt; 0.3) ≈ 7%
 滯留時間差 0.02 min &lt; 0.1 min ✓。<strong>定性「確認」成立後，定量不確定度才登場</strong>。
 兩者一起構成完整的「檢出且定量」報告。</div>
 
-<pre class="rcode" data-file="case_lcmsms.R">#        案例(4) LC-MS/MS 氯黴素 (完整腳本，下載後可執行)       
+<pre class="rcode" data-file="case_lcmsms.R"># ====== 案例(4) LC-MS/MS 氯黴素 (完整腳本，下載後可執行) ======
 # --- Part A. Matuszewski 基質效應 ---
 slope_solvent &lt;- 45200; slope_post &lt;- 38400; slope_pre &lt;- 34600
 ME &lt;- slope_post/slope_solvent - 1     #&gt; -0.150 (離子壓制)
@@ -141,15 +141,15 @@ PE &lt;- slope_pre /slope_solvent - 1     #&gt; -0.235
 
 # 加入 SIL-IS (面積比校正) 後：
 s_sol &lt;- 1.020; s_post &lt;- 0.980; s_pre &lt;- 0.972
-round(c(ME_IS   s_post/s_sol - 1, RE_IS   s_pre/s_post - 1), 3)
-#&gt; ME_IS -0.039  RE_IS -0.008  (基質效應被抵銷!)
+round(c(ME_IS = s_post/s_sol - 1, RE_IS = s_pre/s_post - 1), 3)
+#&gt; ME_IS=-0.039  RE_IS=-0.008  (基質效應被抵銷!)
 
 # --- Part B. 1/x 加權校正 vs OLS ---
 conc  &lt;- c(0.02, 0.05, 0.10, 0.20, 0.50)
 set.seed(11)
 ratio &lt;- 0.001 + 2*conc + rnorm(5, 0, sqrt(4e-4*conc))  # 比例誤差
 fit_ols &lt;- lm(ratio ~ conc)
-fit_w   &lt;- lm(ratio ~ conc, weights   1/conc)
+fit_w   &lt;- lm(ratio ~ conc, weights = 1/conc)
 backcalc &lt;- function(fit, y) (y - coef(fit)[1]) / coef(fit)[2]
 round((backcalc(fit_ols, ratio)/conc - 1)*100, 1)
 #&gt; 低濃度 0.02 處 OLS 偏到 +14.3%
@@ -161,19 +161,19 @@ y_obs &lt;- 0.0405
 set.seed(1); N &lt;- 5000
 x_mc &lt;- replicate(N, {
   y_star &lt;- fitted(fit_w) + rnorm(5, 0, sqrt(4e-4*conc))
-  bw &lt;- lm(y_star ~ conc, weights   1/conc)
+  bw &lt;- lm(y_star ~ conc, weights = 1/conc)
   backcalc(bw, y_obs)
 })
 round(quantile(x_mc, c(.025,.975)), 3)   #&gt; 0.019 ~ 0.023
 
 # --- Part C. 預算 (內部驗證法) ---
-rel &lt;- c(precision   0.22, cal_matrix   0.08,
-         recovery   0.06, homogeneity   0.15)
+rel &lt;- c(precision = 0.22, cal_matrix = 0.08,
+         recovery = 0.06, homogeneity = 0.15)
 rel_uc &lt;- sqrt(sum(rel^2))               #&gt; 0.284
 result &lt;- 0.19 / 0.90                    #&gt; 0.211 (回收率修正)
 U &lt;- 2 * rel_uc * result
-sprintf("氯黴素   (%.2f ± %.2f) ug/kg (k 2)", result, U)
-#&gt; "氯黴素   (0.21 ± 0.12) ug/kg (k 2)"
+sprintf("氯黴素 = (%.2f ± %.2f) ug/kg (k=2)", result, U)
+#&gt; "氯黴素 = (0.21 ± 0.12) ug/kg (k=2)"
 
 # --- Part D. 符合性 + 決策支持 ---
 MRL &lt;- 0.3
@@ -184,15 +184,15 @@ mean(rnorm(200000, result, rel_uc*result) &gt; MRL)
 
 # --- 附：SANTE 離子比確認 ---
 ion_s &lt;- 0.85; ion_std &lt;- 0.95
-abs(ion_s - ion_std) &lt;  0.30 * ion_std   #&gt; TRUE (定性確認成立)</pre>
+abs(ion_s - ion_std) &lt;= 0.30 * ion_std   #&gt; TRUE (定性確認成立)</pre>
 <div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
-<pre class="rout-body">ME_IS  RE_IS 
+<pre class="rout-body"> ME_IS  RE_IS 
 -0.039 -0.008 
 [1] 14.3  6.3 -2.6 -2.9  0.5
 [1]  2.5  2.5 -3.8 -2.8  1.5
  2.5% 97.5% 
 0.019 0.023 
-[1] &quot;氯黴素   (0.21 ± 0.12) ug/kg (k 2)&quot;
+[1] &quot;氯黴素 = (0.21 ± 0.12) ug/kg (k=2)&quot;
 [1] TRUE
 [1] 0.069185
 [1] TRUE</pre></div>
@@ -209,49 +209,175 @@ abs(ion_s - ion_std) &lt;  0.30 * ion_std   #&gt; TRUE (定性確認成立)</pre
 LC-MS/MS 的診斷指標都是「斜率比值」，用 SLOPE 配兩欄數據即可：<br>
 <table>
 <tr><th>指標</th><th>Excel 公式</th><th>說明</th></tr>
-<tr><td>斜率 A（溶液）</td><td><code> SLOPE(y_A, x)</code></td><td>45200</td></tr>
-<tr><td>斜率 B（萃取後添加）</td><td><code> SLOPE(y_B, x)</code></td><td>38400</td></tr>
-<tr><td>基質效應 ME%</td><td><code> (B/A−1)*100</code></td><td>→ −15.0%（壓制）</td></tr>
-<tr><td>回收率 RE%</td><td><code> (C/B)*100</code></td><td>萃取損失</td></tr>
-<tr><td>離子比</td><td><code> 定性離子峰面積/定量離子峰面積</code></td><td>需落在參考值 ±30%</td></tr>
+<tr><td>斜率 A（溶液）</td><td><code>=SLOPE(y_A, x)</code></td><td>45200</td></tr>
+<tr><td>斜率 B（萃取後添加）</td><td><code>=SLOPE(y_B, x)</code></td><td>38400</td></tr>
+<tr><td>基質效應 ME%</td><td><code>=(B/A−1)*100</code></td><td>→ −15.0%（壓制）</td></tr>
+<tr><td>回收率 RE%</td><td><code>=(C/B)*100</code></td><td>萃取損失</td></tr>
+<tr><td>離子比</td><td><code>=定性離子峰面積/定量離子峰面積</code></td><td>需落在參考值 ±30%</td></tr>
 </table>
 <strong>1/x 加權迴歸</strong> Excel 無內建，需陣列公式或加權欄輔助——痕量分析建議直接用 R（本章示範）或儀器軟體。</div>
 
 <div class="quiz" id="quiz"></div>
 <script>
+const CHAPTER = "ch12";
+const MISC = {
+  MATRIX_EFFECT_IGNORED:        "以為溶劑標準曲線可直接用於複雜基質樣品",
+  IS_FIXES_EVERYTHING:          "以為加了內標準就不必評估基質效應／回收率",
+  IS_ONLY_INJECTION:            "以為內標只是用來修正進樣體積（或確認有進樣），與基質／電離效應無關",
+  IS_ANY_COMPOUND:              "以為任何化合物都能當內標補償基質效應（不需共析出、化學性質相近）",
+  ME_VS_RE:                     "分不清 Matuszewski 三個比值：ME（B/A，電離）、RE（C/B，萃取回收）、PE（C/A，整體）",
+  ME_RATIO_INVERTED:            "基質效應比值的分子分母放反（A/B），或把正負號解讀相反（壓制當增強）",
+  WEIGHTING_UNNEEDED:           "以為跨多個數量級的校正曲線不需要加權",
+  WEIGHT_DIRECTION:             "以為 1/x 加權是加重高濃度點（其實是讓低濃度點有足夠份量）",
+  R2_PROVES_LINEAR:             "以為 r² 很高就證明線性、不用看殘差圖",
+  INSTRUMENT_DECIDES_UNC:       "以為不確定度主要由儀器等級決定（儀器好就可忽略、要改善就換儀器），忽略方法與取樣",
+  BUDGET_SHARE_LINEAR:          "以為不確定度預算的占比是 u 直接相除，而不是變異數（u²）占比",
+  ERROR_EQUALS_UNCERTAINTY:     "把誤差（單一差值）與不確定度（範圍）當成同一件事",
+  UNC_LINEAR_ADD:               "把不確定度分量直接相加而不是平方和開根號",
+  U_VS_UC:                      "分不清合成標準不確定度 u_c 與擴展不確定度 U",
+  RECOVERY_CORRECTION_CONFUSION:"回收率修正的方向或次數弄錯（該除卻乘、重複修正或忘了修正）",
+  COMPLIANCE_IGNORE_U:          "判定是否符合限值時只看測值、不看不確定度",
+  COMPLIANCE_RULE_REVERSED:     "把保守決策規則用反：區間只要有一端越過（或低於）限值就直接下結論，其實是灰色地帶",
+  UNC_MEANS_MISTAKE:            "以為不確定度大代表實驗做錯了",
+  SLOPE_INTERCEPT_SWAP:         "反推濃度時斜率、截距位置弄反或忘了減截距",
+  EXCEL_FUNCTION_CONFUSION:     "Excel 函數用錯（如 T.INV vs T.INV.2T、STDEV.P vs STDEV.S）",
+  MC_TOO_FEW_TRIALS:            "以為模擬幾百次就夠、不知結果會隨次數／種子波動",
+  MC_MORE_ACCURATE_ALWAYS:      "以為 Monte Carlo 一定比 GUM 公式法「更正確」",
+  OTHER:                        "不對應特定迷思的湊數選項"
+};
 const QUIZ = [
- { q: "LC-MS/MS 有別於 HPLC-UV 最關鍵的不確定度來源是：",
-   opts: ["波峰面積積分", "基質效應（ESI 離子壓制/增強）", "移動相配製", "滯留時間漂移"], ans: 1,
-   exp: "ESI 電離受共同析出物競爭，同濃度訊號隨基質改變——這是 LC-MS/MS 特有、必須專門實驗量化的來源。UV 偵測器對基質不敏感。" },
- { q: "Matuszewski 實驗中，ME%   (斜率B/斜率A − 1)。若斜率A 45200、斜率B 38400，ME% 為：",
-   opts: ["+15.0%（增強）", "−15.0%（壓制）", "−17.8%", "−9.9%"], ans: 1,
-   exp: "38400/45200 − 1   −0.150 → 離子壓制 15%。斜率變小＝同濃度訊號變低＝壓制。−9.9% 是 RE%（萃取回收）。" },
- { q: "同位素內標（如氯黴素-d5）能補償基質效應的原因：",
-   opts: ["質量數比較大", "與分析物同時電離、共析出，壓制效應對兩者相同，用面積「比值」校正即抵銷", "它不會被電離", "濃度比較高"], ans: 1,
-   exp: "SIL-IS 化學性質幾乎相同，基質壓制一視同仁 → 比值校正後基質效應大幅抵銷（本例 ME 從 −15% → −3.9%）。殘餘變異仍需計入預算。" },
- { q: "痕量 LC-MS/MS 校正要用 1/x 加權，因為：",
-   opts: ["讓 r² 變好看", "量測 SD 與濃度成正比（異質變異），OLS 會讓高濃度主宰、低濃度反推偏倚", "減少校正點數", "法規強制 5 位小數"], ans: 1,
-   exp: "比例誤差下 OLS 的等變異假設失效。本課程模擬：0.02 μg/kg 處 OLS 回算偏倚 +14.3%，1/x 加權只剩 +2.5%。" },
- { q: "氯黴素案例的預算中，貢獻最大的成分是：",
-   opts: ["回收率偏倚", "校正+基質殘餘", "中間精密度（60%）", "樣品均勻性"], ans: 2,
-   exp: "0.22² 占總變異 60%。與 Ch10 農藥案例一致：方法長期表現（中間精密度）永遠是老大，改善靠長期 QC 與流程標準化。" },
- { q: "結果 (0.21 ± 0.12) μg/kg（k 2），MRPL 0.3。判定與決策支持資訊：",
-   opts: ["符合，結案", "不符合，開罰", "灰色地帶；Monte Carlo 估計真值超標機率約 7%", "數據無效"], ans: 2,
-   exp: "0.21+0.12 0.33&gt;0.3 且 0.21−0.12 0.09&lt;0.3 → 情境(iii)灰色地帶。MC 給出 P(真值&gt;限量)≈7%，作為複驗/風險溝通的量化依據。" }
-,
- { q: "在 R 語言中，要如何對校正線執行 1/x 加權迴歸？",
-   opts: ["lm(y ~ x, weight = \"1/x\")", "lm(y ~ x, weights = 1/x)", "lm(y ~ x) / x", "lm(y/x ~ x)"], ans: 1,
-   exp: "R 語言的 lm() 函數內建 weights 參數，直接傳入對應的權重（如 1/x）即可完成加權迴歸。" },
- { q: "若要在 Excel 中計算 Matuszewski 實驗的基質效應 (ME%)，最直接的函數組合是？",
-   opts: ["=LINEST(y_B) / LINEST(y_A)", "=SLOPE(y_B, x) / SLOPE(y_A, x) - 1", "=INTERCEPT(y_B, x) / INTERCEPT(y_A, x) - 1", "=CORREL(y_B, x) - 1"], ans: 1,
-   exp: "基質效應是由「萃取後添加 (組別 B)」的斜率除以「溶液標準 (組別 A)」的斜率再減 1。Excel 可用 =SLOPE() 函數分別求出兩組斜率後直接計算。" },
- { q: "關於在 Excel 中執行 1/x 加權迴歸，下列敘述何者正確？",
-   opts: ["可用 =SLOPE() 加上加權參數完成", "內建有 =WEIGHTED.SLOPE() 函數", "Excel 內建函數不支援加權迴歸，需使用「規劃求解 (Solver)」最小化加權誤差平方和，或建立輔助欄位", "只能用 VBA 撰寫，無法用任何公式或工具求解"], ans: 2,
-   exp: "Excel 的一般迴歸函數（SLOPE、LINEST）不支援加權。必須透過自建加權輔助計算，再運用「規劃求解」找最小化誤差的迴歸係數。" }
+  /* ---------- 前測 pre ---------- */
+  { id:"ch12-p01", v:1, type:"concept", phase:"pre",
+    q:"把等量的標準品分別加進「純溶劑」和「蝦仁萃取液」，配成濃度完全相同的兩瓶，用質譜儀測定。兩瓶的訊號會一樣大嗎？",
+    opts:["一樣：濃度相同，訊號就相同",
+          "一樣：只要萃取液有過濾乾淨，就不會有干擾",
+          "一樣：昂貴的質譜儀專一性高，不受樣品中其他成分影響",
+          "不一定：萃取液裡的共存物質可能壓制或增強訊號，要用實驗確認"],
+    ans:3,
+    tags:["MATRIX_EFFECT_IGNORED", "MATRIX_EFFECT_IGNORED", "INSTRUMENT_DECIDES_UNC", null],
+    exp:"質譜看到的是「被電離的分子」，基質中的油脂、鹽類會搶走電離效率（離子壓制）。過濾去不掉溶解的共析出物；專一性高（看得準是誰）不等於訊號強度不受影響。" },
+  { id:"ch12-p02", v:1, type:"concept", phase:"pre",
+    q:"校正線有 5 個濃度：0.02、0.05、0.10、0.20、0.50。量測誤差大致與濃度成正比（0.50 那一點的誤差大小約是 0.02 那一點的 25 倍）。用一般的最小平方法配直線時，直線主要會去遷就哪些點？",
+    opts:["每個點的影響力完全相同",
+          "高濃度點：它們的偏差絕對值大、拉力大，低濃度端容易被犧牲",
+          "低濃度點：因為它們離原點近",
+          "不用管：只要 r² ≥ 0.999，就表示每個點都配得很好"],
+    ans:1,
+    tags:["WEIGHTING_UNNEEDED", null, "WEIGHT_DIRECTION", "R2_PROVES_LINEAR"],
+    exp:"最小平方法最小化的是「絕對殘差平方和」，高濃度點的殘差動輒是低濃度點的數十倍，直線自然遷就它們；r² 也幾乎只由高濃度點決定，看不出低濃度端偏了多少。" },
+  { id:"ch12-p03", v:1, type:"concept", phase:"pre",
+    q:"在每個樣品一開始就加入等量的「同位素標記分析物」當內標，最後用「分析物訊號 ÷ 內標訊號」來定量。這樣做主要的好處是：",
+    opts:["兩者化學性質幾乎相同，受到的干擾與損失也相同，相除之後大部分抵銷",
+          "內標會讓儀器訊號變強，偵測極限因此變低",
+          "加了內標，就不用再做回收率或其他方法驗證",
+          "內標只是用來確認這一針有沒有成功進樣"],
+    ans:0,
+    tags:[null, "OTHER", "IS_FIXES_EVERYTHING", "IS_ONLY_INJECTION"],
+    exp:"同位素內標與分析物一起被萃取、一起被基質壓制，比值因此穩定。它不會放大訊號；補償也不是百分之百，殘餘的效應仍要用實驗量化；功能遠不只是確認進樣。" },
+
+  /* ---------- 課後 post ---------- */
+  { id:"ch12-q01", v:1, type:"concept", phase:"post",
+    q:"同濃度的氯黴素，「空白蝦仁先萃取、再添加標準品」（B 組）的斜率比「溶於移動相」（A 組）低 15%。最可能的原因與對策是：",
+    opts:["儀器靈敏度漂移：重新調機後，照用溶劑標準曲線即可",
+          "萃取回收率不足：改善萃取步驟",
+          "ESI 離子壓制（基質效應）：用同位素內標＋基質匹配校正，並把殘餘效應列入預算",
+          "15% 在可接受範圍內：溶劑標準曲線直接使用、不必處理"],
+    ans:2,
+    tags:["MATRIX_EFFECT_IGNORED", "ME_VS_RE", null, "MATRIX_EFFECT_IGNORED"],
+    exp:"B 組是「萃取後才添加」，沒有經過萃取步驟，差異只能來自電離——這就是 ME%。萃取損失要比 C 組與 B 組（RE%）。不處理的話，校正線本身就是偏倚來源，不是調機或「可接受」就能帶過。" },
+  { id:"ch12-q02", v:1, type:"calc", phase:"post",
+    q:"Matuszewski 實驗：斜率 A（溶液標準）= 45200、斜率 B（萃取後添加）= 38400、斜率 C（添加後萃取）= 34600。基質效應 ME% 是多少？（壓制請加負號，例如 -12.3；取 1 位小數）",
+    num:{ ans:-15.0, tol:0.2, unit:"%" },
+    errs:[ { val:17.7,  tol:0.2, tag:"ME_RATIO_INVERTED" },
+           { val:15.0,  tol:0.2, tag:"ME_RATIO_INVERTED" },
+           { val:-9.9,  tol:0.2, tag:"ME_VS_RE" },
+           { val:-23.5, tol:0.2, tag:"ME_VS_RE" } ],
+    exp:"ME% = (B/A − 1)×100 = (38400/45200 − 1)×100 = −15.0%（斜率變小＝同濃度訊號變低＝離子壓制）。+17.7 是把比值放反（A/B）；+15.0 是正負號弄反；−9.9 是 RE%（C/B，萃取回收）；−23.5 是 PE%（C/A，整體流程效率）。" },
+  { id:"ch12-q03", v:1, type:"concept", phase:"post",
+    q:"同位素內標（如氯黴素-d5）為什麼能補償基質效應？",
+    opts:["因為它與分析物共析出、同時電離，基質壓制對兩者幾乎相同，用面積「比值」校正即大幅抵銷",
+          "因為任何化合物都可以當內標，滯留時間不同也一樣能補償",
+          "因為內標的作用是修正進樣體積的誤差，與基質效應無關",
+          "因為內標加得多、訊號強，可以蓋過基質的干擾"],
+    ans:0,
+    tags:[null, "IS_ANY_COMPOUND", "IS_ONLY_INJECTION", "OTHER"],
+    exp:"基質壓制隨滯留時間變化，只有「同一時間、同樣性質」的 SIL-IS 才會被同等壓制（本例 ME 從 −15% 縮到 −3.9%）。滯留時間不同的一般內標遇到的基質不同，補償不了；修正進樣體積只是內標最基本的功能；訊號強弱與補償無關。" },
+  { id:"ch12-q04", v:1, type:"concept", phase:"post",
+    q:"痕量 LC-MS/MS 的校正線（0.02–0.5 μg/kg）要用 1/x 加權，主要理由是：",
+    opts:["不需要加權：OLS 的 r² 已經 0.999，低濃度一定也準",
+          "加權是為了讓高濃度點更有份量，曲線才穩",
+          "與其加權，不如只用最低的 2 個濃度點做校正線",
+          "量測 SD 與濃度成正比（異質變異）：OLS 會被高濃度點主宰，使低濃度反推偏倚；1/x 讓低濃度點有足夠份量"],
+    ans:3,
+    tags:["WEIGHTING_UNNEEDED", "WEIGHT_DIRECTION", "OTHER", null],
+    exp:"比例誤差下 OLS 的等變異假設失效：本章模擬 0.02 處 OLS 回算偏 +14.3%，1/x 加權剩 +2.5%。r² 幾乎只反映高濃度點，看不到低濃度偏倚；1/x 是「降低」高濃度點的份量，不是加重；只留兩點則失去檢查線性的能力。" },
+  { id:"ch12-q05", v:1, type:"calc", phase:"post",
+    q:"氯黴素預算的四個相對標準不確定度：中間精密度 0.22、均勻性 0.15、校正＋基質殘餘 0.08、回收率偏倚 0.06。中間精密度占合成變異數的多少？",
+    opts:["約 43%：0.22 ÷（四項直接相加 0.51）",
+          "約 60%：0.22² ÷（四項平方和）",
+          "約 77%：0.22 ÷ 合成值 0.284",
+          "不是最大項：回收率只有 90%，偏了 10%，回收率才是老大"],
+    ans:1,
+    tags:["BUDGET_SHARE_LINEAR", null, "BUDGET_SHARE_LINEAR", "ERROR_EQUALS_UNCERTAINTY"],
+    exp:"0.22²/(0.22²+0.15²+0.08²+0.06²) = 0.0484/0.0809 ≈ 60%（其次均勻性 28%、校正 8%、回收率 4%）。用 u 直接相除不是變異數占比。回收率 90% 的「偏差」已用 ÷0.90 修正掉，進預算的是回收率平均值的不確定度 0.06。" },
+  { id:"ch12-q06", v:1, type:"calc", phase:"post",
+    q:"結果 (0.21 ± 0.12) μg/kg（k=2），管制界限 MRPL = 0.3 μg/kg。判定與可提供的決策支持資訊是：",
+    opts:["符合：0.21 < 0.3，結案",
+          "不符合：0.21 + 0.12 = 0.33 已超過 0.3，開罰",
+          "灰色地帶：區間 0.09–0.33 橫跨界限；Monte Carlo 估計真值超標的機率約 7%",
+          "數據無效：相對不確定度超過 50%，必須重做"],
+    ans:2,
+    tags:["COMPLIANCE_IGNORE_U", "COMPLIANCE_RULE_REVERSED", null, "UNC_MEANS_MISTAKE"],
+    exp:"0.21 + 0.12 = 0.33 > 0.3 且 0.21 − 0.12 = 0.09 < 0.3 → 灰色地帶。只看測值忽略了 U；上限超過就判不符合是把規則用反（要下限也超過才行）。痕量分析相對 U 達 50–60% 是常態；Monte Carlo 的 P(真值 > 界限) ≈ 7% 可作為複驗與風險溝通的依據。" },
+  { id:"ch12-q07", v:1, type:"rout", phase:"post",
+    q:"對同一組校正數據（0.02、0.05、0.10、0.20、0.50 μg/kg）分別配 OLS 與 <code>lm(ratio ~ conc, weights = 1/conc)</code>，各點的回算誤差（%）如下：<pre>OLS  : 14.3  6.3 -2.6 -2.9  0.5\n1/x  :  2.5  2.5 -3.8 -2.8  1.5</pre>最合理的判讀是：",
+    opts:["OLS 在最低濃度 0.02 偏了 +14.3%，加權後只剩 +2.5%，高濃度端兩者相近 → 痕量定量應採 1/x 加權",
+          "加權在 0.10 處的 −3.8% 比 OLS 的 −2.6% 大，所以加權比較差，應採 OLS",
+          "兩列誤差都在 ±15% 以內，兩種做法等價，挑 r² 比較高的即可",
+          "OLS 在 0.50 處只有 0.5%，代表 OLS 在所有濃度都最準"],
+    ans:0,
+    tags:[null, "WEIGHTING_UNNEEDED", "R2_PROVES_LINEAR", "WEIGHTING_UNNEEDED"],
+    exp:"管制界限 0.3 μg/kg、實際樣品多落在低濃度端，決勝點是 0.02–0.05 的回算偏倚：OLS +14.3% 對 1/x +2.5%。加權用中高濃度多一點點誤差，換來低濃度大幅改善；r² 分辨不出這件事。（Excel 沒有內建加權迴歸，需輔助欄或 Solver，痕量分析建議用 R 或儀器軟體。）" },
+  { id:"ch12-q08", v:1, type:"rout", phase:"post",
+    q:"要在 Excel 計算 Matuszewski 實驗的基質效應 ME%（x 為濃度，y_A、y_B 為 A、B 兩組的波峰面積），正確的寫法是：",
+    opts:["=(CORREL(y_B, x) / CORREL(y_A, x) - 1) * 100",
+          "=(INTERCEPT(y_B, x) / INTERCEPT(y_A, x) - 1) * 100",
+          "=(SLOPE(y_A, x) / SLOPE(y_B, x) - 1) * 100",
+          "=(SLOPE(y_B, x) / SLOPE(y_A, x) - 1) * 100"],
+    ans:3,
+    tags:["EXCEL_FUNCTION_CONFUSION", "SLOPE_INTERCEPT_SWAP", "ME_RATIO_INVERTED", null],
+    exp:"ME% 比的是「斜率」（每單位濃度的訊號）：B（萃取後添加）除以 A（溶液標準）再減 1。CORREL 是相關係數，兩組都接近 1，比不出壓制；截距不代表靈敏度；A/B 放反會得到 +17.7% 而誤判為增強。" },
+  { id:"ch12-q09", v:1, type:"misc", phase:"post",
+    q:"同事說：「我們已經加了同位素內標（SIL-IS），所以 Matuszewski 實驗和回收率實驗都可以省了，預算裡也不必再列基質項。」這個說法：",
+    opts:["對：用比值校正之後，基質效應在數學上完全抵銷",
+          "不對：SIL-IS 只是把 ME 從 −15% 縮到 −3.9%，殘餘效應（本例 0.08）仍要用實驗量化並列入預算",
+          "對：而且可以直接用溶劑標準曲線，不必做基質匹配",
+          "不對：SIL-IS 根本不能補償基質效應，它只能修正進樣體積"],
+    ans:1,
+    tags:["IS_FIXES_EVERYTHING", null, "MATRIX_EFFECT_IGNORED", "IS_ONLY_INJECTION"],
+    exp:"SIL-IS 是「大幅抵銷」不是「完全消除」：加了之後仍要重跑三組實驗確認殘餘 ME/RE，並把殘餘變異計入「校正＋基質殘餘」項。沒有數據支持就省略驗證，等於假設補償是完美的。" },
+  { id:"ch12-q10", v:1, type:"calc", phase:"post",
+    q:"儀器（同位素稀釋）讀值 0.19 μg/kg，平均回收率 0.90，相對合成標準不確定度 0.284。擴展不確定度 U（k=2）約為：",
+    opts:["0.06 μg/kg", "0.11 μg/kg", "0.22 μg/kg", "0.12 μg/kg"],
+    ans:3,
+    tags:["U_VS_UC", "RECOVERY_CORRECTION_CONFUSION", "UNC_LINEAR_ADD", null],
+    exp:"先做回收率修正 w = 0.19/0.90 = 0.211，再算 U = 2 × 0.284 × 0.211 = 0.12 → 報告 (0.21 ± 0.12) μg/kg。0.06 是 u_c（忘了乘 k）；0.11 是忘了先做回收率修正（2×0.284×0.19）；0.22 是把四個分量直接相加成 0.51 再算。" },
+
+  /* ---------- 回溯 spaced ---------- */
+  { id:"ch12-s01", v:1, type:"concept", phase:"spaced", from:"ch09",
+    q:"用 Monte Carlo 估某個結果的 95% 區間：第一次模擬 200 次得到 [0.018, 0.024]；換一個亂數種子再跑 200 次，變成 [0.020, 0.023]。最恰當的處理是：",
+    opts:["200 次已經夠了：把兩次的區間取平均當作最終結果即可",
+          "Monte Carlo 本來就是最正確的方法，任一次的結果都可以直接報",
+          "模擬次數太少，分位數還不穩定：把次數提高到上萬次以上，並確認換種子後結果不再明顯變動",
+          "每次結果都不一樣，代表 Monte Carlo 不可靠，應該放棄改用公式法"],
+    ans:2,
+    tags:["MC_TOO_FEW_TRIALS", "MC_MORE_ACCURATE_ALWAYS", null, "MC_TOO_FEW_TRIALS"],
+    exp:"2.5% 與 97.5% 分位數落在分布尾端，200 次模擬時每一端只靠約 5 個點決定，當然會隨種子跳動——這是次數不足，不是方法不可靠。本章用 5000 次、決策支持用 20 萬次就是這個原因；平均兩個不穩的區間並沒有解決問題。" }
 ];
 </script>
 <script src="assets/app.js"></script>
 <script src="assets/js/showout.js"></script>
+<script type="module" src="assets/js/assess.js"></script>
 
 <h2>12.6 參考文獻</h2>
 <ol class="refs">
@@ -261,10 +387,7 @@ const QUIZ = [
 <li>European Commission, SANTE/11312/2021: <i>Analytical Quality Control and Method Validation Procedures for Pesticide Residues</i>（離子比 ±30%、滯留時間容許差之依據）.</li>
 </ol>
 
-<nav class="pager">
-<a href="ch11.html"><small>上一章</small>Ch11 綜合案例與期末測驗</a>
-<a href="ch13.html"><small>下一章</small>Ch13 FDC 與配方計算</a>
-</nav>
+<nav class="pager" data-pager></nav>
 </main>
 <footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫</footer>
 </body>

@@ -15,9 +15,7 @@
 <body>
 <header class="topbar"><div class="inner">
 <a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
-<nav class="topnav">
-<a href="index.html">首頁</a><a href="ch00.html">Ch0 入門</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a><a href="ch13.html">Ch13 FDC配方</a><a href="ch14.html">Ch14 DOE/RSM</a>
-</nav></div></header>
+<nav class="topnav" data-nav></nav></div></header>
 
 <main>
 <div class="crumbs">Part 2 量測不確定度／第 10 章（QUAM Example A2 與 A4 完整重現）</div>
@@ -38,6 +36,8 @@
 <li>學會「內部驗證數據法」：HPLC/GC 農藥分析的三大成分（精密度、偏倚、均勻性）</li>
 <li>能對自己的實驗數據套用這兩套流程</li>
 </ul></div>
+
+<div class="quiz" data-phase="pre"></div>
 
 <!-- ============ 案例② 滴定 ============ -->
 <h2>10.1 案例②：NaOH 標定滴定（QUAM Example A2）</h2>
@@ -185,7 +185,7 @@ round(pct/sum(pct)*100, 1)
 dup &lt;- data.frame(a = c(.42,1.13,.27,.88,.55,1.62,.31,.74),
                   b = c(.39, .97,.30,.71,.60,1.28,.35,.80))
 d2 &lt;- with(dup, ((a-b)/((a+b)/2))^2)
-sqrt(sum(d2)/(2*nrow(dup)))   #&gt; 0.15 (短期；長期中間精密度 0.27 更大)
+sqrt(sum(d2)/(2*nrow(dup)))   #&gt; 0.10 (短期；長期中間精密度 0.27 更大)
 
 # 符合性：MRL = 2.0 mg/kg
 judge &lt;- function(r,U,L) if (r-U&gt;L) "不符合" else
@@ -238,44 +238,165 @@ V<sub>T</sub> 的 u 本身也是三個小項（校正/溫度/終點）的 <code>
 
 <div class="quiz" id="quiz"></div>
 <script>
+const CHAPTER = "ch10";
+const MISC = {
+  BUDGET_SHARE_LINEAR:          "以為不確定度預算的占比是 u 直接相除，而不是變異數（u²）占比",
+  UNC_LINEAR_ADD:               "把不確定度分量直接相加而不是平方和開根號",
+  UNC_ABS_REL_MIX:              "乘除模型該用相對不確定度卻用絕對值（或相反）",
+  SMALL_COMPONENT_MATTERS:      "以為每個小分量都要花力氣精算（不知道平方和由最大分量主導）",
+  SMALL_QUANTITY_SMALL_ERROR:   "以為取用量（體積、質量）越少誤差就越小，忽略相對誤差反而變大",
+  INSTRUMENT_DECIDES_UNC:       "以為不確定度主要由儀器等級決定（儀器好就可忽略、要改善就換儀器），忽略方法與取樣",
+  TOPDOWN_DISTRUSTED:           "以為只有逐項拆解才算正確，內部驗證／協同試驗等整體法是偷懶、漏算了分量",
+  PSEUDO_REPLICATION:           "把同一樣品溶液的重複注射／重複讀值當成獨立重複",
+  REPEATABILITY_AS_INTERMEDIATE:"以為短期重複性（同批雙重複）就能代表長期中間精密度",
+  SD_VS_SEM:                    "分不清標準差 SD 與平均數標準誤 SEM",
+  PRECISION_IS_ACCURACY:        "以為重複性好（SD/CV 小）就代表結果準確",
+  ERROR_EQUALS_UNCERTAINTY:     "把誤差（單一差值）與不確定度（範圍）當成同一件事",
+  UNC_MEANS_MISTAKE:            "以為不確定度大代表實驗做錯了",
+  U_VS_UC:                      "分不清合成標準不確定度 u_c 與擴展不確定度 U",
+  COMPLIANCE_IGNORE_U:          "判定是否符合限值時只看測值、不看不確定度",
+  COMPLIANCE_RULE_REVERSED:     "把保守決策規則用反：區間只要有一端越過（或低於）限值就直接下結論，其實是灰色地帶",
+  RECOVERY_CORRECTION_CONFUSION:"回收率修正的方向或次數弄錯（該除卻乘、重複修正或忘了修正）",
+  TOLERANCE_IS_STD_UNC:         "直接把規格容許差 ±a 當成標準不確定度",
+  RECT_WRONG_DIVISOR:           "矩形／三角／常態分布轉標準不確定度時除數用錯（√3、√6、k）",
+  R_FUNCTION_CONFUSION:         "R 函數或參數用錯（如 pnorm/qnorm、qt 的機率參數）",
+  EXCEL_FUNCTION_CONFUSION:     "Excel 函數用錯（如 T.INV vs T.INV.2T、STDEV.P vs STDEV.S）",
+  OTHER:                        "不對應特定迷思的湊數選項"
+};
 const QUIZ = [
- { q: "滴定標定中貢獻最大的成分是：",
-   opts: ["KHP 稱重", "KHP 純度", "滴定體積 V_T", "莫耳質量"], ans: 2,
-   exp: "V_T 占變異數 52%（相對 u=0.0007 最大）。改善法：把滴定體積設計到接近滴定管滿管程，相對誤差立刻縮小。" },
- { q: "滴定體積 u=0.013 mL 的三個組成不包括：",
-   opts: ["滴定管校正", "溫度效應", "終點判讀偏移", "KHP 的純度"], ans: 3,
-   exp: "純度是獨立成分（0.00029），不屬於體積。體積三兄弟：校正（0.004）+溫度（0.009）+終點（0.002），平方和開根號≈0.010，QUAM 保守取 0.013。" },
- { q: "想把滴定標定的 u_c 從 0.00010 降到 0.000066，最有效的單一改變是：",
-   opts: ["換更貴的天平", "增加 KHP 質量讓 V_T 接近 50 mL", "多查三次原子量表", "改用指示劑"], ans: 1,
-   exp: "攻擊最大項 V_T：體積從 18.6→49 mL，其相對貢獻從 0.0007 降至約 0.00027，整體 u_c 改善 34%。天平本來就只占 12%。" },
- { q: "HPLC/GC 內部驗證法中，為什麼儀器校正不是主要成分？",
-   opts: ["因為儀器很貴", "因為模型用訊號「比值」I_op/I_ref，抵銷了大部分儀器因素", "因為法規豁免", "因為回收率已含校正"], ans: 1,
-   exp: "同機同日同方法的標準品與樣品訊號相除，儀器校正、漂移等因素在比值中抵銷。剩下的是「方法表現」：精密度、回收率、均勻性。" },
- { q: "農藥案例中相對標準不確定度 0.34 的組成（變異數占比）：",
-   opts: ["精密度 63%、均勻性 35%、偏倚 2%", "偏倚 90%、精密度 10%", "三項各 1/3", "均勻性 100%"], ans: 0,
-   exp: "0.27²:0.20²:0.048² = 0.0729:0.04:0.0023。精密度與均勻性合計 &gt;98%——改善取樣與流程遠比糾結回收率有效。" },
- { q: "農藥結果 1.11 ± 0.75 mg/kg（k=2），MRL=2.0。判定：",
-   opts: ["不符合", "符合（1.86 ≤ 2.0）", "灰色地帶", "需先除以回收率再判"], ans: 1,
-   exp: "保守決策規則：result+U=1.86 ≤ 2.0 → 符合（情境 iv）。若 MRL=1.5，同樣數據就落入灰色地帶——限量與 U 的相對大小決定判定難度。" },
- { q: "從 8 對雙重複數據算出的 RSD（0.15）與長期中間精密度（0.27）相比偏小，原因是：",
-   opts: ["計算錯誤", "雙重複只反映短時間變異，不含天與天、校準與校準的變異", "雙重複樣品比較好測", "應該除以 n"], ans: 1,
-   exp: "雙重複是同批、同流程的「重複性」級資訊；中間精密度還包含時間、人員、校正週期等變異，通常更大。用於預算時要採長期值。" }
-,
- { q: "在 R 與 Excel 中，將多個相對不確定度成分合成 (也就是平方和開根號) 的最簡潔函數寫法分別是：",
-   opts: ["R: sqrt(sum(x^2)) / Excel: SQRT(SUMSQ(x))", "R: sum(sqrt(x)) / Excel: SUM(SQRT(x))", "R: sumsq(x) / Excel: SUM(x^2)", "R: root(sum(x)) / Excel: SQRT(SUM(x))"], ans: 0,
-   exp: "合成標準不確定度需要「平方、加總、開根號」。R 語言利用向量化運算 sum(x^2) 再 sqrt()，而 Excel 提供內建函數 SUMSQ() 計算平方和，外面再包 SQRT() 即可。" },
- { q: "使用 Excel 撰寫符合性判定 (MRL = 2.0) 時，下列哪個 IF 函數的邏輯最能正確區分「符合」、「不符合」與「灰色地帶」？",
-   opts: ["=IF(測量值>2.0, \"不符合\", \"符合\")", "=IF(測量值-U>2.0, \"不符合\", IF(測量值+U<=2.0, \"符合\", \"灰色地帶\"))", "=IF(測量值+U>2.0, \"不符合\", \"符合\")", "=IF(U>2.0, \"不符合\", \"符合\")"], ans: 1,
-   exp: "依據保守決策規則，必須考慮測量不確定度 (U)。只有當 測量值-U > 限量 時才判定不符合，測量值+U <= 限量 時才判定符合，兩者之間的即為灰色地帶。" }
+  /* ---------- 前測 pre ---------- */
+  { id:"ch10-p01", v:1, type:"concept", phase:"pre",
+    q:"同一支 50 mL 滴定管，每次讀數的誤差大約固定是 ±0.05 mL。滴定時用掉 5 mL 或用掉 40 mL，哪一種的「相對」誤差（誤差占用量的比例）比較小？",
+    opts:["用掉 40 mL：同樣的 ±0.05 mL 除以較大的體積，比例較小",
+          "用掉 5 mL：用得少，誤差自然就小",
+          "一樣：同一支滴定管的誤差是固定的，與用量無關",
+          "無法比較，要先知道滴定管與天平是哪個等級"],
+    ans:0,
+    tags:[null, "SMALL_QUANTITY_SMALL_ERROR", "UNC_ABS_REL_MIX", "INSTRUMENT_DECIDES_UNC"],
+    exp:"絕對誤差固定時，相對誤差 = 0.05/V：40 mL 時 0.13%，5 mL 時 1%。「用得少誤差小」混淆了絕對與相對；「一樣」只對絕對誤差成立，但濃度是乘除模型，參戰的是相對值。" },
+  { id:"ch10-p02", v:1, type:"misc", phase:"pre",
+    q:"某實驗室測蔬菜的農藥殘留：把同一瓶萃取液連續注射 5 針，RSD 只有 1%。主管說：「所以我們這個方法的不確定度大約就是 1%。」你認為：",
+    opts:["對：RSD 就是不確定度",
+          "對，而且 RSD 這麼小代表結果很準",
+          "不對：同一瓶重複注射沒有包含取樣、萃取、不同天與不同人的變異，真正的不確定度通常大得多",
+          "不對：這麼貴的儀器，不確定度應該比 1% 更小才對"],
+    ans:2,
+    tags:["PSEUDO_REPLICATION", "PRECISION_IS_ACCURACY", null, "INSTRUMENT_DECIDES_UNC"],
+    exp:"同瓶重複注射只反映進樣與偵測的變異（偽重複）。方法的不確定度要涵蓋取樣均勻性、萃取回收、長期中間精密度；RSD 小也不代表沒有偏倚。儀器等級不是決定因素。" },
+  { id:"ch10-p03", v:1, type:"concept", phase:"pre",
+    q:"某農藥的法規限量是 2.0 mg/kg。實驗室測得 1.9 mg/kg，並說明量測不確定度為 ±0.3 mg/kg（約 95%）。最恰當的說法是：",
+    opts:["合格：1.9 小於 2.0，不確定度不用看",
+          "不合格：1.9 + 0.3 = 2.2 已超過 2.0",
+          "數據無效：不確定度這麼大，代表實驗做錯了",
+          "無法明確判定：區間 1.6–2.2 跨過限量，需複驗或依事先約定的決策規則處理"],
+    ans:3,
+    tags:["COMPLIANCE_IGNORE_U", "COMPLIANCE_RULE_REVERSED", "UNC_MEANS_MISTAKE", null],
+    exp:"區間跨過限量＝灰色地帶。只看測值忽略了 U；「測值＋U 超過就不合格」把保守規則用反（要 測值−U 超過限量才能判不合格）；不確定度大不等於做錯。" },
+
+  /* ---------- 課後 post ---------- */
+  { id:"ch10-q01", v:1, type:"rout", phase:"post",
+    q:"下面是滴定標定各成分的<strong>相對標準不確定度</strong>（R 輸出）。滴定體積 V 對合成變異數的貢獻（預算占比）約是多少？<pre>    rep       m       P       M       V \n0.00050 0.00033 0.00029 0.00002 0.00070</pre>",
+    opts:["約 38%：0.00070 ÷（五項直接相加 0.00184）",
+          "約 52%：0.00070² ÷（五項平方和）",
+          "約 72%：0.00070 ÷ 合成值 0.00097",
+          "無法比較：m 的單位是 g、M 是 g/mol、V 是 mL，單位不同不能算占比"],
+    ans:1,
+    tags:["BUDGET_SHARE_LINEAR", null, "BUDGET_SHARE_LINEAR", "UNC_ABS_REL_MIX"],
+    exp:"合成是平方和開根號，所以「誰是老大」要比變異數：0.0007²/Σu² ≈ 52%（V_T 最大，其次重複性 27%）。用 u 直接相除（38% 或 72%）都不是變異數占比，會錯估最大項的主導程度。相對不確定度 u(x)/x 沒有單位，正是為了讓不同單位的成分能放在一起比。" },
+  { id:"ch10-q02", v:1, type:"calc", phase:"post",
+    q:"滴定體積 V<sub>T</sub> = 18.64 mL，實驗室溫度變動 ±4 ℃（矩形分布），水的體積膨脹係數 2.1×10⁻⁴ /℃。溫度效應對體積的<strong>標準不確定度</strong>是多少 mL？（取 4 位小數）",
+    num:{ ans:0.0090, tol:0.0002, unit:"mL" },
+    errs:[ { val:0.0157, tol:0.0002, tag:"TOLERANCE_IS_STD_UNC" },
+           { val:0.0064, tol:0.0002, tag:"RECT_WRONG_DIVISOR" },
+           { val:0.0078, tol:0.0002, tag:"RECT_WRONG_DIVISOR" } ],
+    exp:"半寬 a = 18.64 × 2.1×10⁻⁴ × 4 = 0.01566 mL；矩形分布 u = a/\\(\\sqrt{3}\\) = 0.0090 mL。填 0.0157 是把變動範圍直接當 u；0.0064（÷\\(\\sqrt{6}\\)，三角形）與 0.0078（÷2，當成 k=2）是除數用錯。這一項是 u(V_T) 三兄弟（校正 0.004、溫度 0.009、終點 0.0017）中最大的。" },
+  { id:"ch10-q03", v:1, type:"concept", phase:"post",
+    q:"想把滴定標定的 u<sub>c</sub> 從 0.00010 降到 0.000066 mol/L，最有效的單一改變是：",
+    opts:["換一台更高級（更貴）的天平",
+          "重新查證 KHP 各原子的原子量到更多位數",
+          "增加 KHP 稱量，讓滴定體積 V_T 接近 50 mL",
+          "同一次滴定的終點多讀幾次滴定管刻度取平均"],
+    ans:2,
+    tags:["INSTRUMENT_DECIDES_UNC", "SMALL_COMPONENT_MATTERS", null, "PSEUDO_REPLICATION"],
+    exp:"先攻擊最大項：V_T 占 52%，體積 18.6→49 mL 使其相對 u 從 0.0007 降到約 0.00027，u_c 改善 34%。天平只占 12%、莫耳質量約 0%，花力氣在它們身上幾乎無效；同一次滴定重複讀刻度不是獨立重複，降不了校正與溫度項。" },
+  { id:"ch10-q04", v:1, type:"concept", phase:"post",
+    q:"HPLC/GC 農藥案例採「內部驗證數據法」，預算裡沒有單獨列出儀器校正項。主要原因是：",
+    opts:["模型用訊號比值 I_op/I_ref：同機、同日、同方法下儀器因素大多抵銷，剩下的主角是方法表現（精密度、回收率、均勻性）",
+          "層析儀是高階精密儀器，儀器本身的不確定度可以直接當成 0",
+          "內部驗證法是簡化做法，其實漏算了儀器分量，嚴格來說不如逐項拆解可信",
+          "同一瓶樣品重複注射的 RSD 很小，證明儀器項可以省略"],
+    ans:0,
+    tags:[null, "INSTRUMENT_DECIDES_UNC", "TOPDOWN_DISTRUSTED", "PSEUDO_REPLICATION"],
+    exp:"標準品與樣品訊號相除，校正、漂移等在比值中抵銷；長期中間精密度數據本來就把殘餘的儀器變異「包」在裡面，所以不是漏算。儀器再高級也有不確定度；重複注射的 RSD 只是偽重複，不能拿來證明什麼。" },
+  { id:"ch10-q05", v:1, type:"calc", phase:"post",
+    q:"農藥案例三個相對標準不確定度：精密度 0.27、回收率偏倚 0.043/0.9 = 0.048、均勻性 0.20。它們的變異數占比是：",
+    opts:["精密度 52%、均勻性 39%、偏倚 9%",
+          "精密度 59%、均勻性 33%、偏倚 8%（偏倚用 1 − 0.9 = 0.10 計）",
+          "三項大約各占 1/3",
+          "精密度 63%、均勻性 35%、偏倚 2%"],
+    ans:3,
+    tags:["BUDGET_SHARE_LINEAR", "ERROR_EQUALS_UNCERTAINTY", "OTHER", null],
+    exp:"占比看平方：0.27² : 0.20² : 0.048² = 0.0729 : 0.0400 : 0.0023 → 63% / 35% / 2%。52/39/9 是用 u 直接相除；59/33/8 是把偏倚的大小（回收率離 100% 差 10%）誤當成它的不確定度——偏倚已用 ÷0.9 修正掉，進預算的是回收率平均值的不確定度 0.043。" },
+  { id:"ch10-q06", v:1, type:"calc", phase:"post",
+    q:"農藥結果（已做回收率修正）為 1.11 ± 0.75 mg/kg（k=2），MRL = 2.0 mg/kg。依保守決策規則：",
+    opts:["符合：1.11 < 2.0，不確定度不必看",
+          "符合：1.11 + 0.75 = 1.86 ≤ 2.0，連區間上限都沒超過",
+          "灰色地帶：相對不確定度高達 68%，這種數據無法判定",
+          "還不能判：要把 1.11 再除以回收率 0.9 之後才能比較"],
+    ans:1,
+    tags:["COMPLIANCE_IGNORE_U", null, "UNC_MEANS_MISTAKE", "RECOVERY_CORRECTION_CONFUSION"],
+    exp:"判定要用整個區間：result + U = 1.86 ≤ 2.0 → 符合。只看 1.11 < 2.0 結論碰巧相同但理由錯——若 MRL = 1.5，同一數據就落入灰色地帶。U 大是痕量分析的常態而非數據無效；1.11 已是 1.00/0.9 修正後的值，不可再修正一次。" },
+  { id:"ch10-q07", v:1, type:"rout", phase:"post",
+    q:"用 8 對雙重複（同批、同流程）數據估精密度，R 輸出如下；而預算採用的長期中間精密度是 0.27。怎麼解讀這個差距？<pre>&gt; sqrt(sum(d2)/(2*nrow(dup)))\n[1] 0.1027196</pre>",
+    opts:["公式分母應該用 n 而不是 2n，改掉就會接近 0.27",
+          "0.10 才是這個方法真正的精密度，應該用它取代 0.27 放進預算",
+          "雙重複只反映短時間的變異，不含不同天、不同人、不同校正週期的變異；預算應採長期值",
+          "8 對太少；對數夠多的話，這個 RSD 自然會升到 0.27"],
+    ans:2,
+    tags:["OTHER", "REPEATABILITY_AS_INTERMEDIATE", null, "SD_VS_SEM"],
+    exp:"雙重複是「重複性」層級的資訊（約 0.10）；中間精密度還包含時間、人員、校正等長期變異，所以更大，用短期值會低估不確定度。分母 2n 是成對差公式的正確寫法（每對差的變異數是 2σ²）；增加對數只會讓估計更穩，不會讓 SD 本身變大。" },
+  { id:"ch10-q08", v:1, type:"rout", phase:"post",
+    q:"要把多個相對不確定度成分 x 合成（平方和開根號），R 與 Excel 的正確寫法分別是：",
+    opts:["R：sqrt(sum(x^2))　Excel：=SQRT(SUMSQ(x))",
+          "R：sum(sqrt(x))　Excel：=SUM(SQRT(x))",
+          "R：sum(x^2)　Excel：=SUMSQ(x)",
+          "R：sqrt(sum(x))　Excel：=SQRT(SUM(x))"],
+    ans:0,
+    tags:[null, "R_FUNCTION_CONFUSION", "EXCEL_FUNCTION_CONFUSION", "UNC_LINEAR_ADD"],
+    exp:"順序是「先平方、再加總、最後開根號」。sum(sqrt(x)) 把順序弄反；sum(x^2)／SUMSQ 只算到變異數、忘了開根號；sqrt(sum(x)) 沒有平方，等於把分量線性相加，數值完全不同。" },
+  { id:"ch10-q09", v:1, type:"rout", phase:"post",
+    q:"用 Excel 寫符合性判定（MRL = 2.0），哪一個 IF 公式能正確區分「符合／不符合／灰色地帶」？",
+    opts:["=IF(測量值>2.0, 「不符合」, 「符合」)",
+          "=IF(測量值+U>2.0, 「不符合」, 「符合」)",
+          "=IF(U>2.0, 「不符合」, 「符合」)",
+          "=IF(測量值-U>2.0, 「不符合」, IF(測量值+U<=2.0, 「符合」, 「灰色地帶」))"],
+    ans:3,
+    tags:["COMPLIANCE_IGNORE_U", "COMPLIANCE_RULE_REVERSED", "OTHER", null],
+    exp:"保守決策規則需要兩道門檻：測量值−U > 限量才判不符合；測量值+U ≤ 限量才判符合；其餘是灰色地帶。第一式完全沒用到 U；第二式把「上限超過」直接當不符合，灰色地帶被誤判。（實際在 Excel 輸入時，文字要用半形雙引號包起來。）" },
+  { id:"ch10-q10", v:1, type:"misc", phase:"post",
+    q:"看到農藥案例的相對擴展不確定度高達 68%（u<sub>c</sub> 相對 34%），同學說：「不確定度這麼大，表示這間實驗室做得很差，結果不能用。」最恰當的回應是：",
+    opts:["同意：U 應該壓到 5% 以下才可以出報告",
+          "不同意：痕量殘留加上取樣不均勻，34% 是誠實反映的常態；不確定度大不等於做錯，法規限量的設定也已考慮此事",
+          "不同意：只要同一瓶萃取液多注射幾針取平均，34% 就會降到接近 0",
+          "同意：所以報告應改列 u_c 而不要乘 k，數字看起來比較小"],
+    ans:1,
+    tags:["UNC_MEANS_MISTAKE", null, "PSEUDO_REPLICATION", "U_VS_UC"],
+    exp:"不確定度描述的是「合理的分散範圍」，不是錯誤的程度；主項是中間精密度（63%）與均勻性（35%），改善要靠均勻化取樣與流程穩定。重複注射碰不到這兩項；把 U 改報 u_c 只是換算，涵蓋機率從約 95% 掉到約 68%，資訊並沒有變好。" },
+
+  /* ---------- 回溯 spaced ---------- */
+  { id:"ch10-s01", v:1, type:"calc", phase:"spaced", from:"ch07",
+    q:"10 mL 移液管的規格書只寫「容許差 ±0.02 mL」，沒有給信賴水準。依第 7 章的做法，它的標準不確定度 u 是：",
+    opts:["0.020 mL", "0.010 mL", "0.012 mL", "0.0082 mL"],
+    ans:2,
+    tags:["TOLERANCE_IS_STD_UNC", "RECT_WRONG_DIVISOR", null, "RECT_WRONG_DIVISOR"],
+    exp:"沒有信賴水準、只知道上下限 → 假設矩形分布：u = 0.02/\\(\\sqrt{3}\\) = 0.012 mL。0.020 是把容許差直接當 u；0.010（÷2）是誤當成 k=2 的擴展不確定度；0.0082（÷\\(\\sqrt{6}\\)）是三角形分布，需要有「值多集中在中央」的依據才可用。" }
 ];
 </script>
 <script src="assets/app.js"></script>
 <script src="assets/js/showout.js"></script>
+<script type="module" src="assets/js/assess.js"></script>
 
-<nav class="pager">
-<a href="ch09.html"><small>上一章</small>Ch9 Kragten 與 Monte Carlo</a>
-<a href="ch11.html"><small>下一章</small>Ch11 綜合案例與期末測驗</a>
-</nav>
+<nav class="pager" data-pager></nav>
 </main>
 <footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫</footer>
 </body>

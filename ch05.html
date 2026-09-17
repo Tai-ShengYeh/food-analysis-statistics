@@ -10,14 +10,12 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
-  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\[', right: '\]', display: true}]});"></script>
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true}]});"></script>
 </head>
 <body>
 <header class="topbar"><div class="inner">
 <a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
-<nav class="topnav">
-<a href="index.html">首頁</a><a href="ch00.html">Ch0 入門</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a><a href="ch13.html">Ch13 FDC配方</a><a href="ch14.html">Ch14 DOE/RSM</a>
-</nav></div></header>
+<nav class="topnav" data-nav></nav></div></header>
 
 <main>
 <div class="crumbs">Part 1 數據品管統計（Nielsen's Food Analysis 第4章）／第 5 章</div>
@@ -39,6 +37,8 @@
 <li>認識 Grubbs 檢定作為進階工具</li>
 <li>建立「刪數據的學術倫理」底線</li>
 </ul></div>
+
+<div class="quiz" data-phase="pre"></div>
 
 <h2>5.1 有效數字：報告的誠實度</h2>
 <p>有效數字 = 所有確定的位數 + <strong>最後一位有疑義的位數</strong>。
@@ -94,7 +94,7 @@ q_test &lt;- function(x) {
        reject = Q &gt; q_crit[[as.character(n)]])
 }
 q_test(c(64.78, 64.53, 64.45, 55.31))
-#&gt; $Q [1] 0.969   $Qcrit [1] 0.76   $reject [1] TRUE
+#&gt; $Q [1] 0.965   $Qcrit [1] 0.76   $reject [1] TRUE
 
 dry &lt;- c(88.62, 88.74, 89.20, 82.20)
 q_test(dry)                            # Q=0.917 &gt; 0.76 -> TRUE
@@ -132,13 +132,12 @@ $reject
 
 <h2>5.3 進階：Grubbs 檢定</h2>
 <p>Q 檢定只看「與最近鄰的距離」，一次只適合處理一個可疑值。
-<strong>Grubbs 檢定</strong>用「離群距離 ÷ 標準差」：
+<strong>Grubbs 檢定</strong>用「離群距離 ÷ 標準差」：</p>
 
 <div class="formula">
 G = <span class="frac"><span class="num">max |<i>x<sub>i</sub></i> − <i>x̄</i>|</span><span class="den">SD</span></span> &gt; G<sub>crit</sub>(n, α) → 為異常值
 </div>
-<p>對乾物質數據：G = |82.20 − 87.19|/3.34 = <strong>2.60 &gt; 1.48</strong>（n=4, 95% 雙尾）→ 同樣判定為異常值。
-兩種檢定結論一致時，刪除的正當性更強。</p>
+<p>對乾物質數據：G = |82.20 − 87.19|/3.34 = <strong>1.496 &gt; 1.481</strong>（n=4, 95% 雙尾）→ 勉強超過臨界值，判定為異常值；但差距極小，實務上應優先查實驗紀錄找原因，而不是只憑檢定剔除。</p>
 
 <pre class="rcode" data-file="ch05_ex2.R"># Grubbs 臨界值（t 分布近似公式）
 grubbs_crit &lt;- function(n, alpha = 0.05) {
@@ -147,15 +146,21 @@ grubbs_crit &lt;- function(n, alpha = 0.05) {
 }
 round(sapply(4:8, grubbs_crit), 3)
 #&gt;  n=4    n=5    n=6    n=7    n=8
-#&gt; 1.481  1.712  1.889  2.018  2.126
+#&gt; 1.481  1.715  1.887  2.020  2.127
 
 G &lt;- max(abs(dry - mean(dry))) / sd(dry)
-G                                  #&gt; 2.596
+G                                  #&gt; 1.496
 G &gt; grubbs_crit(4)                 #&gt; TRUE -> 82.20 是異常值</pre>
 <div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
 <pre class="rout-body">[1] 1.481 1.715 1.887 2.020 2.127
 [1] 1.495783
 [1] TRUE</pre></div>
+
+<div class="callout"><span class="t">🔗 其實你剛剛做的就是「假說檢定」</span>
+Q 檢定與 Grubbs 檢定的骨架一模一樣：先假設 <strong>H<sub>0</sub>：這個可疑值和其他值來自同一個母體</strong>（它只是運氣不好的正常數據）。
+算出的 Q 或 G <strong>超過臨界值</strong>＝「如果 H<sub>0</sub> 為真，這麼極端的值很罕見」，所以拒絕 H<sub>0</sub>。
+完整邏輯（H<sub>0</sub>、p 值、型一／型二錯誤）在 <a href="ch15.html">Ch15 假說檢定</a>。
+但請記住：<strong>拒絕 H<sub>0</sub> 不等於可以直接刪數據</strong>——檢定只說「它很可疑」，能不能刪還要過下面的三條底線。</div>
 
 <div class="callout danger"><span class="t">⚖️ 學術倫理三條底線</span>
 ① 只有<strong>可追溯的操作失誤紀錄</strong>（漏加試劑、樣品灑落）＋<strong>統計檢定支持</strong>，兩者兼備才可刪除<br>
@@ -186,43 +191,121 @@ G &gt; grubbs_crit(4)                 #&gt; TRUE -> 82.20 是異常值</pre>
 
 <div class="quiz" id="quiz"></div>
 <script>
+const CHAPTER = "ch05";
+const MISC = {
+  SIGFIG_DECIMAL_PLACES:        "把小數位數當成有效位數（連前導零也算進去）",
+  SIGFIG_TRAILING_ZERO:         "末端零的規則弄錯：整數末端的零當成有效、或小數點後末端的零不算",
+  SIGFIG_KEEP_ALL_DIGITS:       "把計算機／軟體顯示的位數全部報出來",
+  SIGFIG_ADD_MUL_RULE:          "加減法（看小數位）與乘除法（看有效位數）規則混用",
+  SIGFIG_NOT_LEAST:             "乘除取位時沒有以有效位數最少的那一項為準",
+  SIGFIG_MECHANICAL_RULE:       "機械套用有效數字規則，不看數字背後的器皿依據（如把稀釋倍數 50 當 1 位）",
+  Q_GAP_RANGE_WRONG:            "Dixon Q 的 gap／全距取錯（分子分母顛倒、取到非可疑端的間距、或用到平均值）",
+  Q_VS_GRUBBS:                  "把 Dixon Q（gap÷全距）與 Grubbs G（離均差÷SD）的算法混用",
+  Q_CRIT_MISREAD:               "Q 檢定的判定基準弄錯（拿 Q 跟 1 比、查錯 n 的臨界值或方向弄反）",
+  OUTLIER_DELETE_BY_TEST_ONLY:  "以為檢定顯著就可以直接刪除數據，不必找原因與記錄",
+  OUTLIER_DELETE_BY_EYE:        "看起來怪就刪，不做檢定也不記錄",
+  OUTLIER_TEST_REPEAT:          "對同一組數據反覆做異常值檢定直到滿意",
+  OUTLIER_DELETE_FOR_PRECISION: "為了讓 SD 變小、配適變漂亮或結果變顯著而刪除數據",
+  OUTLIER_QUOTA:                "以為每組數據都有固定可以刪除的名額",
+  PRECISION_IS_ACCURACY:        "以為重複性好（SD/CV 小）就代表結果準確",
+  EXCEL_FUNCTION_CONFUSION:     "Excel 函數用錯（如 T.INV vs T.INV.2T、STDEV.P vs STDEV.S）",
+  USED_Z_NOT_T:                 "小樣本仍用 Z=1.96 而不是 t",
+  FORGOT_SQRT_N:                "算 SEM／CI 時忘了除以 √n",
+  DF_EQUALS_N:                  "自由度用 n 而不是 n−1"
+};
 const QUIZ = [
- { q: "0.0072 的有效位數是幾位？",
-   opts: ["6", "4", "2", "3"], ans: 2,
-   exp: "前導零（0.00）只是定位，不算有效數字 → 7 和 2 共 2 位。Nielsen 規則 3。" },
- { q: "36.54 × 238 × 1.1 = 9566.172，正確報告值為：",
-   opts: ["9566.172", "9566", "9600", "9570"], ans: 2,
-   exp: "乘除看最少有效位數：1.1 只有 2 位 → 結果取 2 位 = 9600（末兩個零不算有效數字）。Nielsen 4.5.1 例題。" },
- { q: "n=4 的 Q 檢定，計算得 Q = 0.97。結論是：",
-   opts: ["保留該值（0.97&lt;1）", "捨棄該值（0.97 &gt; 0.76）", "需再算 Grubbs", "數據無效整組作廢"], ans: 1,
-   exp: "n=4 的 90% 臨界值是 0.76；Q=0.97 &gt; 0.76 → 可在 90% 信賴下捨棄。注意臨界值隨 n 變小而變大（n=3 時要 0.94，幾乎刪不掉）。" },
- { q: "乾物質數據 88.62、88.74、89.20、82.20，捨棄 82.20 前後的 SD 分別是：",
-   opts: ["3.34 → 0.31", "0.31 → 3.34", "3.34 → 3.34", "87.19 → 88.85"], ans: 0,
-   exp: "捨棄前 SD=3.34（CV 3.83%），捨棄後 SD=0.31。一個可疑值就能把 SD 放大 10 倍——這正是必須用客觀檢定的原因。（87.19→88.85 是平均值變化）" },
- { q: "關於刪除異常值，下列何者正確？",
-   opts: ["只要 Q 檢定過關就能刪，不用說明", "有操作失誤紀錄＋統計檢定支持，並在報告中揭露", "為了讓 CV&lt;5% 可以刪", "每組數據最多可以刪 1 個"], ans: 1,
-   exp: "Nielsen 4.5.2 與 QUAM §2.4.13 一致：統計檢定只是輔助證據，程序透明與揭露是底線。以美化精密度為目的的刪除是學術不端。" },
- { q: "稀釋倍數「50 倍」計算最終濃度時，Nielsen 建議：",
-   opts: ["當 1 位有效數字", "當 2 位有效數字", "依器皿容許差寫成 50.0（3 位）", "有效數字不適用稀釋倍數"], ans: 2,
-   exp: "A 級容量瓶 ±0.05 mL 的精確度支撐第 3 位數。43.5×50.0=2180 而非 2000。取位要回溯每個數字的「器皿依據」。" },
- { q: "在 Excel 中想將計算結果以「指定的有效位數」進行取位，可以使用下列哪一個公式組合？",
-   opts: ["=ROUND(值, 小數位)", "=ROUNDDOWN(值, 位數)", "=ROUND(值, 位數-1-INT(LOG10(ABS(值))))", "=SIGNIFICANT(值, 位數)"], ans: 2,
-   exp: "Excel 沒有內建直接依「有效位數」取位的函數。教材中示範以 =ROUND(值, 位數-1-INT(LOG10(ABS(值)))) 利用對數計算數值的數量級，動態決定四捨五入的位置。" },
- { q: "在 Excel 手動計算 Dixon Q 檢定，若將 4 個數據「由小到大」排序於 A1 到 A4 儲存格，且懷疑「最大值」為異常值時，Q 值的公式應為？",
-   opts: ["=(A2-A1)/(A4-A1)", "=(A4-A3)/(A4-A1)", "=(A4-A1)/(A4-A3)", "=(A3-A2)/(A4-A1)"], ans: 1,
-   exp: "當可疑值是最大值時，分子 gap 為最大值與第二大值的差距 (A4-A3)，分母為全距 (A4-A1)。如果懷疑的是最小值，才是 (A2-A1)。" },
- { q: "在 R 語言中實作 Grubbs 檢定時，教材使用程式碼 `max(abs(x - mean(x))) / sd(x)` 計算。其中的 `sd(x)` 代表什麼？",
-   opts: ["樣本標準差", "樣本變異數", "標準誤", "中位數絕對偏差"], ans: 0,
-   exp: "在 R 語言中，sd() 是計算樣本標準差 (Standard Deviation) 的內建函數，與平均值 mean() 搭配用於算出最大偏離值 (G值)。" }
+ /* ---------- 前測 pre ---------- */
+ { id: "ch05-p01", v: 1, type: "concept", phase: "pre",
+   q: "你做了 5 次重複，其中 4 個數值很接近，有 1 個差很多。最合理的第一步是：",
+   opts: ["直接刪掉它——一看就知道是做錯的",
+          "先查實驗紀錄找原因，再用客觀的統計檢定輔助判斷，處理方式要寫進報告",
+          "先刪掉看看：如果刪掉後數據變得很整齊，就代表刪對了",
+          "每組數據本來就可以刪掉一個最差的，不必多想"], ans: 1,
+   tags: ["OUTLIER_DELETE_BY_EYE", null, "OUTLIER_DELETE_FOR_PRECISION", "OUTLIER_QUOTA"],
+   exp: "與 ch05-q05 同構。憑眼睛刪＝主觀；「刪完變整齊」是刪除極端值的必然結果，不是證據；也沒有「每組可刪一個」的名額。依據應是失誤紀錄＋客觀檢定＋揭露。" },
+ { id: "ch05-p02", v: 1, type: "calc", phase: "pre",
+   q: "用兩把不同的尺量得長 12.345 cm、寬 2.5 cm，計算機顯示面積 = 30.8625 cm²。報告哪一個最合理？",
+   opts: ["30.8625", "30.9", "31", "30.863"], ans: 2,
+   tags: ["SIGFIG_KEEP_ALL_DIGITS", "SIGFIG_ADD_MUL_RULE", null, "SIGFIG_NOT_LEAST"],
+   exp: "與 ch05-q02 同構。乘除看有效位數最少的項：2.5 只有 2 位 → 31。30.8625＝全抄計算機；30.9＝誤用加減法的「小數位」規則；30.863＝跟著位數最多的 12.345 取 5 位。" },
+ { id: "ch05-p03", v: 1, type: "concept", phase: "pre",
+   q: "電子秤顯示 0.050 kg。這個讀數有幾位「有效數字」？",
+   opts: ["2 位（5 和它後面的 0）", "3 位（小數點後有 3 位）", "4 位（0、0、5、0 全部都算）", "1 位（只有 5 才算）"], ans: 0,
+   tags: [null, "SIGFIG_DECIMAL_PLACES", "SIGFIG_DECIMAL_PLACES", "SIGFIG_TRAILING_ZERO"],
+   exp: "與 ch05-q01 同構。前導零只是定位不算；小數點後末端的 0 代表儀器真的讀到那一位，要算 → 2 位。選 3 或 4 位＝把小數位數／前導零算進去；選 1 位＝以為末端零不算。" },
+
+ /* ---------- 課後 post ---------- */
+ { id: "ch05-q01", v: 1, type: "concept", phase: "post",
+   q: "下列哪一個數字的有效位數<strong>恰好是 4 位</strong>？",
+   opts: ["0.0072", "7000", "6.407", "64.720"], ans: 2,
+   tags: ["SIGFIG_DECIMAL_PLACES", "SIGFIG_TRAILING_ZERO", null, "SIGFIG_TRAILING_ZERO"],
+   exp: "6.407 夾在中間的零要算 → 4 位。0.0072 的前導零只是定位，只有 2 位（小數點後有 4 位 ≠ 4 位有效數字）；7000 整數末端的零預設不算，只有 1 位（要寫成 7.000×10³ 才是 4 位）；64.720 小數點後末端的零要算，是 5 位。" },
+ { id: "ch05-q02", v: 1, type: "calc", phase: "post",
+   q: "36.54 × 238 × 1.1 = 9566.172，正確的報告值為：",
+   opts: ["9566.172", "9566.2", "9570", "9600"], ans: 3,
+   tags: ["SIGFIG_KEEP_ALL_DIGITS", "SIGFIG_ADD_MUL_RULE", "SIGFIG_NOT_LEAST", null],
+   exp: "乘除看「有效位數最少」的項：1.1 只有 2 位 → 9600（Nielsen 4.5.1 例題）。9566.172 是全抄計算機；9566.2 是誤用加減法的「小數位數」規則；9570 是跟著 238 取 3 位，沒有找最少的那一項。" },
+ { id: "ch05-q03", v: 1, type: "calc", phase: "post",
+   q: "粗脂肪 4 重複（%）：12.47、12.53、12.50、12.98。懷疑 12.98 是異常值，請計算 Dixon Q 值（取 3 位小數）。",
+   num: { ans: 0.882, tol: 0.005, unit: "" },
+   errs: [ { val: 1.133, tol: 0.005, tag: "Q_GAP_RANGE_WRONG" },
+           { val: 0.059, tol: 0.005, tag: "Q_GAP_RANGE_WRONG" },
+           { val: 0.706, tol: 0.005, tag: "Q_GAP_RANGE_WRONG" },
+           { val: 1.492, tol: 0.005, tag: "Q_VS_GRUBBS" } ],
+   exp: "排序後 12.47、12.50、12.53、12.98：gap = 12.98−12.53 = 0.45，全距 W = 12.98−12.47 = 0.51，Q = 0.45/0.51 = 0.882 &gt; 0.76（n=4）→ 統計上可捨棄。常見錯誤：分子分母顛倒得 1.133；取到另一端的間距 (12.50−12.47)/0.51 = 0.059；用可疑值到平均值的距離得 0.706；算成 Grubbs 的 G = |12.98−12.62|/SD = 1.492（那是另一個檢定，臨界值也不同）。" },
+ { id: "ch05-q04", v: 1, type: "misc", phase: "post",
+   q: "乾物質數據 88.62、88.74、89.20、82.20：捨棄 82.20 前 mean=87.19、SD=3.34；捨棄後 mean=88.85、SD=0.31。同學說：「<em>刪掉之後 SD 小了 10 倍，可見刪掉它是對的。</em>」這句話的問題在哪？",
+   opts: ["SD 變小是刪掉極端值的必然結果，不能拿來當「該刪」的證據；依據應該是失誤紀錄＋客觀檢定（Q=0.917&gt;0.76），而且要揭露",
+          "沒有問題：SD 變小就代表結果變準確了",
+          "沒有問題：只要刪掉後 CV 能降到 5% 以下，就可以刪",
+          "問題在多此一舉：82.20 一看就離群，根本不必做檢定也不必說明"], ans: 0,
+   tags: [null, "PRECISION_IS_ACCURACY", "OUTLIER_DELETE_FOR_PRECISION", "OUTLIER_DELETE_BY_EYE"],
+   exp: "任何數據集刪掉最極端的值，SD 都會變小——這是循環論證。SD 小也只是精密，不等於準確；「為了讓 CV 過關」而刪正是 Nielsen 說的扭曲結果；憑眼睛刪則沒有客觀依據。正確程序：查紀錄 → Q／Grubbs 檢定 → 報告中揭露。" },
+ { id: "ch05-q05", v: 1, type: "concept", phase: "post",
+   q: "關於刪除異常值，下列何者正確？",
+   opts: ["只要 Q 檢定過關就能刪，不用另外說明",
+          "為了讓 CV &lt; 5% 符合允收標準，可以刪",
+          "每組數據最多可以刪 1 個，這是慣例",
+          "要有可追溯的操作失誤紀錄＋統計檢定支持，並在報告中揭露"], ans: 3,
+   tags: ["OUTLIER_DELETE_BY_TEST_ONLY", "OUTLIER_DELETE_FOR_PRECISION", "OUTLIER_QUOTA", null],
+   exp: "Nielsen 4.5.2 與 QUAM §2.4.13 一致：統計檢定只是輔助證據（「純粹以統計理由拒絕數值通常不明智」），不是刪除許可證；以美化精密度為目的的刪除是學術不端；也不存在「每組可刪一個」的名額。" },
+ { id: "ch05-q06", v: 1, type: "calc", phase: "post",
+   q: "咖啡因 43.5 μg/mL，用 A 級移液管與容量瓶稀釋 50 倍，43.5 × 50 = 2175。依 Nielsen 的建議，原液濃度應報告為（μg/mL）：",
+   opts: ["2000（50 只有 1 位有效數字）", "2180（稀釋倍數依器皿容許差視為 50.0，取 3 位）", "2200（50 當 2 位有效數字）", "2175（計算機顯示多少就報多少）"], ans: 1,
+   tags: ["SIGFIG_MECHANICAL_RULE", null, "SIGFIG_MECHANICAL_RULE", "SIGFIG_KEEP_ALL_DIGITS"],
+   exp: "A 級容量瓶 ±0.05 mL 的精確度支撐第 3 位，稀釋倍數應寫成 50.0 → 43.5×50.0 = 2180。把「50」機械地當 1 位（2000）或 2 位（2200）會嚴重扭曲結果；2175 則多報了 43.5 撐不起的第 4 位。取位要回溯每個數字的「器皿依據」。" },
+ { id: "ch05-q07", v: 1, type: "rout", phase: "post",
+   q: "儲存格 x = 0.016724，要在 Excel 取成 <strong>3 位有效數字</strong>（0.0167），應使用：",
+   opts: ["=ROUND(x, 3-1-INT(LOG10(ABS(x))))", "=ROUND(x, 3)", "=ROUNDDOWN(x, 3)", "=SIGNIFICANT(x, 3)"], ans: 0,
+   tags: [null, "SIGFIG_DECIMAL_PLACES", "EXCEL_FUNCTION_CONFUSION", "EXCEL_FUNCTION_CONFUSION"],
+   exp: "=ROUND(x, 3) 的 3 是「小數位數」，會得到 0.017（只剩 2 位有效數字）——小數位數 ≠ 有效位數。Excel 沒有 SIGNIFICANT 函數；ROUNDDOWN 是無條件捨去。教材做法：用 LOG10 算出數量級，動態決定四捨五入的位置。" },
+ { id: "ch05-q08", v: 1, type: "rout", phase: "post",
+   q: "在 Excel 手算 Dixon Q：4 個數據<strong>由小到大</strong>排在 A1:A4，懷疑「最大值」是異常值。Q 的公式是：",
+   opts: ["=(A2-A1)/(A4-A1)", "=(A4-A1)/(A4-A3)", "=(A4-A3)/(A4-A1)", "=(A4-AVERAGE(A1:A4))/STDEV(A1:A4)"], ans: 2,
+   tags: ["Q_GAP_RANGE_WRONG", "Q_GAP_RANGE_WRONG", null, "Q_VS_GRUBBS"],
+   exp: "可疑值是最大值 → gap = A4−A3，除以全距 A4−A1。(A2−A1) 是「最小值可疑」時的 gap；(A4−A1)/(A4−A3) 分子分母顛倒（Q 不可能大於 1）；除以 STDEV 的是 Grubbs 的 G，不是 Q，兩者臨界值表也不同。" },
+ { id: "ch05-q09", v: 1, type: "rout", phase: "post",
+   q: "對乾物質數據執行本章的 <code>q_test(dry)</code>，R 輸出如下。下列判讀何者正確？<pre>$Q\n[1] 0.917\n\n$Qcrit\n[1] 0.76\n\n$reject\n[1] TRUE</pre>",
+   opts: ["Q = 0.917 小於 1，所以應該保留 82.20",
+          "Q 大於 n=4 的臨界值 0.76，統計上支持 82.20 為異常值；但仍要查實驗紀錄，並在報告中揭露才能捨棄",
+          "reject 是 TRUE，所以可以直接刪掉 82.20，報告不必提",
+          "刪掉 82.20 之後，應該對剩下 3 筆繼續跑 q_test，直到 reject 變成 FALSE 為止"], ans: 1,
+   tags: ["Q_CRIT_MISREAD", null, "OUTLIER_DELETE_BY_TEST_ONLY", "OUTLIER_TEST_REPEAT"],
+   exp: "判定是拿 Q 跟「該 n 的臨界值」比（n=4 → 0.76），不是跟 1 比。reject=TRUE 只是統計證據，不是刪除許可（還需要失誤紀錄與揭露）。Q 檢定一次只適合處理一個可疑值，反覆檢定到滿意會把正常變異也刪光（n=3 時臨界值高達 0.94）。" },
+
+ /* ---------- 回溯 spaced ---------- */
+ { id: "ch05-s01", v: 1, type: "calc", phase: "spaced", from: "ch02",
+   q: "捨棄異常值後只剩 n = 3（mean = 88.85、SD = 0.306）。95% 信賴區間的<strong>半寬</strong>應該是：",
+   opts: ["1.96 × 0.306/\\(\\sqrt{3}\\) = 0.35", "4.303 × 0.306 = 1.32", "3.182 × 0.306/\\(\\sqrt{3}\\) = 0.56", "4.303 × 0.306/\\(\\sqrt{3}\\) = 0.76"], ans: 3,
+   tags: ["USED_Z_NOT_T", "FORGOT_SQRT_N", "DF_EQUALS_N", null],
+   exp: "小樣本用 t：df = n−1 = 2 → t = 4.303，半寬 = 4.303×0.306/\\(\\sqrt{3}\\) = 0.76（本章 R 輸出 88.09–89.61）。用 1.96 是把小樣本當大樣本；忘了除以 \\(\\sqrt{n}\\) 是把 SD 當 SEM；3.182 是 df=3 的 t 值（自由度誤用 n）。注意：刪掉一筆數據後 n 變小，t 值從 3.182 跳到 4.303——刪數據是有代價的。" }
 ];
 </script>
 <script src="assets/app.js"></script>
 <script src="assets/js/showout.js"></script>
+<script type="module" src="assets/js/assess.js"></script>
 
-<nav class="pager">
-<a href="ch04.html"><small>上一章</small>Ch4 標準曲線與線性迴歸</a>
-<a href="ch06.html"><small>下一章</small>Ch6 量測不確定度：概念與 GUM 流程</a>
-</nav>
+<nav class="pager" data-pager></nav>
 </main>
 <footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫</footer>
 </body>

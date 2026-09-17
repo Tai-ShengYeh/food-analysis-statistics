@@ -9,9 +9,7 @@
 <body>
 <header class="topbar"><div class="inner">
 <a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
-<nav class="topnav">
-<a href="index.html">首頁</a><a href="ch00.html">Ch0 入門</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a><a href="ch13.html">Ch13 FDC配方</a><a href="ch14.html">Ch14 DOE/RSM</a>
-</nav></div></header>
+<nav class="topnav" data-nav></nav></div></header>
 
 <main>
 <div class="crumbs">首頁</div>
@@ -46,6 +44,10 @@
 <h3>標準曲線與迴歸</h3><p>lm()、r²、殘差圖、信賴帶、反推濃度與外插危機。</p></a>
 <a class="chapcard" href="ch05.html"><span class="no">PART 1 · CH 5</span>
 <h3>有效數字與異常值</h3><p>取位規則、Dixon Q 檢定、Grubbs 檢定與學術倫理。</p></a>
+<a class="chapcard part1b" href="ch15.html"><span class="no">PART 1B · CH 15 · NEW</span>
+<h3>假說檢定與 t／F 檢定</h3><p>H₀ 與 p 值的正確意義、CRM 偏倚檢定、成對 t、Welch t、F 檢定、檢定力與樣本數。</p></a>
+<a class="chapcard part1b" href="ch16.html"><span class="no">PART 1B · CH 16 · NEW</span>
+<h3>單因子 ANOVA 與事後比較</h3><p>為何不能做多次 t 檢定、ANOVA 表判讀、Tukey HSD 與字母標示、前提檢查、Welch／Kruskal 替代方案。</p></a>
 <a class="chapcard part2" href="ch06.html"><span class="no">PART 2 · CH 6</span>
 <h3>不確定度概念</h3><p>誤差 vs 不確定度、GUM 四步驟、魚骨圖、經驗方法。</p></a>
 <a class="chapcard part2" href="ch07.html"><span class="no">PART 2 · CH 7</span>
@@ -54,7 +56,7 @@
 <h3>合成、報告與符合性</h3><p>Rule 1/2、U=k·u<sub>c</sub>、報告格式、法規符合性判定。</p></a>
 <a class="chapcard part2" href="ch09.html"><span class="no">PART 2 · CH 9</span>
 <h3>Kragten 與 Monte Carlo</h3><p>數值微分與 10 萬次模擬，三方法對照鎘標準液案例。</p></a>
-<a class="chapcard part3" href="ch10.html"><span class="no">PART 2 · CH 10</span>
+<a class="chapcard part2" href="ch10.html"><span class="no">PART 2 · CH 10</span>
 <h3>案例②滴定 ③HPLC</h3><p>NaOH 標定（QUAM A2）與農藥殘留內部驗證法（QUAM A4）完整重現。</p></a>
 <a class="chapcard part3" href="ch11.html"><span class="no">PART 3 · CH 11</span>
 <h3>綜合案例與期末測驗</h3><p>粗纖維（A6）、標準曲線不確定度（E.4）＋ 15 題期末總測驗。</p></a>
@@ -62,7 +64,9 @@
 <h3>進階：LC-MS/MS 案例④</h3><p>基質效應（Matuszewski）、同位素內標、1/x 加權校正、氯黴素限量判定。</p></a>
 <a class="chapcard part3" href="ch13.html"><span class="no">PART 3 · CH 13</span>
 <h3>實戰：FDC 與配方計算</h3><p>USDA FoodData Central 開放資料 × TechWizard 工作流：最低成本配方、營養標籤、逆向工程。</p></a>
-<a class="chapcard part3" href="ch14.html"><span class="no">PART 3 · CH 14</span>
+<a class="chapcard part4" href="ch17.html"><span class="no">PART 4 · CH 17 · NEW</span>
+<h3>ANOVA 進階：雙因子、精密度分解、失擬</h3><p>交互作用、用 ANOVA 拆出重複性與中間精密度（ISO 5725）、標準曲線與 RSM 的失擬檢定。</p></a>
+<a class="chapcard part4" href="ch14.html"><span class="no">PART 4 · CH 14</span>
 <h3>實驗設計與反應曲面法</h3><p>2³ 因子設計、中心複合設計、駐點與最適條件；base R 原理 + rsm/FrF2 套件實務。</p></a>
 </div>
 
@@ -80,6 +84,8 @@
 <tr><td>Ch3</td><td><a href="R/ch03_method_qc.R" download>ch03_method_qc.R</a></td><td>LOD/LOQ/MDL、Shewhart、CuSum</td></tr>
 <tr><td>Ch4</td><td><a href="R/ch04_regression.R" download>ch04_regression.R</a></td><td>lm()、r²、殘差、信賴帶、反推</td></tr>
 <tr><td>Ch5</td><td><a href="R/ch05_outliers_sigfig.R" download>ch05_outliers_sigfig.R</a></td><td>有效數字、Q 檢定、Grubbs</td></tr>
+<tr><td>Ch15</td><td><a href="R/ch15_hypothesis_tests.R" download>ch15_hypothesis_tests.R</a></td><td><strong>假說檢定</strong>：t.test、var.test、power.t.test</td></tr>
+<tr><td>Ch16</td><td><a href="R/ch16_anova_oneway.R" download>ch16_anova_oneway.R</a></td><td><strong>One-way ANOVA</strong>：aov、TukeyHSD、bartlett.test、oneway.test、kruskal.test</td></tr>
 <tr><td>Ch6</td><td><a href="R/ch06_uncertainty_concept.R" download>ch06_uncertainty_concept.R</a></td><td>誤差 vs 不確定度模擬</td></tr>
 <tr><td>Ch7</td><td><a href="R/ch07_typeAB_distributions.R" download>ch07_typeAB_distributions.R</a></td><td>Type A/B 分布轉換</td></tr>
 <tr><td>Ch7 案例①</td><td><a href="R/case_balance.R" download>case_balance.R</a></td><td><strong>天平稱量</strong>不確定度</td></tr>
@@ -90,8 +96,11 @@
 <tr><td>Ch11</td><td><a href="R/ch11_capstone.R" download>ch11_capstone.R</a></td><td>粗纖維（A6）、迴歸不確定度（E.4）</td></tr>
 <tr><td>Ch12 案例④</td><td><a href="R/case_lcmsms.R" download>case_lcmsms.R</a></td><td><strong>LC-MS/MS 氯黴素</strong>：基質效應、SIL-IS、1/x 加權</td></tr>
 <tr><td>Ch13</td><td><a href="R/ch13_fdc.R" download>ch13_fdc.R</a></td><td><strong>FDC 配方計算</strong>：最低成本配方、營養標籤、逆向工程</td></tr>
+<tr><td>Ch17</td><td><a href="R/ch17_anova_advanced.R" download>ch17_anova_advanced.R</a></td><td><strong>ANOVA 進階</strong>：雙因子與交互作用、精密度分解、lack-of-fit</td></tr>
 <tr><td>Ch14</td><td><a href="R/ch14_doe_rsm.R" download>ch14_doe_rsm.R</a></td><td><strong>DOE &amp; RSM</strong>：2³ 因子、CCD、駐點、驗證（＋套件選讀）</td></tr>
-<tr><td>附錄</td><td><a href="R/figures.R" download>figures.R</a></td><td>本站全部教學圖表的繪圖程式</td></tr>
+<tr><td>附錄</td><td><a href="R/figures.R" download>figures.R</a>、<a href="R/figures_ch15.R" download>figures_ch15.R</a>、<a href="R/figures_ch16.R" download>figures_ch16.R</a>、<a href="R/figures_ch17.R" download>figures_ch17.R</a></td><td>本站全部教學圖表的繪圖程式</td></tr>
+<tr><td>選修</td><td><a href="R/extension_lab_uncertainty_cases.R" download>extension_lab_uncertainty_cases.R</a>、<a href="R/extension_metrology_toolbox.R" download>extension_metrology_toolbox.R</a></td><td>延伸：實驗室不確定度案例、metRology 工具箱（需另裝套件）</td></tr>
+<tr><td>全集</td><td><a href="downloads/food-analysis-statistics-R.md" download>food-analysis-statistics-R.md</a></td><td>所有 R 腳本合併成單一 Markdown 檔</td></tr>
 </table>
 </div>
 
@@ -117,7 +126,8 @@
 </ol>
 </div>
 <div class="callout ok"><span class="t">👨‍🏫 給授課教師</span>
-章節順序即建議教學順序（Part 1 → Part 2 → Part 3），每章約 50 分鐘。
+首頁卡片與導覽列的順序即建議教學順序：Part 1（Ch1–5）→ Part 1B 比較與檢定（Ch15–16）→ Part 2（Ch6–10）→ Part 3（Ch11–13）→ Part 4 實驗設計（Ch17 → Ch14），每章約 50 分鐘。章號是檔案的固定編號（也是學習紀錄的鍵），新增章節一律往後編號、不重排。<br>
+每章有「課前 3 題」與「章末複習測驗」：學生輸入學號後，首次作答、把握程度與「我還不懂的地方」會上傳，教師端以 <code>scripts/quiz_dashboard.py</code> 產生全班成效與迷思報表（見 <code>scripts/README_dashboard.md</code>）。<br>
 所有數值均與 Nielsen Ch.4 及 QUAM:2012.P1 原文例題核對一致（如 SD=0.2927、
 c<sub>NaOH</sub>=0.10214、U=0.68×P<sub>op</sub>），可直接用於課堂演示與作業。</div>
 
@@ -127,5 +137,6 @@ c<sub>NaOH</sub>=0.10214、U=0.68×P<sub>op</sub>），可直接用於課堂演�
 </nav>
 </main>
 <footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫 · 僅供教學使用</footer>
+<script src="assets/app.js"></script>
 </body>
 </html>

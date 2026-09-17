@@ -15,16 +15,17 @@
 <body>
 <header class="topbar"><div class="inner">
 <a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
-<nav class="topnav">
-<a href="index.html">首頁</a><a href="ch00.html">Ch0 入門</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a><a href="ch13.html">Ch13 FDC配方</a><a href="ch14.html">Ch14 DOE/RSM</a>
-</nav></div></header>
+<nav class="topnav" data-nav></nav></div></header>
 
 <main>
-<div class="crumbs">Part 3 進階延伸／第 14 章（建議先修：Ch4 迴歸、Ch2 信賴區間）</div>
+<div class="crumbs">Part 3 進階延伸／第 14 章（建議先修：Ch4 迴歸、Ch2 信賴區間、Ch15–17 檢定與 ANOVA）</div>
 <h1>實驗設計與反應曲面法
 <span class="en">Design of Experiments &amp; Response Surface Methodology — with Base R</span></h1>
 
 <p class="lede">研發會議上主管說：「下個月要交出最佳萃取條件，實驗預算只夠 20 次。」OFAT 走不完、瞎試沒根據——這一章就是你的預算內攻略。</p>
+
+<div class="callout"><span class="t">📌 先備</span>
+本章會用到 p 值與 ANOVA 表。還沒讀過請先看 <a href="ch15.html">Ch15 假說檢定</a>、<a href="ch16.html">Ch16 單因子 ANOVA</a>；交互作用與失擬檢定在 <a href="ch17.html">Ch17</a>。</div>
 
 <div class="callout"><span class="t">🔑 課前暖身</span>
 做實驗最省的辦法<strong>不是</strong>「一次只改一個條件」，而是「有計畫地一次改多個」——
@@ -39,12 +40,15 @@
 <li>會用 <code>expand.grid()</code> 建立 <strong>2³ 全因子設計</strong>，用 <code>lm()</code> 估主效應與交互作用</li>
 <li>會用<strong>中心點</strong>做曲率檢定與純誤差估計，判斷「何時該上 RSM」</li>
 <li>會建立<strong>中心複合設計（CCD）</strong>、配二階模型、用矩陣代數找<strong>駐點</strong>並判斷極大/極小</li>
+<li>會讀 RSM 模型的 <strong>ANOVA 表</strong>（一階／交互作用／二次項各解釋多少變異），會用<strong>中心點重複</strong>做<strong>失擬檢定</strong>（呼應 Ch16/Ch17）</li>
 <li>會報告<strong>預測區間</strong>並設計<strong>驗證實驗</strong>（呼應 Ch2/Ch8）</li>
 <li>認識 <code>rsm</code>、<code>FrF2</code>、<code>desirability</code> 等 CRAN DoE 套件生態（Tanaka &amp; Amaliah 2022）</li>
 </ul></div>
 
+<div class="quiz" data-phase="pre"></div>
+
 <div class="callout"><span class="t">🧪 情境</span>
-超音波輔助萃取（UAE）茶葉多酚，反應值 = <strong>DPPH 清除率 0%)</strong>。三個連續因子（編碼單位 ±1）：
+超音波輔助萃取（UAE）茶葉多酚，反應值 = <strong>DPPH 清除率 (%)</strong>。三個連續因子（編碼單位 ±1）：
 <strong>A 乙醇濃度</strong> 50±10%、<strong>B 萃取溫度</strong> 50±10 °C、<strong>C 超音波時間</strong> 22.5±7.5 min。
 食品期刊的萃取/加工最佳化論文十篇有九篇長這樣——本章用 base R 從因子設計一路做到最適條件，
 再用業界標準套件 <code>rsm</code> 對照。數據為教學模擬（含已知真實模型，方便對照還原度）。</div>
@@ -68,8 +72,8 @@ DOE 是「<strong>在動手做實驗之前，先規劃好要改哪些條件、�
 <tr><td><strong>水準</strong> Level</td><td>因子設定的幾個值（通常先取高、低兩個）</td><td>乙醇 40%（−1）與 60%（+1）</td></tr>
 <tr><td><strong>反應</strong> Response</td><td>你量出來、想要最佳化的結果</td><td>DPPH 清除率（%）</td></tr>
 <tr><td><strong>主效應</strong> Main effect</td><td>單一因子從低水準換到高水準，反應平均改變多少</td><td>乙醇 40→60%，DPPH 平均 +11.3%</td></tr>
-<tr><td><strong>交互作用</strong> Interaction</td><td>A 的效果<strong>取決於</strong> B 的水準</td><td>溫度高時乙醇的效果幾乎加倍</td></tr>
-<tr><td><strong>中心點</strong> Center point</td><td>所有因子都取中間值的重複實驗</td><td>050°C, 50%, 20min) 做 4 次</td></tr>
+<tr><td><strong>交互作用</strong> Interaction</td><td>A 的效果<strong>取決於</strong> B 的水準</td><td>60 °C 時乙醇的效果約是 40 °C 時的 2 倍</td></tr>
+<tr><td><strong>中心點</strong> Center point</td><td>所有因子都取中間值的重複實驗</td><td>(乙醇 50%, 50 °C, 22.5 min) 做 4 次</td></tr>
 </table>
 <div class="callout"><span class="t">🔑 編碼（−1 / 0 / +1）是什麼？</span>
 DOE 把每個因子的實際單位換成無單位的「編碼值」：低水準 = −1、中心 = 0、高水準 = +1
@@ -80,22 +84,22 @@ DOE 把每個因子的實際單位換成無單位的「編碼值」：低水準 
 
 <h2>14.1 為什麼是 DOE：OFAT 的陷阱</h2>
 <table>
-<tr><th>面向</th><th>OFAT 一次一因子</th><th>因子設計 0DOE)</th></tr>
+<tr><th>面向</th><th>OFAT 一次一因子</th><th>因子設計 (DOE)</th></tr>
 <tr><td><strong>實驗 run 數</strong>（3 因子 2 水準）</td><td>邊試邊加，常超過 12</td><td>8（＋中心點）</td></tr>
 <tr><td><strong>交互作用</strong></td><td>結構上看不到</td><td>完整估計</td></tr>
 <tr><td><strong>曲率</strong></td><td>無從判斷</td><td>中心點直接檢定</td></tr>
 <tr><td><strong>最適點</strong></td><td>常停在「沿軸的假最適點」</td><td>RSM 收斂到真最適點</td></tr>
 </table>
 <div class="callout warn"><span class="t">⚡ 交互作用不是統計裝飾品</span>
-本例真實情況：<strong>溫度 60 °C 時</strong>，乙醇濃度每 +10% 讓 DPPH 增加約 <strong>7.2%</strong>；
-<strong>50 °C 時</strong>只增加約 <strong>3.9%</strong>（見圖 14-1 左，兩線不平行）。
-如果你用 OFAT 在 50 °C 先「選好」乙醇濃度，換到高溫製程時這個選擇就是錯的。
+本例數據（14.2 的 8 個因子點）：<strong>溫度 60 °C 時</strong>，乙醇由 40% 提高到 60% 讓 DPPH 增加約 <strong>15.4 個百分點</strong>（每 +10% 約 7.7）；
+<strong>40 °C 時</strong>同樣的改變只增加約 <strong>7.2 個百分點</strong>（每 +10% 約 3.6）——差了一倍以上（見圖 14-1 左，兩線不平行）。
+如果你用 OFAT 在 40 °C 先「選好」乙醇濃度，換到高溫製程時這個選擇就是錯的。
 交互作用 = <strong>一個因子的效果取決於另一個因子的水準</strong>——這是配方與製程開發的日常。</div>
 
 <h2>14.2 2³ 全因子 + 中心點：效應與曲率</h2>
 <p>8 個因子點（±1 組合全跑）＋ 4 個中心點（0,0,0 重複）。設計矩陣與模擬結果：</p>
 <table>
-<tr><th>Run</th><th class="num">A</th><th class="num">B</th><th class="num">C</th><th class="num">DPPH 0%)</th><th>備註</th></tr>
+<tr><th>Run</th><th class="num">A</th><th class="num">B</th><th class="num">C</th><th class="num">DPPH (%)</th><th>備註</th></tr>
 <tr><td>1</td><td class="num">−1</td><td class="num">−1</td><td class="num">−1</td><td class="num">33.7</td><td rowspan="8">因子點：估主效應與交互作用</td></tr>
 <tr><td>2</td><td class="num">+1</td><td class="num">−1</td><td class="num">−1</td><td class="num">41.6</td></tr>
 <tr><td>3</td><td class="num">−1</td><td class="num">+1</td><td class="num">−1</td><td class="num">38.0</td></tr>
@@ -108,7 +112,7 @@ DOE 把每個因子的實際單位換成無單位的「編碼值」：低水準 
 </table>
 <p>配一階＋交互作用模型 <code>lm(y ~ (A+B+C)^2)</code>：</p>
 <table>
-<tr><th>項</th><th class="num">係數</th><th class="num">效應 0=2×係數)</th><th>解讀</th></tr>
+<tr><th>項</th><th class="num">係數</th><th class="num">效應 (=2×係數)</th><th>解讀</th></tr>
 <tr><td>截距</td><td class="num">48.75</td><td class="num">—</td><td>因子點的整體平均水準</td></tr>
 <tr class="hl"><td><strong>A 乙醇</strong></td><td class="num"><strong>5.64</strong></td><td class="num"><strong>11.3</strong></td><td>最大主效應</td></tr>
 <tr><td>B 溫度</td><td class="num">3.34</td><td class="num">6.7</td><td>次強</td></tr>
@@ -128,6 +132,11 @@ DOE 把每個因子的實際單位換成無單位的「編碼值」：低水準 
 t = (60.18 − 43.04) / (0.86 × \(\sqrt{(1/4 + 1/8)}\)) = <strong>32.5</strong>，df = 3，p ≈ <strong>0.0001</strong>
 <span class="note">結論：反應曲面是「彎的」且開口朝下（中心高、兩端低）→ 直線模型不夠 → 進入 RSM</span>
 </div>
+<div class="callout"><span class="t">🔑 這個 p 值在檢定什麼？</span>
+這裡的 H₀ 是「<strong>曲面沒有彎</strong>」——中心點平均＝因子點平均，也就是曲率（平方項）的效應＝0。
+p ≈ 0.0001 很小＝數據與「沒有彎」<strong>不相容</strong>，所以拒絕 H₀（不是「H₀ 為真的機率是 0.0001」）。
+本章後面每一個係數的 t／p 值都是同一個邏輯：H₀ 是「<strong>該係數＝0（這個因子／這一項沒有效應）</strong>」，
+p 很小＝數據與「沒有效應」不相容。H₀、p 值與 t 檢定的完整說明見 <a href="ch15.html">Ch15 假說檢定</a>。</div>
 
 <h2>14.3 RSM 入門：把「找最大值」變成「找山頂」</h2>
 <p>14.2 的曲率檢定告訴我們「曲面是彎的」——這正是 <strong>RSM（Response Surface Methodology，反應曲面法）</strong>登場的時機。</p>
@@ -151,6 +160,7 @@ RSM 就是用數學模型把這座「山」的形狀畫出來，然後找出<str
 <li><strong>偵測曲率</strong>：中心點檢定（14.2 末）</li>
 <li><strong>補軸點</strong>：升級成 CCD，配二階模型（14.3.1）</li>
 <li><strong>找駐點</strong>：解方程組定位山頂（14.3.1）</li>
+<li><strong>檢驗模型</strong>：ANOVA 表＋用中心點重複做失擬檢定（14.3.2）</li>
 <li><strong>驗證</strong>：在最適條件實做，確認落在預測區間內（14.4）</li>
 </ol>
 </div>
@@ -163,9 +173,9 @@ R 會直接告訴你山頂的編碼座標（再換回實際單位）。</div>
 <p>CCD 在 2³ 因子設計上補<strong>軸點</strong>（每因子 ±α，其他因子歸零）與更多中心點：</p>
 <table>
 <tr><th>區塊</th><th class="num">點數</th><th>用途</th></tr>
-<tr><td>因子點 0±1,±1,±1)</td><td class="num">8</td><td>主效應、交互作用</td></tr>
-<tr><td>軸點 0±α 各軸)</td><td class="num">6</td><td>估三個平方項（曲率）</td></tr>
-<tr><td>中心點 00,0,0)</td><td class="num">6</td><td>純誤差、讓預測變異均勻</td></tr>
+<tr><td>因子點 (±1,±1,±1)</td><td class="num">8</td><td>主效應、交互作用</td></tr>
+<tr><td>軸點 (±α 各軸)</td><td class="num">6</td><td>估三個平方項（曲率）</td></tr>
+<tr><td>中心點 (0,0,0)</td><td class="num">6</td><td>純誤差（失擬檢定的分母，見 14.3.2）、讓預測變異均勻</td></tr>
 <tr class="hl"><td><strong>合計</strong></td><td class="num"><strong>20</strong></td><td>要估 10 個參數——經濟得驚人</td></tr>
 </table>
 <div class="formula">
@@ -192,9 +202,56 @@ x₀ = −½ <strong>B</strong>⁻¹b　；　eigen(<strong>B</strong>) = (−7.
 <tr class="hl"><td><strong>預測 DPPH</strong></td><td class="num">—</td><td class="num"><strong>61.8 %</strong></td></tr>
 </table>
 <div class="callout ok"><span class="t">💡 20 個實驗的還原度</span>
-教學模擬的真實模型駐點是 00.39, 0.40, 0.17)、真實最大值 61.8%。
-用 20 個含雜訊的實驗，駐點位置估計誤差僅約 0.05 個編碼單位（≈ 0.5% 乙醇、0.5 °C），
-預測最大值完全命中——這就是 DOE「用最少的實驗拿最多的資訊」的具體含義。</div>
+教學模擬的真實模型駐點是 (0.43, 0.41, 0.17)、真實最大值 61.9%。
+用 20 個含雜訊的實驗，駐點位置估計誤差都在 0.04 個編碼單位以內（≈ 0.1% 乙醇、0.4 °C、0.3 min），
+預測最大值 61.8% 與真值只差 0.05 個百分點——這就是 DOE「用最少的實驗拿最多的資訊」的具體含義。</div>
+
+<h2>14.3.2 模型檢驗：ANOVA 表與失擬檢定</h2>
+<p>把駐點交給操作員之前，先問模型兩個問題：<strong>① 哪些項真的在出力？</strong>（ANOVA 表，<a href="ch16.html">Ch16</a> 的「把總變異拆開」）
+<strong>② 二階模型的「形狀」夠不夠？</strong>（失擬檢定，<a href="ch17.html">Ch17</a> 17.8–17.10）。</p>
+<h3>① <code>anova(fit2)</code>：一階、交互作用、二次項各吃掉多少 SS</h3>
+<p>20 個 run 的總變異 SS<sub>總</sub> = 1894.66（df = 19）。<code>anova(fit2)</code> 把它逐項拆開（完整輸出見本章末的 R Console），依項目類型加總：</p>
+<table>
+<tr><th>來源</th><th class="num">df</th><th class="num">SS</th><th class="num">佔總 SS</th><th>怎麼讀</th></tr>
+<tr><td>一階項 A、B、C</td><td class="num">3</td><td class="num">494.40</td><td class="num">26.1%</td><td>A 348.66、B 111.55、C 34.19，三項 p 都 &lt; 0.001</td></tr>
+<tr class="hl"><td><strong>二次項 A²、B²、C²</strong></td><td class="num">3</td><td class="num"><strong>1318.12</strong></td><td class="num"><strong>69.6%</strong></td><td>最大宗——這組資料的變異主要來自「彎曲」，少了平方項模型就垮了</td></tr>
+<tr><td>交互作用 A:B、A:C、B:C</td><td class="num">3</td><td class="num">70.33</td><td class="num">3.7%</td><td>幾乎全是 A:B（66.13，p = 2.1×10⁻⁵）；A:C（p = 0.20）、B:C（p = 0.22）不顯著</td></tr>
+<tr><td>殘差</td><td class="num">10</td><td class="num">11.81</td><td class="num">0.6%</td><td>MS<sub>殘差</sub> = 1.18，是每一列 F 值的分母</td></tr>
+<tr><td><strong>總和</strong></td><td class="num">19</td><td class="num">1894.66</td><td class="num">100%</td><td></td></tr>
+</table>
+<ul>
+<li><strong>每一列的讀法和 Ch16 一樣</strong>：F = 該項的 MS ÷ MS<sub>殘差</sub>；H₀ 是「該項係數＝0」。例如 A：348.66 / 1.18 = 295.3、p = 9.4×10⁻⁹。
+每項只有 1 個 df，所以這個 F 就是係數 t 值的平方（A 的 t = 17.19，17.19² ≈ 295）。</li>
+<li><strong>A:C、B:C 不顯著</strong>——和 14.2 的「可忽略」一致（教學模擬的真實模型裡本來就沒有這兩項）。</li>
+<li><strong>注意順序</strong>：<code>anova()</code> 給的是「依序放入」的 SS（R 會把 <code>I(A^2)</code> 等平方項排在交互作用之前）。
+CCD 的一階項與交互作用項彼此正交，SS 不受順序影響；但三個平方項彼此<strong>不</strong>完全正交，個別 SS 會隨順序略變，
+<strong>三項合計 1318.12 則不變</strong>——所以二次項要「整組」讀。</li>
+</ul>
+<h3>② 失擬檢定：6 個中心點的真正用途</h3>
+<p>20 個 run 裡只有 15 個<strong>不同的</strong>設計點；唯一有重複的就是 6 個一模一樣的中心點。它們不是浪費——
+同一條件重做 6 次的差異與模型無關，就是<strong>純誤差</strong>（s = 1.054，SS = 5 × 1.054² = 5.55，df = 6 − 1 = 5）。
+有了它，就能照 Ch17 的做法把殘差 SS 拆成兩塊：</p>
+<div class="formula">
+SS<sub>殘差</sub> 11.81（df 10）＝ SS<sub>純誤差</sub> 5.55（df 5）＋ SS<sub>失擬</sub> 6.25（df 5 = 15 個設計點 − 10 個參數）
+<br><br>F = (6.25 / 5) / (5.55 / 5) = <strong>1.13</strong>，p = <strong>0.45</strong>
+<span class="note">R 的寫法：建立「每個設計點一個水準」的因子 pt，配 lm(y ~ pt)（每點一個平均，殘差只剩純誤差），再用 anova(模型, fit_pt) 比較</span>
+</div>
+<p>同樣的檢定也對「只有一階＋交互作用」的模型做一次，對照就很清楚：</p>
+<table>
+<tr><th>模型</th><th class="num">參數數</th><th class="num">殘差 SS (df)</th><th class="num">失擬 SS (df)</th><th class="num">F</th><th class="num">p</th><th>結論</th></tr>
+<tr><td>一階＋交互作用 <code>y ~ (A+B+C)^2</code></td><td class="num">7</td><td class="num">1329.93 (13)</td><td class="num">1324.4 (8)</td><td class="num"><strong>149.05</strong></td><td class="num"><strong>1.6×10⁻⁵</strong></td><td>失擬顯著：曲面是彎的，平面模型不夠 → 需要二階模型</td></tr>
+<tr class="hl"><td>二階 <code>fit2</code></td><td class="num">10</td><td class="num">11.81 (10)</td><td class="num">6.25 (5)</td><td class="num"><strong>1.13</strong></td><td class="num"><strong>0.45</strong></td><td>失擬不顯著：在純誤差的尺度下看不出模型不足 → 可以拿去找駐點</td></tr>
+</table>
+<p>兩個模型的殘差 SS 相差 1329.93 − 11.81 = 1318.12，正好就是上面 ANOVA 表的「二次項」那一塊——一階模型的失擬幾乎全是沒配到的曲率。
+這也是 14.2「曲率檢定」的另一種問法：那裡用 4 個中心點比平均，這裡用 6 個中心點比 SS，結論相同。</p>
+<div class="callout warn"><span class="t">⚠️ 失擬檢定的三個提醒</span>
+<strong>① 方向相反：p 大才好。</strong>H₀ 是「模型形狀足夠」，p 小才代表模型有問題。<br>
+<strong>② 不顯著 ≠ 模型「正確」。</strong>p = 0.45 只代表在純誤差（s ≈ 1.05）的尺度下、以 5 個 df 的檢定力<strong>看不出</strong>不足
+（<a href="ch15.html">Ch15</a>：不拒絕 H₀ ≠ 證明 H₀）。模型只在實驗範圍內當近似用，所以 14.4 的驗證實驗仍然不能省。<br>
+<strong>③ 沒有重複點，就沒有純誤差，F 沒有分母，這個檢定做不出來</strong>——這就是 CCD 一定要放中心點重複的原因；
+而且必須是<strong>獨立重做的 run</strong>，同一管萃取液重複讀值只量到儀器雜訊，會低估純誤差、讓失擬假顯著。<br>
+<strong>回扣 <a href="ch04.html">Ch04</a>／<a href="ch17.html">Ch17</a></strong>：<code>fit2</code> 的 r² = 0.994 很漂亮，但 r² 只量「點貼不貼模型」，不能證明模型形狀適當
+（Ch17 17.9 的標準曲線 r² = 0.9967，失擬 p 卻只有 10⁻⁶）。判斷模型夠不夠，要拿失擬和純誤差比，不是看 r²。</div>
 
 <h2>14.4 預測區間與驗證實驗</h2>
 <p>報告最適條件時，單點預測必須附<strong>預測區間</strong>（呼應 Ch2 的 CI 與 Ch8 的報告規範）：</p>
@@ -213,7 +270,7 @@ x₀ = −½ <strong>B</strong>⁻¹b　；　eigen(<strong>B</strong>) = (−7.
 <table>
 <tr><th>套件</th><th>功能</th><th>教學/實務場景</th></tr>
 <tr class="hl"><td><strong>rsm</strong></td><td><code>ccd()</code>/<code>bbd()</code> 產生設計、<code>rsm(y ~ SO(...))</code> 二階配適、<code>steepest()</code> 最陡上升、canonical 分析、一行等高線圖</td><td>RSM 的標準工具（Lenth 2009, JSS）</td></tr>
-<tr class="hl"><td><strong>FrF2</strong></td><td>2<sup>k</sup> 部分因子設計、Plackett-Burman <code>pb012, 5)</code></td><td>變因篩選：12 runs 篩 5 個因子（解析度 III/IV）</td></tr>
+<tr class="hl"><td><strong>FrF2</strong></td><td>2<sup>k</sup> 部分因子設計、Plackett-Burman <code>pb(12, 5)</code></td><td>變因篩選：12 runs 篩 5 個因子（解析度 III/IV）</td></tr>
 <tr><td><strong>desirability</strong></td><td>Derringer-Suich 願望函數 <code>dMax()</code>/<code>dMin()</code>/<code>dOverall()</code></td><td>多反應同時最佳化：產率↑ 且溶劑↓（食品 RSM 論文標配）</td></tr>
 <tr><td>lhs / DiceDesign</td><td>拉丁超立方、空間填充設計（WSP）</td><td>電腦實驗、製程模擬；WSP 演算法源自化學計量學</td></tr>
 <tr><td>agricolae</td><td>CRD/RCBD/裂區＋多重比較</td><td>儲藏試驗、感官品評</td></tr>
@@ -221,7 +278,7 @@ x₀ = −½ <strong>B</strong>⁻¹b　；　eigen(<strong>B</strong>) = (−7.
 <tr><td>skpr</td><td>power 分析＋最適設計＋Shiny 介面</td><td>現代互動式教學</td></tr>
 </table>
 <div class="callout ok"><span class="t">📊 把論文變成練習題</span>
-Tanaka &amp; Amaliah 02022) 盤點 CRAN「ExperimentalDesign」任務視圖的 <strong>105 個套件</strong>：
+Tanaka &amp; Amaliah (2022) 盤點 CRAN「ExperimentalDesign」任務視圖的 <strong>105 個套件</strong>：
 下載量高度集中（近年 Gini 指數 60–69%，<strong>前 10 名占 68% 下載</strong>）、領域變化慢（主流套件多釋出於 2004–2010）。
 他們的資料（cranlogs 下載紀錄）公開可得——讓學生抓下載量畫 <strong>Lorenz curve、算 Gini index</strong>，
 正好是 Ch1 描述統計的進階應用，也是「統計分析軟體生態」的絕佳案例。</div>
@@ -271,6 +328,23 @@ round(c(乙醇 = 50 + 10*x0[1], 溫度 = 50 + 10*x0[2],
         時間 = 22.5 + 7.5*x0[3]), 1)
 #&gt; 乙醇 54.4% / 溫度 54.5°C / 超音波 23.5 min
 
+# --- Part 2b. 模型檢驗：ANOVA 表 + 失擬檢定（呼應 Ch16/Ch17）---
+aov2 &lt;- anova(fit2)
+aov2                                        # 每列 H0：該項係數 = 0
+ss &lt;- setNames(aov2[["Sum Sq"]], rownames(aov2))
+round(c(一階 = sum(ss[c("A", "B", "C")]),
+        二次 = sum(ss[c("I(A^2)", "I(B^2)", "I(C^2)")]),
+        交互 = sum(ss[c("A:B", "A:C", "B:C")]),
+        殘差 = unname(ss["Residuals"]), 總和 = sum(ss)), 2)
+#&gt; 一階 494.40 / 二次 1318.12 / 交互 70.33 / 殘差 11.81 / 總和 1894.66
+# 失擬檢定：只有 6 個中心點有重複 -&gt; 純誤差全靠它們 (df = 5)
+ccd$pt &lt;- factor(paste(ccd$A, ccd$B, ccd$C))   # 每個設計點一個水準：15 個
+fit_pt &lt;- lm(y ~ pt, data = ccd)               # 每點一個平均 -&gt; 殘差 = 純誤差
+fit1c  &lt;- lm(y ~ (A + B + C)^2, data = ccd)    # 對照：只有一階+交互作用
+round(sd(ccd$y[15:20]), 3)                  #&gt; 1.054 = 中心點的 s（純誤差）
+anova(fit1c, fit_pt)   #&gt; F = 149.05, p = 1.6e-05 -&gt; 一階模型失擬顯著（有曲率）
+anova(fit2, fit_pt)    #&gt; F = 1.13, p = 0.45 -&gt; 二階模型失擬不顯著，夠用
+
 # --- Part 3. 預測區間與驗證實驗 ---
 pred &lt;- predict(fit2, data.frame(A = x0[1], B = x0[2], C = x0[3]),
                 interval = "prediction")
@@ -308,16 +382,51 @@ mean_fac mean_ctr        t        p
 [1] -4.024439 -5.975244 -7.822544
     A     B     C  DPPH 
  0.44  0.45  0.13 61.80 
- 乙醇 溫度 時間 
+乙醇 溫度 時間 
 54.4 54.5 23.5 
+Analysis of Variance Table
+
+Response: y
+          Df Sum Sq Mean Sq  F value    Pr(&gt;F)    
+A          1 348.66  348.66 295.3367 9.402e-09 ***
+B          1 111.55  111.55  94.4930 2.059e-06 ***
+C          1  34.19   34.19  28.9624 0.0003094 ***
+I(A^2)     1 547.39  547.39 463.6737 1.041e-09 ***
+I(B^2)     1 245.86  245.86 208.2561 5.067e-08 ***
+I(C^2)     1 524.88  524.88 444.6092 1.279e-09 ***
+A:B        1  66.13   66.13  56.0123 2.101e-05 ***
+A:C        1   2.20    2.20   1.8678 0.2016677    
+B:C        1   2.00    2.00   1.6941 0.2222425    
+Residuals 10  11.81    1.18                       
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+   一階    二次    交互    殘差    總和 
+ 494.40 1318.12   70.33   11.81 1894.66 
+[1] 1.054
+Analysis of Variance Table
+
+Model 1: y ~ (A + B + C)^2
+Model 2: y ~ pt
+  Res.Df     RSS Df Sum of Sq      F    Pr(&gt;F)    
+1     13 1329.93                                  
+2      5    5.55  8    1324.4 149.05 1.612e-05 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Analysis of Variance Table
+
+Model 1: y ~ (A + B + C)^2 + I(A^2) + I(B^2) + I(C^2)
+Model 2: y ~ pt
+  Res.Df     RSS Df Sum of Sq      F Pr(&gt;F)
+1     10 11.8054                           
+2      5  5.5533  5    6.2521 1.1258 0.4498
    fit  lwr  upr
 1 61.8 59.2 64.4</pre></div>
 
 <div class="callout danger"><span class="t">🎯 DOE/RSM 的行動清單</span>
 ① 先畫<strong>魚骨圖列因子</strong>，用 <strong>FrF2/Plackett-Burman 篩選</strong>，再對 2–3 個關鍵因子上 RSM<br>
-② 2 水準設計<strong>必加中心點</strong>：曲率檢定 + 純誤差，一石二鳥<br>
+② 2 水準設計<strong>必加中心點</strong>：曲率檢定 + 純誤差（失擬檢定的分母），一石二鳥<br>
 ③ CCD 的 α 與中心點數影響<strong>預測變異的均勻性</strong>——旋轉性設計是預設好選擇<br>
-④ 駐點必看 <strong>eigen(B) 符號</strong>（極大/極小/鞍點），並換回實際單位交給操作員<br>
+④ 找駐點前先做<strong>失擬檢定</strong>（p 大才好；不顯著 ≠ 模型正確）；駐點必看 <strong>eigen(B) 符號</strong>（極大/極小/鞍點），並換回實際單位交給操作員<br>
 ⑤ 最適條件報告 = <strong>預測值 + 95% 預測區間 + 驗證實驗</strong>，缺一不可<br>
 ⑥ 想同時最佳化多個反應？上 <strong>desirability</strong> 願望函數</div>
 
@@ -334,39 +443,163 @@ DOE 的「效應」其實只是加減平均，Excel 完全算得出來：<br>
 
 <div class="quiz" id="quiz"></div>
 <script>
+const CHAPTER = "ch14";
+const MISC = {
+  OFAT_IS_ENOUGH:             "以為一次改一個因子（OFAT）就能找到最適條件，不需要因子設計",
+  INTERACTION_IGNORED:        "交互作用顯著時仍單獨解讀主效應",
+  INTERACTION_IS_CORRELATION: "把「交互作用」當成兩個因子彼此相關或互相影響對方的設定",
+  CENTER_POINTS_USELESS:      "不知道中心點重複是用來估純誤差與檢查曲率",
+  FIRST_ORDER_FINDS_OPTIMUM:  "以為兩水準／一階（直線、平面）模型就能決定最適點",
+  OPTIMUM_OUTSIDE_REGION:     "把落在實驗範圍外的駐點當成可信的最適條件",
+  EIGEN_SIGN_SWAP:            "特徵值符號與極大／極小／鞍點的對應弄反或弄錯",
+  EFFECT_VS_COEF:             "分不清效應（高水準平均−低水準平均）與編碼係數（效應的一半）",
+  EFFECT_NOT_AVERAGED:        "算效應時只把高、低水準的反應值相減加總，忘了各自取平均",
+  CODED_UNIT_CONVERSION:      "編碼值換回實際單位時算錯（忘了乘半範圍、忘了加中心值，或把軸點當成 ±1）",
+  SCREENING_SKIPPED:          "以為因子很多時不必先篩選，全部直接上完整的全因子／反應曲面設計",
+  VALIDATION_MUST_EQUAL:      "以為驗證實驗的實測值必須等於預測值才算通過（忽略預測區間）",
+  CI_TRUE_VALUE_PROB:         "以為「真值有 95% 機率落在這個區間」",
+  PSEUDO_REPLICATION:         "把同一樣品溶液的重複注射／重複讀值當成獨立重複",
+  EXTRAPOLATION_SAFE:         "以為標準曲線可以外插到最高標準品以外",
+  R2_PROVES_LINEAR:           "以為 r² 很高就證明線性、不用看殘差圖",
+  SYSTEMATIC_FIXED_BY_REPEATS:"以為多做幾次重複就能消除系統誤差",
+  R_FUNCTION_CONFUSION:       "R 函數或參數用錯（如 pnorm/qnorm、qt 的機率參數）",
+  EXCEL_FUNCTION_CONFUSION:   "Excel 函數用錯（如 T.INV vs T.INV.2T、STDEV.P vs STDEV.S）",
+  OTHER:                      "不對應特定迷思的湊數選項"
+};
 const QUIZ = [
- { q: "OFAT（一次只動一個因子）最大的問題是：",
-   opts: ["比較浪費時間而已", "看不到交互作用，且曲面反應下常停在假最適點", "統計軟體不支援", "樣本數一定比較少"], ans: 1,
-   exp: "因子設計同時變動所有因子，run 數更少還能估交互作用；本例溫度會改變乙醇的效應（A:B=4.1），OFAT 在 50°C 選的條件到 60°C 就錯了。" },
- { q: "2 水準因子設計加入中心點的兩大用途：",
-   opts: ["增加美觀與說服力", "偵測曲率 + 估計純誤差", "提高反應最大值", "取代所有重複實驗"], ans: 1,
-   exp: "2 水準設計只能配直線；中心點與因子點平均的差異檢定曲率（本例 t=32.5, p=0.0001），中心點重複則提供純誤差估計。" },
- { q: "k=3 的旋轉性 CCD，軸點距離 α 應為：",
-   opts: ["1.0（貼在因子水準上）", "1.5", "1.682 = (2³)^¼", "2.0"], ans: 2,
-   exp: "旋轉性 = 預測變異數在等半徑處相等，α=(2^k)^(1/4)；k=3 時 8^0.25=1.682。α=1 稱 face-centered CCD，放棄旋轉性但範圍不超出因子水準。" },
- { q: "駐點公式 x₀ = −½B⁻¹b 中，矩陣 B 的特徵值全為負代表：",
-   opts: ["鞍點", "極大值", "極小值", "模型配適錯誤"], ans: 1,
-   exp: "二階曲面的曲率由 B 的特徵值決定：全負=開口朝下=極大值（本例 −7.82/−5.98/−4.02）；全正=極小值；正負皆有=鞍點。" },
- { q: "預測 61.8%（95% PI 59.2~64.4），驗證實驗 3 次平均 62.4%。判定：",
-   opts: ["預測失敗，模型重做", "通過：實測落在預測區間內", "必須正好 61.8% 才算通過", "還要再跑 30 次才能判定"], ans: 1,
-   exp: "呼應 Ch2/Ch8：單點預測必附區間，量測變異本來就該被區間吸收。實測落在區間內即支持模型；落在區間外才需檢討模型。" },
- { q: "rsm::steepest() 與 FrF2::pb() 的用途配對：",
-   opts: ["都是畫等高線的工具", "最陡上升路徑 / Plackett-Burman 篩選設計", "都是最佳化演算法", "前者做檢定、後者做迴歸"], ans: 1,
-   exp: "steepest 沿一階模型梯度方向逐步前進（因子區域離最適點遠時先這樣走）；pb012,5) 用 12 runs 篩 5 個變因，是方法開發初期的篩選利器。" }
-,
- { q: "在 Excel 中手動計算 2 水準因子設計的「主效應 A」，最適合的方法是：",
-   opts: ["=CORREL(A欄, Y欄)", "=SLOPE(Y欄, A欄)", "=AVERAGEIF(A欄, 1, Y欄) - AVERAGEIF(A欄, -1, Y欄)", "=T.TEST(A欄, Y欄)"], ans: 2,
-   exp: "DOE 的主效應定義是「高水準的反應平均」減去「低水準的反應平均」，在 Excel 中用 AVERAGEIF 篩選 1 與 -1 即可直接算出。" },
- { q: "在 R 中配適二階反應曲面模型時，為什麼要用 I(A^2) 而不是直接寫 A^2？",
-   opts: ["因為 A^2 會被 R 的 formula 視為兩兩交互作用，I() 能強制進行數學平方運算", "因為 I() 會自動將變數轉為編碼單位", "因為 lm() 不支援平方項", "因為 I() 代表交互作用(Interaction)"], ans: 0,
-   exp: "在 R 的 formula 中，(A+B)^2 代表主效應與兩兩交互作用。要建立真正的數值平方項，必須用 I() 包裝，如 I(A^2)。" },
- { q: "在 R 中解出 RSM 二階模型的駐點並判斷其形狀（極大/極小/鞍點），分別會用到哪兩個矩陣函數？",
-   opts: ["t() 與 det()", "solve() 與 eigen()", "svd() 與 qr()", "cor() 與 cov()"], ans: 1,
-   exp: "使用 solve() 解線性方程組可找到駐點座標；使用 eigen() 求特徵值，特徵值全負代表極大值，全正代表極小值，有正有負為鞍點。" }
+  /* ---------- 前測 pre ---------- */
+  { id:"ch14-p01", v:1, type:"misc", phase:"pre",
+    q:"小明想找出泡茶的最佳「水溫」和「時間」。他先固定時間 3 分鐘，試出最好的水溫是 85 °C；再固定 85 °C，試出最好的時間是 4 分鐘。他宣布（85 °C、4 分鐘）就是最佳組合。你認為：",
+    opts:["一定是最佳：每個因子都已經分別最佳化過了",
+          "不一定：如果最佳水溫會隨時間而變（兩個因子互相影響），這樣做可能停在「假的最佳點」",
+          "一定是最佳：水溫和時間的效果可以直接相加",
+          "不是最佳，因為每個條件只泡了一次；只要每個條件都重複 3 次，這個做法就一定對"],
+    ans:1,
+    tags:["OFAT_IS_ENOUGH", null, "INTERACTION_IGNORED", "OTHER"],
+    exp:"一次只動一個因子，等於只沿著兩條直線找；若因子之間有交互作用（最佳水溫隨時間而變），真正的最佳組合可能在他沒走過的地方。重複實驗只能降低隨機誤差，補不了設計結構看不到交互作用的問題。" },
+  { id:"ch14-p02", v:1, type:"concept", phase:"pre",
+    q:"只在 40 °C 和 60 °C 兩個溫度做萃取實驗，結果 60 °C 的產率比較高。關於 50 °C 的產率，可以下什麼結論？",
+    opts:["無法確定：兩個點只能連成直線，中間可能彎上去（比兩端都高）；要在中間加做實驗才知道",
+          "一定介於兩者之間，用直線內插就可以",
+          "不重要：最佳溫度就是 60 °C，因為它比較高",
+          "不重要：溫度越高越好，下次應該直接用 80 °C"],
+    ans:0,
+    tags:[null, "CENTER_POINTS_USELESS", "FIRST_ORDER_FINDS_OPTIMUM", "EXTRAPOLATION_SAFE"],
+    exp:"兩個水準只能決定一條直線，看不出中間有沒有彎曲；很多食品反應在中間有最高點。「60 °C 最好」只是兩個選項裡較好的那個；沒有數據就外推到 80 °C 更危險（成分可能已經被破壞）。" },
+  { id:"ch14-p03", v:1, type:"concept", phase:"pre",
+    q:"模型預測最佳條件下的產率是 80%，並說明「單次實驗結果約有 95% 會落在 76–84%」。你照條件實際做一次，得到 82%。最恰當的結論是：",
+    opts:["模型錯了：82% 不等於 80%",
+          "模型低估了，應該把預測值改成 82%",
+          "與模型相符：實測值落在預期的範圍內",
+          "代表真正的最佳產率有 95% 的機率就是 82%"],
+    ans:2,
+    tags:["VALIDATION_MUST_EQUAL", "VALIDATION_MUST_EQUAL", null, "CI_TRUE_VALUE_PROB"],
+    exp:"量測本來就有變異，不能期待實測「剛好等於」預測值；正確的問法是實測值有沒有落在預測區間內。只做一次就改預測值是過度反應；95% 描述的是區間涵蓋單次結果的頻率，不是某個數字為真的機率。" },
+
+  /* ---------- 課後 post ---------- */
+  { id:"ch14-q01", v:1, type:"concept", phase:"post",
+    q:"OFAT（一次只動一個因子）最根本的問題是：",
+    opts:["只是比較花時間；只要每個因子試得夠細，一樣能找到真正的最適條件",
+          "沒有問題：交互作用只是統計名詞，實務上各因子的效果可以直接相加",
+          "問題只在沒有重複：每個條件多做 3 次就解決了",
+          "設計結構上看不到交互作用，曲面反應下常停在「沿軸的假最適點」；而且實驗次數反而更多"],
+    ans:3,
+    tags:["OFAT_IS_ENOUGH", "INTERACTION_IGNORED", "OTHER", null],
+    exp:"本例溫度會改變乙醇的效果（A:B 係數 2.04）：在某個溫度下「選好」的乙醇濃度，換到另一個溫度就不再是最佳。試得再細、重複再多，OFAT 走的仍是同一條軸線；因子設計同時變動所有因子，次數更少還能估交互作用。" },
+  { id:"ch14-q02", v:1, type:"concept", phase:"post",
+    q:"2 水準因子設計加入「中心點重複」（本例 4 次）的用途是：",
+    opts:["中心點不在 ±1 的角落上，對估計效應沒有幫助，是可以省略的額外成本",
+          "偵測曲率（中心點平均 vs 因子點平均）＋提供純誤差估計",
+          "同一管中心點萃取液重複測 4 次吸光值，就可以當成 4 個中心點",
+          "用來更準確地估計 A、B、C 的主效應，比角落點更有效"],
+    ans:1,
+    tags:["CENTER_POINTS_USELESS", null, "PSEUDO_REPLICATION", "CENTER_POINTS_USELESS"],
+    exp:"2 水準只能配直線；中心點平均 60.2 對因子點平均 43.0，用中心點的純誤差 s = 0.86 檢定得 t = 32.5、p ≈ 0.0001 → 曲面是彎的。中心點所有因子都在 0，對主效應沒有槓桿；而且 4 次必須是 4 個獨立萃取，同一管重複讀值只量到儀器雜訊，會嚴重低估純誤差。" },
+  { id:"ch14-q03", v:1, type:"calc", phase:"post",
+    q:"k = 3 的旋轉性 CCD，軸點距離 α = (2³)<sup>1/4</sup> = 1.682（編碼單位）。因子 A 乙醇濃度為 50 ± 10%（±1 對應 40% 與 60%）。A 的兩個軸點實際要配成多少 % 的乙醇？",
+    opts:["33.2% 與 66.8%",
+          "40% 與 60%",
+          "48.3% 與 51.7%",
+          "−16.8% 與 +16.8%"],
+    ans:0,
+    tags:[null, "CODED_UNIT_CONVERSION", "CODED_UNIT_CONVERSION", "CODED_UNIT_CONVERSION"],
+    exp:"實際值 = 中心 + 編碼值 × 半範圍 = 50 ± 1.682 × 10 = 33.2% 與 66.8%——軸點刻意超出 ±1 才能估平方項並維持旋轉性。40/60 是因子點（α = 1 的 face-centered 設計會放棄旋轉性）；48.3/51.7 忘了乘半範圍 10；±16.8 忘了加回中心值 50。" },
+  { id:"ch14-q04", v:1, type:"rout", phase:"post",
+    q:"二階模型配適後，<code>eigen(Bmat)$values</code> 與駐點（編碼單位）的輸出如下。最恰當的判讀是：<pre>[1] -4.024439 -5.975244 -7.822544\n    A     B     C  DPPH \n 0.44  0.45  0.13 61.80</pre>",
+    opts:["特徵值全為負 → 極小值，應該往反方向找",
+          "三個特徵值大小不同 → 鞍點，沒有內部最適點",
+          "特徵值全為負 → 極大值；而且駐點三個座標都落在 ±1 的實驗範圍內 → 是可信的內部最適點",
+          "只要 solve() 解得出駐點就是最適條件，特徵值與是否落在實驗範圍內都不必看"],
+    ans:2,
+    tags:["EIGEN_SIGN_SWAP", "EIGEN_SIGN_SWAP", null, "OPTIMUM_OUTSIDE_REGION"],
+    exp:"B 的特徵值決定曲面形狀：全負＝開口朝下＝山頂（極大值）；全正＝山谷；「有正有負」才是鞍點，與數值大小是否相同無關。駐點只是偏微分為 0 的點，可能是鞍點、也可能落在實驗範圍外（外推不可信），兩項都要檢查。" },
+  { id:"ch14-q05", v:1, type:"concept", phase:"post",
+    q:"最適條件下預測 DPPH = 61.8%（95% 預測區間 59.2–64.4）。照條件重做 3 次驗證實驗，平均 62.4%。判定：",
+    opts:["失敗：62.4 ≠ 61.8，模型要重做",
+          "通過，而且代表真實的最大值有 95% 的機率落在 59.2–64.4 之間",
+          "還不能判：要把同一份萃取液多讀幾次吸光值，把平均值的誤差壓到接近 0 才能比",
+          "通過：實測平均落在 95% 預測區間內，支持模型"],
+    ans:3,
+    tags:["VALIDATION_MUST_EQUAL", "CI_TRUE_VALUE_PROB", "PSEUDO_REPLICATION", null],
+    exp:"呼應 Ch2/Ch8：單點預測必附區間，量測變異本來就該被區間吸收；落在區間外才需要檢討模型（缺因子？曲率更複雜？）。預測區間描述的是「新觀測值」會落在哪裡，不是真值的機率；同一份萃取液重複讀值不是獨立驗證。" },
+  { id:"ch14-q06", v:1, type:"concept", phase:"post",
+    q:"有 6 個可能影響萃取率的因子，實驗預算大約只有 20 次。最合理的路線是：",
+    opts:["先用部分因子／Plackett-Burman 設計（如 FrF2::pb(12, 6)）篩出 2–3 個關鍵因子，再對它們做 CCD／RSM",
+          "6 個因子直接做完整的 CCD，才不會漏掉任何效應",
+          "用 OFAT：每個因子各試 3 個水準，共 18 次剛好在預算內",
+          "只挑文獻上最常見的 2 個因子做 RSM，其餘固定，不必篩選"],
+    ans:0,
+    tags:[null, "SCREENING_SKIPPED", "OFAT_IS_ENOUGH", "OTHER"],
+    exp:"標準流程是「先篩選、再最佳化」：12 runs 的 Plackett-Burman 就能篩 6 個因子的主效應，剩下的預算留給關鍵因子的 CCD。6 因子完整 CCD 光因子點就 2⁶ = 64 次；OFAT 看不到交互作用；憑文獻挑因子則可能一開始就漏掉真正重要的那一個。" },
+  { id:"ch14-q07", v:1, type:"rout", phase:"post",
+    q:"在 Excel 手算 2 水準因子設計的「主效應 A」（A 欄為編碼 −1／+1，Y 欄為反應值），正確的寫法是：",
+    opts:["=CORREL(A欄, Y欄)",
+          "=SLOPE(Y欄, A欄)",
+          "=AVERAGEIF(A欄, 1, Y欄) - AVERAGEIF(A欄, -1, Y欄)",
+          "=T.TEST(A欄, Y欄, 2, 2)"],
+    ans:2,
+    tags:["EXCEL_FUNCTION_CONFUSION", "EFFECT_VS_COEF", null, "EXCEL_FUNCTION_CONFUSION"],
+    exp:"主效應＝高水準的反應平均 − 低水準的反應平均（本例 11.3）。SLOPE 得到的是編碼係數 5.64——A 從 −1 到 +1 走了 2 個單位，所以係數是效應的一半；CORREL 只是相關係數；T.TEST 把設計欄拿去和反應值比平均，毫無意義。" },
+  { id:"ch14-q08", v:1, type:"rout", phase:"post",
+    q:"二階模型寫成 <code>lm(y ~ (A+B+C)^2 + I(A^2) + I(B^2) + I(C^2))</code>。為什麼平方項要用 <code>I(A^2)</code>，而不是直接寫 <code>A^2</code>？",
+    opts:["因為 I() 會自動把變數轉換成編碼單位",
+          "因為 lm() 本來不支援平方項，I() 是另外安裝的套件功能",
+          "因為 I 代表 Interaction，I(A^2) 是 A 與自己的交互作用項",
+          "因為 formula 裡的 ^ 是「交叉到幾階」的運算（A^2 只等於 A）；用 I() 包起來才會照數學意義做平方"],
+    ans:3,
+    tags:["R_FUNCTION_CONFUSION", "R_FUNCTION_CONFUSION", "R_FUNCTION_CONFUSION", null],
+    exp:"在 R 的 formula 中，(A+B+C)^2 展開成主效應＋所有兩兩交互作用；同理 A^2 = A:A = A，並不會產生平方項。I() 是 base R 的「照字面計算」（Inhibit interpretation），與編碼或交互作用無關。" },
+  { id:"ch14-q09", v:1, type:"misc", phase:"post",
+    q:"2³ 設計的配適結果：A（乙醇）係數 5.64、A:B 係數 2.04。同學在報告中寫：「乙醇濃度每提高一個編碼單位（+10%），DPPH 固定增加 5.6%，與溫度無關。」這句話：",
+    opts:["對：主效應係數 5.64 就是 A 的效果，交互作用項只是小修正、可以不提",
+          "不對：A 的效果取決於 B——高溫（B = +1）時約 5.64 + 2.04 = 7.7，低溫（B = −1）時約 5.64 − 2.04 = 3.6",
+          "不對：有交互作用代表 A、B 兩個因子彼此相關（共線），表示設計做錯了",
+          "對：因為 A:B 的係數比 A 小，依「小於最大項就可忽略」的原則可以省略"],
+    ans:1,
+    tags:["INTERACTION_IGNORED", null, "INTERACTION_IS_CORRELATION", "INTERACTION_IGNORED"],
+    exp:"交互作用的定義就是「一個因子的效果取決於另一個因子的水準」：5.64 只是對 B 平均之後的效果，高、低溫下相差超過一倍（圖 14-1 兩線不平行）。全因子設計中 A、B 兩欄是正交的，交互作用談的是反應，不是因子之間的相關。" },
+  { id:"ch14-q10", v:1, type:"calc", phase:"post",
+    q:"2³ 設計 8 個因子點的 DPPH（%）：A = −1 的四個 run 為 33.7、38.0、38.5、39.4；A = +1 的四個 run 為 41.6、52.3、45.0、55.8。A（乙醇）的<strong>主效應</strong>是多少？（取 1 位小數）",
+    num:{ ans:11.3, tol:0.1, unit:"%" },
+    errs:[ { val:5.6,  tol:0.1, tag:"EFFECT_VS_COEF" },
+           { val:45.1, tol:0.1, tag:"EFFECT_NOT_AVERAGED" } ],
+    exp:"高水準平均 (41.6+52.3+45.0+55.8)/4 = 48.675，低水準平均 (33.7+38.0+38.5+39.4)/4 = 37.4 → 主效應 = 11.3（＝2 × 係數 5.64）。填 5.6 是把 lm() 的編碼係數當成效應；45.1 是把兩組直接相減加總、忘了各除以 4。" },
+
+  /* ---------- 回溯 spaced ---------- */
+  { id:"ch14-s01", v:1, type:"concept", phase:"spaced", from:"ch04",
+    q:"維生素 C 的 HPLC 校正線有 6 個濃度點，r² = 0.9991；但殘差圖呈 U 形（兩端為正、中間為負）。最恰當的判斷是：",
+    opts:["有系統性的彎曲：直線模型不足，應縮小校正範圍或改用二次模型——這和本章用中心點偵測曲率是同一件事",
+          "r² 已經大於 0.999，線性已被證明，殘差圖的形狀不重要",
+          "U 形代表隨機誤差偏大，每個點多注射幾次取平均就會消失",
+          "r² 這麼高，表示可以放心外插到更高的濃度"],
+    ans:0,
+    tags:[null, "R2_PROVES_LINEAR", "SYSTEMATIC_FIXED_BY_REPEATS", "EXTRAPOLATION_SAFE"],
+    exp:"r² 只說「直線解釋了大部分變異」，微彎的曲線 r² 照樣 > 0.999；有規律的殘差（U 形）才是缺少曲率項的證據。這是系統性的模型失配，重複再多次也還在；彎曲的曲線外插誤差更大。本章中心點比因子點高 17 個百分點，就是同一種「直線不夠用」的訊號。" }
 ];
 </script>
 <script src="assets/app.js"></script>
 <script src="assets/js/showout.js"></script>
+<script type="module" src="assets/js/assess.js"></script>
 
 <h2>14.6 參考文獻</h2>
 <ol class="refs">
@@ -377,10 +610,7 @@ const QUIZ = [
 <li>Smith, J. S. Evaluation of Analytical Data. In <i>Nielsen’s Food Analysis</i>, 6th ed.; Ismail, B. P., Nielsen, S. S., Eds.; Springer, 2024; Chapter 4.（本課程數據品管統計之主軸教材）.</li>
 </ol>
 
-<nav class="pager">
-<a href="ch13.html"><small>上一章</small>Ch13 FDC 與配方計算</a>
-<a href="index.html"><small>返回</small>課程首頁</a>
-</nav>
+<nav class="pager" data-pager></nav>
 </main>
 <footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫 · 僅供教學使用</footer>
 </body>

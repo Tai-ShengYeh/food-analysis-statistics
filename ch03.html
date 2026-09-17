@@ -10,14 +10,12 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
-  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\[', right: '\]', display: true}]});"></script>
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true}]});"></script>
 </head>
 <body>
 <header class="topbar"><div class="inner">
 <a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
-<nav class="topnav">
-<a href="index.html">首頁</a><a href="ch00.html">Ch0 入門</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a><a href="ch13.html">Ch13 FDC配方</a><a href="ch14.html">Ch14 DOE/RSM</a>
-</nav></div></header>
+<nav class="topnav" data-nav></nav></div></header>
 
 <main>
 <div class="crumbs">Part 1 數據品管統計（Nielsen's Food Analysis 第4章）／第 3 章</div>
@@ -39,6 +37,8 @@
 <li>認識專一性（specificity）在食品基質的意義</li>
 <li>會建立 Shewhart 管制圖並判讀警告／行動界限</li>
 </ul></div>
+
+<div class="quiz" data-phase="pre"></div>
 
 <h2>3.1 靈敏度 ≠ 偵測極限</h2>
 <div class="grid2">
@@ -85,8 +85,15 @@ X<sub>LD</sub> = X<sub>Blk</sub> + 3 × SD<sub>Blk</sub>
 ③ 超過 ±2s 但未達 ±3s → 提高警覺，加測確認
 </div>
 
+<p>把三條規則對到本例 25 天的模擬數據上：<strong>規則①</strong>（超出 ±3s 行動界限）只抓到第
+<strong>10、18</strong> 天；<strong>規則③</strong>（超出 ±2s 警告界限、但未達 ±3s）抓到第
+<strong>1、9、11、12、13</strong> 天。但如果只盯著「有沒有點超出界限」，會完全漏掉<strong>規則②</strong>
+能抓到的訊號——第 <strong>7~16 天，連續 10 天</strong>的測值全部落在中心線 12.00% 上方，這種「連續同側」
+本身就是系統性偏移的特徵，即使這 10 天裡有 8 天連 ±2s 警告線都沒碰到。</p>
+
 <p><strong>CuSum（累積和）圖</strong>把每天的偏差累加，對「小而持續」的漂移特別敏感——
-Shewhart 圖上看起來還好的 +0.28% 漂移，CuSum 斜率立刻轉正：</p>
+本例的 +0.28% 漂移（第 8~11 天）在 Shewhart 圖上要到第 9 天才觸及 ±2s 警告線、第 10 天才真正衝出 ±3s 行動界限；
+CuSum 圖卻從第 8 天斜率就明顯轉正、之後持續攀升，比 Shewhart 更早、更清楚地顯示這是「系統性漂移」而非單點雜訊：</p>
 <div class="figure">
 <img src="assets/img/fig_cusum.png" alt="CuSum 管制圖">
 <div class="cap">圖 3-2 CuSum 累積和管制圖（與圖 3-1 同一組數據）</div>
@@ -117,15 +124,31 @@ abline(h = 12.00 + c(-2,2)*0.15, col="orange", lty=2) # 警告
 abline(h = 12.00 + c(-3,3)*0.15, col="red", lty=2)    # 行動
 bad &lt;- qc &gt; 12.45 | qc &lt; 11.55
 which(bad)          #&gt; 第 10 與 18 天超出 ±3s 行動界限！
+
+warn_only &lt;- which((qc &gt; 12.30 | qc &lt; 11.70) &amp; !bad)
+warn_only           #&gt; 第 1、9、11、12、13 天：只達 ±2s 警告，未達 ±3s 行動界限
+
+above_cl &lt;- qc &gt; 12.00
+rle(above_cl)       #&gt; 第 7~16 天連續 10 點在中心線上方（規則②）
+
 # CuSum：累積偏差
 plot(1:25, cumsum(qc - 12), type="b", pch=19, col="darkgreen",
      main="CuSum 管制圖", ylab="累積偏差")
 abline(h = 0, lty = 2)</pre>
 <div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
-<pre class="rout-body">blank      s    LOD    LOQ 
-0.0084 0.0029 0.0171 0.0372 
+<pre class="rout-body">blank      s    LOD    LOQ
+0.0084 0.0029 0.0171 0.0372
 [1] 0.09020113
-[1] 10 18</pre></div>
+[1] 10 18
+[1]  1  9 11 12 13
+Run Length Encoding
+  lengths: int [1:9] 1 5 10 1 1 1 4 1 1
+  values : logi [1:9] TRUE FALSE TRUE FALSE TRUE FALSE ...</pre></div>
+<div class="callout warn"><span class="t">⚠️ 手算對不上？</span>
+R 內部是用<strong>未捨入</strong>的 s 去計算，螢幕上看到的 <code>blank = 0.0084</code>、<code>s = 0.0029</code>
+已經是四捨五入後的顯示值。如果拿這兩個顯示值手算 LOQ：0.0084 + 10×0.0029 = <strong>0.0374</strong>，
+會跟 R 印出的 <strong>0.0372</strong> 對不起來——差異純粹來自中途捨入，不是算錯。這正是第 5 章
+「中間步驟不要先四捨五入，算到最後才捨入」的活教材。</div>
 
 <h2>3.4 其他日常 QC 手段（名詞總整理）</h2>
 <table>
@@ -139,57 +162,185 @@ abline(h = 0, lty = 2)</pre>
 
 <h2>📊 Excel 也會算：LOD 與管制圖</h2>
 <div class="callout ok"><span class="t">📊 沒有 R 也能動手</span>
-空白 20 次讀值放 <code>A1:A20</code>、每日 QC 值放 <code>B1:B20</code>。<br>
+空白 20 次讀值放 <code>A1:A20</code>、每日 QC 值放 <code>B1:B25</code>（本例共 25 天）。<br>
 <table>
 <tr><th>任務</th><th>Excel 公式</th><th>說明</th></tr>
 <tr><td>空白平均</td><td><code>=AVERAGE(A1:A20)</code></td><td>X̄<sub>Blk</sub></td></tr>
 <tr><td>空白 SD</td><td><code>=STDEV(A1:A20)</code></td><td>s<sub>Blk</sub></td></tr>
 <tr><td>LOD</td><td><code>=AVERAGE(A1:A20)+3*STDEV(A1:A20)</code></td><td>X̄+3s</td></tr>
 <tr><td>LOQ</td><td><code>=AVERAGE(A1:A20)+10*STDEV(A1:A20)</code></td><td>X̄+10s</td></tr>
-<tr><td>±2s 警告線</td><td><code>=目標值±2*STDEV(B1:B20)</code></td><td>管制圖界線</td></tr>
-<tr><td>±3s 行動線</td><td><code>=目標值±3*STDEV(B1:B20)</code></td><td>超出即停線</td></tr>
+<tr><td>歷史 s（方法確效／穩定期得到）</td><td><code>$E$1</code> = 0.15</td><td>固定值，不隨監控批次重估</td></tr>
+<tr><td>±2s 警告線</td><td><code>=目標值±2*$E$1</code></td><td>管制圖界線</td></tr>
+<tr><td>±3s 行動線</td><td><code>=目標值±3*$E$1</code></td><td>超出即停線</td></tr>
 </table>
+<strong>為什麼不直接用 <code>STDEV(B1:B25)</code>？</strong>管制界限要反映「方法平常本來的變異」，
+應該來自方法確效或歷史穩定期的資料，本例 R 程式就是固定用歷史 <code>s = 0.15</code>。
+如果改用「正在監控的這批」QC 值自己算 STDEV，一旦這批資料本身已經出現漂移或爆表
+（像本例第 8~11、18 天），異常點會把 STDEV 一起拉大，界限也跟著變寬，反而更抓不到問題——
+等於拿問題本身去稀釋判斷問題的基準。所以 Excel 也該像上表一樣，把歷史 s 存在固定儲存格
+（<code>$E$1</code>）讓管制線公式引用，而不是每次重新對本批資料 <code>STDEV()</code>。<br>
 <strong>畫管制圖</strong>：選取 QC 值 → 插入折線圖 → 另加三條固定值欄位畫 CL、±2s、±3s 線。CuSum：新增欄位 <code>=前一格+(當日值−目標值)</code> 逐列累加。</div>
 
 <div class="quiz" id="quiz"></div>
 <script>
+const CHAPTER = "ch03";
+const MISC = {
+  LOD_EQUALS_LOQ:              "分不清 LOD（偵測得到）與 LOQ（可以定量）",
+  LOD_WRONG_MULTIPLIER:        "LOD/LOQ 的 3 倍、10 倍倍數用錯",
+  LOD_FORGOT_BLANK:            "算 LOD/LOQ 時忘了加上空白平均值",
+  BLANK_NOISE_IGNORED:         "以為儀器讀值不為 0 就代表有測到（忽略空白雜訊）",
+  MDL_EQUALS_LOD:              "以為 MDL 與 LOD 是同一件事（都只看空白／儀器噪音）",
+  SENSITIVITY_IS_LOD:          "以為靈敏度就是偵測極限，或靈敏度調高 LOD 就一定變好",
+  RETEST_UNTIL_PASS:           "以為結果不理想就重測到滿意為止",
+  WARNING_VS_ACTION:           "分不清 ±2s 警告界限與 ±3s 行動界限（該做的處置）",
+  CONTROL_LIMIT_IS_SPEC:       "把管制界限（製程自己的 ±3s）當成規格／法規限值",
+  SHEWHART_ONLY_OUT_OF_LIMIT:  "以為管制圖只要沒有點超出 ±3s 就沒問題（忽略趨勢與連串）",
+  SD_VS_SEM:                   "分不清標準差 SD 與平均數標準誤 SEM",
+  MATRIX_EFFECT_IGNORED:       "以為溶劑標準曲線可直接用於複雜基質樣品",
+  ERROR_TYPE_CONFUSION:        "分不清系統誤差、隨機誤差與疏失",
+  OUTLIER_DELETE_BY_EYE:       "看起來怪就刪，不做檢定也不記錄",
+  EXCEL_FUNCTION_CONFUSION:    "Excel 函數用錯（如 T.INV vs T.INV.2T、STDEV.P vs STDEV.S）",
+  PRECISION_IS_ACCURACY:       "以為重複性好（SD/CV 小）就代表結果準確",
+  SYSTEMATIC_FIXED_BY_REPEATS: "以為多做幾次重複就能消除系統誤差",
+  OTHER:                       "不對應特定迷思的湊數選項（盡量少用）"
+};
 const QUIZ = [
- { q: "空白訊號平均值 0.008、標準差 0.003，LOD 為何？",
-   opts: ["0.011", "0.017", "0.038", "0.003"], ans: 1,
-   exp: "LOD = 空白 + 3×SD = 0.008+3×0.003 = 0.017。0.038 是 LOQ（10×SD）；0.011 是空白+1SD。" },
- { q: "LOD 與 LOQ 之間的濃度範圍：",
-   opts: ["可以精準定量", "只能定性（有測到），數字不可靠", "完全測不到", "必須報 ND"], ans: 1,
-   exp: "LOD~LOQ 間可確認「有」，但定量變異太大；可靠定量需 ≥ LOQ（空白+10SD）。" },
- { q: "管制圖上「±2s 警告界限、±3s 行動界限」，若今天 QC 值落在 +2.5s：",
-   opts: ["正常，不用理會", "超過警告但未達行動：提高警覺、加測確認", "立即停線", "直接重測到合格為止"], ans: 1,
-   exp: "±2s~±3s 之間是警訊區（約 5% 機率自然發生），應加測/觀察趨勢；±3s 之外才立即停線找原因。絕不可「重測到合格」。" },
- { q: "哪一種圖對「小而持續的漂移」最敏感？",
-   opts: ["直方圖", "Shewhart 管制圖", "CuSum 累積和圖", "打靶圖"], ans: 2,
-   exp: "CuSum 把每日偏差累加，小漂移會累積成明顯斜率變化；Shewhart 單點判斷，對小漂移較遲鈍。Nielsen 4.3.5。" },
- { q: "冰淇淋乳糖定量方法若不夠專一（會同時測到其他糖），結果會：",
-   opts: ["低估乳糖", "高估乳糖", "不影響", "只影響精密度"], ans: 1,
-   exp: "干擾物被一起算進來 → 系統性偏高（正偏倚）。這是準確度問題，也是不確定度評估中「基質效應」來源。" },
- { q: "MDL 與 LOD 最大的差別：",
-   opts: ["MDL 用 2×SD", "MDL 用真實基質含分析物的樣品、涵蓋整個方法流程", "MDL 只看儀器噪音", "兩者相同"], ans: 1,
-   exp: "MDL（EPA 定義）以基質加標樣品 ≥7 次全流程分析估計（t₀.₉₉×SD），比只看空白訊號的 LOD 更嚴謹。" },
- { q: "在 R 語言中，要計算空白樣品的標準差以求得 LOD，應使用下列哪一個函數？",
-   opts: ["mean()", "sd()", "cumsum()", "qt()"], ans: 1,
-   exp: "sd() 用來計算標準差；mean() 是平均值，cumsum() 是累積和，qt() 是用來查 t 分配的臨界值。" },
- { q: "在 Excel 中，若要計算 A1 到 A20 儲存格中空白訊號的 LOQ (定量極限)，正確的公式寫法為？",
-   opts: ["=AVERAGE(A1:A20) + 3*STDEV(A1:A20)", "=AVERAGE(A1:A20) + 10*STDEV(A1:A20)", "=MEAN(A1:A20) + 10*SD(A1:A20)", "=STDEV(A1:A20) + 10*AVERAGE(A1:A20)"], ans: 1,
-   exp: "Excel 中平均值為 AVERAGE()，標準差為 STDEV()。LOQ 的定義為空白平均 + 10 倍標準差。" },
- { q: "製作 CuSum (累積和) 管制圖時，Excel 透過將「前一格+(當日值−目標值)」逐列累加；在 R 語言中，要達成此「逐筆累加」的對應函數為何？",
-   opts: ["sum()", "sd()", "cumsum()", "rnorm()"], ans: 2,
-   exp: "cumsum() 是計算累積和 (Cumulative Sum) 的函數，特別適合用來繪製 CuSum 管制圖以觀察小而持續的漂移。" }
+ /* ---------- 前測 ---------- */
+ { id: "ch03-p01", v: 1, type: "concept", phase: "pre",
+   q: "某儀器分析一個濃度極低的樣品，螢幕上出現一個很小、而且每次都不太一樣的讀值。最合理的處理方式是：",
+   opts: ["儀器有顯示數字就算數，照螢幕上的數字報出來",
+          "先確認這個讀值是否明顯大於「完全不含該成分的空白樣品」的雜訊，再決定能不能報數字",
+          "只要讀值不是 0，就代表樣品裡一定含有該成分",
+          "一直重測，直到出現穩定又好看的數字為止"],
+   ans: 1,
+   tags: ["LOD_EQUALS_LOQ", null, "BLANK_NOISE_IGNORED", "RETEST_UNTIL_PASS"],
+   exp: "空白樣品本身就有雜訊，讀值要明顯高於空白的波動（+3SD）才算「偵測到」，要更高（+10SD）才能可靠地報數字。不是 0 不代表有；有讀值也不代表量得準。（與 ch03-q02 同構）" },
+ { id: "ch03-p02", v: 1, type: "concept", phase: "pre",
+   q: "你每天早上量體重並記錄。這一週每天都比前一天多 0.2 kg，但每個數字都還在你的「正常體重範圍」內。最合理的判斷是：",
+   opts: ["每個數字都在正常範圍內，所以沒有問題",
+          "等哪一天真的超出正常範圍，再來處理就好",
+          "把最重那一天的紀錄刪掉，趨勢就不明顯了",
+          "連續上升本身就是警訊，即使還沒超標也應該找原因"],
+   ans: 3,
+   tags: ["SHEWHART_ONLY_OUT_OF_LIMIT", "SHEWHART_ONLY_OUT_OF_LIMIT", "OUTLIER_DELETE_BY_EYE", null],
+   exp: "純粹的隨機波動應該忽上忽下；連續朝同一方向走代表有系統性的變化。管制圖的判讀規則同理：連續 7 點同側或連續上升／下降，即使沒超界也要查原因。（與 ch03-q09 同構）" },
+ { id: "ch03-p03", v: 1, type: "concept", phase: "pre",
+   q: "某充填機平常每瓶裝 500 mL，正常波動約 ±3 mL；法規只要求「不得少於 490 mL」。今天充填量突然都變成 494 mL 左右。下列判斷何者最合理？",
+   opts: ["494 mL 大於 490 mL，合法，所以不用管",
+          "超出了平常的 ±3 mL，所以這批產品已經違法",
+          "產品雖然仍合法，但已偏離機器平常的波動範圍，代表機器有變化，應該查原因",
+          "再多裝幾瓶，只要有幾瓶回到 500 mL 就當作沒事"],
+   ans: 2,
+   tags: ["CONTROL_LIMIT_IS_SPEC", "CONTROL_LIMIT_IS_SPEC", null, "RETEST_UNTIL_PASS"],
+   exp: "「機器自己平常的波動範圍」（管制界限）與「法規／規格限值」是兩回事：前者用來發現製程有沒有變化，後者用來判定產品合不合格。合法不代表製程正常；超出管制界限也不代表違法。（與 ch03-q07 同構）" },
+
+ /* ---------- 課後 ---------- */
+ { id: "ch03-q01", v: 1, type: "calc", phase: "post",
+   q: "某方法的空白訊號平均值為 0.008、空白標準差為 0.003（訊號單位）。依 Nielsen 式 (4.19)，偵測極限 LOD 的訊號值是多少？（取 3 位小數）",
+   num: { ans: 0.017, tol: 0.0005, unit: "" },
+   errs: [ { val: 0.038, tol: 0.0005, tag: "LOD_EQUALS_LOQ" },
+           { val: 0.011, tol: 0.0005, tag: "LOD_WRONG_MULTIPLIER" },
+           { val: 0.009, tol: 0.0005, tag: "LOD_FORGOT_BLANK" } ],
+   exp: "LOD = 空白平均 + 3×SD<sub>Blk</sub> = 0.008 + 3×0.003 = 0.017。0.038 是 LOQ（空白 + 10×SD），那是「可以定量」的門檻；0.011 只加了 1 倍 SD；0.009 是 3×SD，忘了加上空白平均值。" },
+ { id: "ch03-q02", v: 1, type: "concept", phase: "post",
+   q: "某方法的 LOD = 0.017 mg/L、LOQ = 0.038 mg/L，某樣品測得 0.025 mg/L。應如何報告？",
+   opts: ["報 0.025 mg/L——高於 LOD 就可以和一般定量值同等看待",
+          "報 ND（未檢出）——低於 LOQ 就等於沒測到",
+          "重測幾次，直到出現高於 LOQ 的數字再報告",
+          "註明「有檢出，但低於定量極限（&lt; LOQ）」，這個數字僅供參考"],
+   ans: 3,
+   tags: ["LOD_EQUALS_LOQ", "LOD_EQUALS_LOQ", "RETEST_UNTIL_PASS", null],
+   exp: "LOD～LOQ 之間可以確認「有」（定性），但定量變異太大、數字不可靠；可靠定量需 ≥ LOQ（空白 + 10SD）。把它當成一般定量值，或反過來報 ND，都是把 LOD 與 LOQ 兩道門檻混為一談。挑數字重測到滿意更是數據造假的開端。" },
+ { id: "ch03-q03", v: 1, type: "concept", phase: "post",
+   q: "管制圖設有 ±2s 警告界限、±3s 行動界限。今天 QC 值落在 +2.5s，應該：",
+   opts: ["提高警覺：加測確認、觀察趨勢，但還不到停線",
+          "正常——還沒超出 ±3s，不用理會",
+          "立即停線、全面找根本原因",
+          "重測 QC 標準品，直到數值回到 ±2s 以內為止"],
+   ans: 0,
+   tags: [null, "SHEWHART_ONLY_OUT_OF_LIMIT", "WARNING_VS_ACTION", "RETEST_UNTIL_PASS"],
+   exp: "±2s～±3s 是警訊區（純隨機時約 5% 機率出現），應加測並觀察趨勢；超出 ±3s 才立即停線找原因。「沒超過 ±3s 就不理會」會錯過警訊與漂移；而「重測到合格」只是把問題藏起來，絕不可行。" },
+ { id: "ch03-q04", v: 1, type: "rout", phase: "post",
+   q: "本章模擬從第 8 天起連續 4 天人為加入 +0.28% 的漂移：第 8～11 天 QC 值為 12.262、12.303、12.608、12.334（行動上限 12.45）。找失控點的 R 輸出為：<pre>&gt; which(qc &gt; 12.45 | qc &lt; 11.55)\n[1] 10 18</pre>這個輸出說明了什麼？",
+   opts: ["第 8、9、11 天沒有被列出來，代表那幾天的方法完全正常",
+          "第 10、18 天的測值超出法規規格，當天的產品必須下架",
+          "「超出 ±3s」這條規則對小而持續的漂移反應慢：4 天的漂移只抓到 1 天，需搭配連串規則或 CuSum 圖",
+          "第 8～11 天的數據是疏失，應整筆刪除後重畫管制圖"],
+   ans: 2,
+   tags: ["SHEWHART_ONLY_OUT_OF_LIMIT", "CONTROL_LIMIT_IS_SPEC", null, "OUTLIER_DELETE_BY_EYE"],
+   exp: "漂移從第 8 天就開始，但 Shewhart 的單點規則要到第 10 天才超出 ±3s；沒超界不等於正常。CuSum（R：cumsum(qc - 12)）把每日偏差累加，從第 8 天斜率就明顯轉正，對小而持續的漂移最敏感（Nielsen 4.3.5）。行動界限是方法自己的 ±3s，不是法規規格；失控點要找原因並記錄，不是刪掉重畫。" },
+ { id: "ch03-q05", v: 1, type: "concept", phase: "post",
+   q: "冰淇淋的乳糖定量方法若不夠專一（會同時測到其他糖類），結果會：",
+   opts: ["低估乳糖——其他糖類會搶走乳糖的訊號",
+          "系統性高估乳糖",
+          "不受影響——其他成分不會干擾目標成分的測定",
+          "只影響精密度：數據變得比較散，但平均值不會偏"],
+   ans: 1,
+   tags: ["OTHER", null, "MATRIX_EFFECT_IGNORED", "ERROR_TYPE_CONFUSION"],
+   exp: "干擾物被一起算進來 → 每次都偏高（正偏倚），這是系統誤差／準確度問題，不是讓數據變散的隨機誤差；重複再多次也不會消失。它也是 Part 2 不確定度評估中「基質效應／偏倚」的來源之一。" },
+ { id: "ch03-q06", v: 1, type: "concept", phase: "post",
+   q: "MDL（方法偵測極限，EPA 定義）與用空白算出的 LOD，最大的差別是：",
+   opts: ["兩者其實相同，只是 EPA 與課本的不同叫法",
+          "MDL 同樣只看空白（儀器噪音），只是把倍數 3 換成 t 值",
+          "MDL 用 10×SD，所以 MDL 就是 LOQ",
+          "MDL 用「含分析物的真實基質樣品」重複 ≥7 次全流程分析，涵蓋萃取、淨化、上機的變異"],
+   ans: 3,
+   tags: ["MDL_EQUALS_LOD", "MDL_EQUALS_LOD", "LOD_WRONG_MULTIPLIER", null],
+   exp: "MDL = t<sub>(n−1, 0.99)</sub> × SD，其中 SD 來自基質加標樣品 ≥7 次的「整個方法流程」；本章例子 qt(0.99, 6) × sd(spiked) = 0.090 mg/L。它比只看空白訊號的 LOD 更貼近真實樣品，兩者不是同一件事；10×SD 是 LOQ 的倍數，與 MDL 無關。" },
+ { id: "ch03-q07", v: 1, type: "calc", phase: "post",
+   q: "實驗室每天分析蛋白質 QC 標準品：目標值 12.00%、s = 0.15%。Shewhart 管制圖的<strong>行動界限</strong>是：",
+   opts: ["11.55%～12.45%",
+          "11.70%～12.30%",
+          "11.91%～12.09%（12.00 ± 3×0.15/\\(\\sqrt{25}\\)，因為共 25 天）",
+          "由產品規格或法規決定（例如 11.5%～12.5%），與 s 無關"],
+   ans: 0,
+   tags: [null, "WARNING_VS_ACTION", "SD_VS_SEM", "CONTROL_LIMIT_IS_SPEC"],
+   exp: "行動界限 = 目標值 ± 3s = 12.00 ± 0.45 = 11.55～12.45%。11.70～12.30% 是 ±2s 的警告界限。管制圖上每一點是「單日測值」，要用 s 而不是 s/\\(\\sqrt{n}\\)，否則界限太窄、天天誤報。管制界限來自方法自己的變異，和產品規格／法規限值是兩回事。" },
+ { id: "ch03-q08", v: 1, type: "rout", phase: "post",
+   q: "空白 20 次讀值放在 Excel 的 A1:A20。要計算 LOQ（定量極限），正確的公式是：",
+   opts: ["=AVERAGE(A1:A20)+3*STDEV(A1:A20)",
+          "=10*STDEV(A1:A20)",
+          "=AVERAGE(A1:A20)+10*STDEV(A1:A20)",
+          "=MEAN(A1:A20)+10*SD(A1:A20)"],
+   ans: 2,
+   tags: ["LOD_EQUALS_LOQ", "LOD_FORGOT_BLANK", null, "EXCEL_FUNCTION_CONFUSION"],
+   exp: "LOQ = 空白平均 + 10×空白 SD；R 的對應寫法是 mean(blank) + 10*sd(blank)。+3×SD 那一式是 LOD（偵測得到，但還不能定量）；只寫 10×SD 忘了加空白平均；mean()、sd() 是 R 的函數名，Excel 要用 AVERAGE()、STDEV()。" },
+ { id: "ch03-q09", v: 1, type: "misc", phase: "post",
+   q: "本章的 25 天 QC 數據中，第 7～16 天<strong>連續 10 天</strong>的測值全部落在中心線 12.00 的上方，其中只有第 10 天超出 ±3s。小陳說：「除了第 10 天，其他幾天都沒超出行動界限，所以方法都在管制狀態。」這句話：",
+   opts: ["對：沒有超出行動界限，就是在管制狀態",
+          "錯：連續 7 點以上落在中心線同一側，代表有系統性偏移，即使沒超界也要找原因",
+          "對：而且都在 ±3s 內，代表這幾天的產品都符合法規",
+          "錯：應該把這 10 天當成異常值刪除，再重新計算管制界限"],
+   ans: 1,
+   tags: ["SHEWHART_ONLY_OUT_OF_LIMIT", null, "CONTROL_LIMIT_IS_SPEC", "OUTLIER_DELETE_BY_EYE"],
+   exp: "判讀規則②：連續 7 點在同一側、或連續上升／下降 → 有系統性漂移，即使未超界也要查原因。純隨機時每點落在上方的機率只有 1/2，連續 10 點同側幾乎不可能是巧合。管制界限不是法規限值；失控的數據要留下紀錄並追原因，而不是刪掉。" },
+ { id: "ch03-q10", v: 1, type: "concept", phase: "post",
+   q: "關於「靈敏度」與「偵測極限 LOD」，下列何者正確？",
+   opts: ["靈敏度就是 LOD，兩個名詞可以互換",
+          "靈敏度是濃度改變時訊號改變的幅度（校正曲線斜率）；LOD 則由空白訊號的變異決定",
+          "只要把儀器靈敏度調高，LOD 一定跟著變好",
+          "LOD 就是標準曲線最低那一個標準品的濃度"],
+   ans: 1,
+   tags: ["SENSITIVITY_IS_LOD", null, "SENSITIVITY_IS_LOD", "OTHER"],
+   exp: "靈敏度＝斜率，可依需求調高或調低；LOD＝能偵測到的最低量，由空白的「吵雜程度」（SD<sub>Blk</sub>）決定。把靈敏度調高時雜訊通常也一起被放大，LOD 不一定改善。LOD 要用空白的變異去算，不是看最低標準品配多少。" },
+
+ /* ---------- 回溯 ---------- */
+ { id: "ch03-s01", v: 1, type: "concept", phase: "spaced", from: "ch01",
+   q: "某實驗室的 QC 標準品標示值為 12.00%，連續 10 天測得 12.31%～12.35%，CV 僅 0.1%。最合理的判斷是：",
+   opts: ["CV 這麼小，代表這個方法的結果非常準確",
+          "繼續多測幾天取平均，偏差自然會被平均掉",
+          "精密度很好，但每天都偏高約 0.3%，屬於系統誤差，應檢查校正、試劑與標準品",
+          "偏高 0.3% 是隨機誤差，屬於正常波動"],
+   ans: 2,
+   tags: ["PRECISION_IS_ACCURACY", "SYSTEMATIC_FIXED_BY_REPEATS", null, "ERROR_TYPE_CONFUSION"],
+   exp: "（回溯 Ch1）CV 小只代表精密（彈著點集中），不代表準確（打中靶心）。每天都朝同一方向偏、大小也差不多，是系統誤差的特徵：再測幾天也不會被平均掉，要靠校正與找原因解決。隨機誤差應該是正負都有、忽高忽低。" }
 ];
 </script>
 <script src="assets/app.js"></script>
 <script src="assets/js/showout.js"></script>
+<script type="module" src="assets/js/assess.js"></script>
 
-<nav class="pager">
-<a href="ch02.html"><small>上一章</small>Ch2 常態分配與信賴區間</a>
-<a href="ch04.html"><small>下一章</small>Ch4 標準曲線與線性迴歸</a>
-</nav>
+<nav class="pager" data-pager></nav>
 </main>
 <footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫</footer>
 </body>

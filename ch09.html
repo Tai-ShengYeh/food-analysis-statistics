@@ -10,14 +10,12 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
-  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\[', right: '\]', display: true}]});"></script>
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true}]});"></script>
 </head>
 <body>
 <header class="topbar"><div class="inner">
 <a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
-<nav class="topnav">
-<a href="index.html">首頁</a><a href="ch00.html">Ch0 入門</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a><a href="ch13.html">Ch13 FDC配方</a><a href="ch14.html">Ch14 DOE/RSM</a>
-</nav></div></header>
+<nav class="topnav" data-nav></nav></div></header>
 
 <main>
 <div class="crumbs">Part 2 量測不確定度（QUAM Appendix E.2–E.3）／第 9 章</div>
@@ -39,6 +37,8 @@
 <li>完成鎘標準液案例的三方法對照（解析法 / Kragten / MC）</li>
 <li>知道什麼時候必須放棄解析法改用模擬</li>
 </ul></div>
+
+<div class="quiz" data-phase="pre"></div>
 
 <h2>9.1 回到鎘標準液：三種合成方法</h2>
 <div class="formula">
@@ -82,15 +82,15 @@ round(uc1, 2)                        #&gt; 0.86
 
 # (2) Kragten 數值微分
 kragten &lt;- function(f, x, u) {
-  y0 &lt;- f(x)
+  y0 &lt;- do.call(f, x)
   contrib &lt;- sapply(seq_along(x), function(i) {
     xi &lt;- x; xi[[i]] &lt;- xi[[i]] + u[[i]]
-    f(xi) - y0
+    do.call(f, xi) - y0
   })
   list(contrib = contrib, uc = sqrt(sum(contrib^2)))
 }
 res &lt;- kragten(conc, list(m,P,V), list(u_m,u_P,u_V))
-round(res$contrib, 3)   #&gt; 0.500 0.058 0.702  (m, P, V 的貢獻)
+round(res$contrib, 3)   #&gt; 0.500 0.058 -0.701  (m, P, V 的貢獻；V 在分母故為負)
 round(res$uc, 2)        #&gt; 0.86  <- 與解析法一致!
 
 # (3) Monte Carlo
@@ -106,7 +106,12 @@ barplot(res$contrib, names.arg=c("質量 m","純度 P","體積 V"),
         main="鎘標準液：各成分貢獻 |u(y,x)|",
         ylab="mg/L")</pre>
 <div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
-<pre class="rout-body">[1] 0.86</pre></div>
+<pre class="rout-body">[1] 0.86
+[1]  0.500  0.058 -0.701
+[1] 0.86
+[1] 0.8633508
+  2.5%  97.5%
+1001.0 1004.4 </pre></div>
 
 <div class="figure">
 <img src="assets/img/fig_budget.png" alt="不確定度預算">
@@ -138,44 +143,131 @@ Excel MC 的 u<sub>c</sub> 會落在 0.86 附近——與解析法一致。按 <
 
 <div class="quiz" id="quiz"></div>
 <script>
+const CHAPTER = "ch09";
+const MISC = {
+  KRAGTEN_MC_CONFUSED:      "把 Kragten（逐項加 u 重算）與 Monte Carlo（隨機抽樣）弄混",
+  KRAGTEN_NEEDS_CALCULUS:   "以為不會偏微分就無法評估各來源的貢獻（不知道數值法可以取代）",
+  UNC_LINEAR_ADD:           "把不確定度分量直接相加而不是平方和開根號",
+  UNC_CANCELS_OUT:          "以為輸入量相加減時，不確定度會跟著相減、互相抵消、變小或維持不變",
+  UNC_SQUARE_STEP_WRONG:    "合成時平方／開根號的步驟弄錯（忘了先平方，或忘了最後開根號）",
+  UNC_ABS_REL_MIX:          "乘除模型該用相對不確定度卻用絕對值（或相反）",
+  SMALL_COMPONENT_MATTERS:  "以為每個小分量都要花力氣精算（不知道平方和由最大分量主導）",
+  U_VS_UC:                  "分不清合成標準不確定度 u_c 與擴展不確定度 U",
+  K2_ALWAYS_95:             "以為 k=2 永遠恰好是 95%（忽略有效自由度）",
+  SD_VS_SEM:                "分不清標準差 SD 與平均數標準誤 SEM",
+  TOLERANCE_IS_STD_UNC:     "直接把規格容許差 ±a 當成標準不確定度",
+  RECT_WRONG_DIVISOR:       "矩形／三角／常態分布轉標準不確定度時除數用錯（√3、√6、k）",
+  MC_MORE_ACCURATE_ALWAYS:  "以為 Monte Carlo 一定比 GUM 公式法「更正確」",
+  MC_TOO_FEW_TRIALS:        "以為模擬幾百次就夠、不知結果會隨次數／種子波動",
+  MC_RANDOM_UNUSABLE:       "以為 Monte Carlo 用亂數、每次結果略有不同，所以不可信、不能用",
+  MC_REPLACES_DATA:         "以為模擬可以取代或補足真實的實驗數據",
+  CORRELATION_IGNORED:      "忽略輸入量之間的相關（共變異）",
+  R_FUNCTION_CONFUSION:     "R 函數或參數用錯（如 pnorm/qnorm、qt 的機率參數）",
+  OUTLIER_DELETE_BY_EYE:    "看起來怪就刪，不做檢定也不記錄",
+  OTHER:                    "不對應特定迷思的湊數選項"
+};
 const QUIZ = [
- { q: "Kragten 法的本質是：",
-   opts: ["新的統計分布", "用「x_i 加上 u_i 後重算 y」的數值微分，近似偏微分貢獻", "隨機抽樣", "最小平方法"], ans: 1,
-   exp: "u(y,x_i) ≈ y(x_i+u(x_i)) − y(x_i)。它是 Excel 時代分析師的聰明技巧（Kragten 1994），QUAM Appendix E.2 收錄，與解析法結果一致。" },
- { q: "Monte Carlo 法中，每個輸入量被視為：",
-   opts: ["固定常數", "一個機率分布（依 Type A/B 資訊決定形狀）", "一個矩陣", "誤差上限"], ans: 1,
-   exp: "依已知資訊給每個輸入量指定分布（常態/矩形/三角…），抽 N 組代入模型，用輸出 y 的分布直接讀出標準差與 95% 區間。" },
- { q: "鎘標準液案例中，貢獻最大的成分是：",
-   opts: ["質量 m", "純度 P", "體積 V", "三項相同"], ans: 2,
-   exp: "貢獻 = 相對不確定度競賽：V 0.0007 &gt; m 0.0005 ≫ P 0.000058。相對貢獻 0.70 vs 0.50 vs 0.06 mg/L——改善量瓶/控溫最划算。" },
- { q: "哪一種情況「最需要」改用 Monte Carlo？",
-   opts: ["模型是簡單的加減", "結果接近零、分布明顯不對稱", "只有一個輸入量", "u 都很小"], ans: 1,
-   exp: "對稱近似常態時解析法夠用；近零結果（如空白校正、低濃度計數）分布歪斜，對稱的 ±U 不合理，MC 可直接給不對稱涵蓋區間（QUAM §9.6）。" },
- { q: "MC 模擬得到的 y 分布，其 95% 涵蓋區間取自：",
-   opts: ["mean ± 2·SD", "2.5% 與 97.5% 分位數", "min 與 max", "中位數 ± SD"], ans: 1,
-   exp: "分位數法（quantile）不假設對稱，是不對稱分布的正確做法。mean±2SD 會把不對稱資訊丟掉。" },
- { q: "Kragten 各成分貢獻的「平方和開根號」結果，與解析法比較：",
-   opts: ["一定比較大", "一定比較小", "在線性近似範圍內應幾乎相同", "無法比較"], ans: 2,
-   exp: "兩者都在算同一個傳播法則，只是偏微分用數值近似。u(x)/x 不大時（多數化學量測）差異可忽略——本案例兩者都 = 0.86。" }
-,
- { q: "在進行 Monte Carlo 模擬時，哪一組函數是產生常態分布擾動的正確語法？",
-   opts: ["R: runif() / Excel: RAND()", "R: rnorm(N, mean, sd) / Excel: NORMINV(RAND(), mean, sd)", "R: dnorm() / Excel: NORMDIST()", "R: sample() / Excel: RANDBETWEEN()"], ans: 1,
-   exp: "R 使用 rnorm() 產生隨機常態分布數值；Excel 則利用 NORMINV(RAND(), mean, sd) 組合隨機機率與反常態函數來達到相同目的。" },
- { q: "使用 Excel 計算 Monte Carlo 模擬結果的不確定度 (u_c) 與 95% 涵蓋區間時，會用到哪些函數？",
-   opts: ["AVERAGE() 與 MAX()", "STDEV() 與 PERCENTILE()", "SUM() 與 MEDIAN()", "VAR() 與 QUARTILE()"], ans: 1,
-   exp: "對大量模擬結果 (y) 欄位取 STDEV() 可得合成標準差 (u_c)；利用 PERCENTILE() 搭配 0.025 與 0.975 可直接取得 95% 涵蓋區間下限與上限。" },
- { q: "在 R 語言中，若要從 Monte Carlo 模擬的大量數據中直接取得 95% 涵蓋區間，應使用哪個指令？",
-   opts: ["sd(y_mc)", "summary(y_mc)", "quantile(y_mc, c(0.025, 0.975))", "t.test(y_mc)"], ans: 2,
-   exp: "quantile() 用來取得數列的分位數。因不假設常態對稱，直接取 2.5% 和 97.5% 分位數作為 95% 涵蓋區間，代碼為 quantile(y_mc, c(0.025, 0.975))。" }
+ /* ---------- 前測 pre ---------- */
+ { id: "ch09-p01", v: 1, type: "concept", phase: "pre",
+   q: "想知道「同時擲兩顆骰子，點數和」會怎麼分布，但你不會算機率。下列哪個想法最合理？",
+   opts: ["電腦模擬一定比公式準，以後公式都可以丟掉",
+          "用電腦模擬擲很多次（例如 10 萬次），直接看結果的分布",
+          "實際擲 10 次看看，大概就知道了",
+          "模擬用的是亂數，每次結果都不一樣，所以沒有參考價值"], ans: 1,
+   tags: ["MC_MORE_ACCURATE_ALWAYS", null, "MC_TOO_FEW_TRIALS", "MC_RANDOM_UNUSABLE"],
+   exp: "與 ch09-q06 同構。大量模擬可以逼近理論分布，這就是 Monte Carlo 的精神；但它與公式在簡單情況下答案一致，並非「更準」。次數太少波動很大；次數夠多時，不同亂數種子的結果差異可以小到忽略。" },
+ { id: "ch09-p02", v: 1, type: "concept", phase: "pre",
+   q: "一道湯的鹹度取決於鹽、醬油、水三種用量，每一種的用量都有一點誤差。想知道「哪一種的誤差對鹹度影響最大」，最直接的做法是：",
+   opts: ["一次只把一種的用量改一點點、其他保持不變，看鹹度變多少；三種輪流做一遍",
+          "不用試：用量誤差數字最大的那一種，影響一定最大",
+          "三種都差不多，每一種都要同樣仔細地控制",
+          "沒辦法：一定要會微積分推導公式才能知道"], ans: 0,
+   tags: [null, "UNC_ABS_REL_MIX", "SMALL_COMPONENT_MATTERS", "KRAGTEN_NEEDS_CALCULUS"],
+   exp: "與 ch09-q01／q03 同構。「一次動一項、重算、看差多少」就是 Kragten 法的精神。誤差數字大不代表影響大（還要看它對結果的敏感度與單位）；影響通常由一兩項主導；不需要微積分。" },
+ { id: "ch09-p03", v: 1, type: "concept", phase: "pre",
+   q: "等公車的時間通常約 5 分鐘，偶爾遇到塞車要等 30 分鐘（分布明顯往右拖尾）。用「平均 ± 2×標準差」來描述 95% 的等待時間範圍，會發生什麼事？",
+   opts: ["沒問題：任何數據都可以用 平均 ± 2×標準差 代表 95%",
+          "分布不對稱代表資料有問題，應該先把塞車的那幾筆刪掉",
+          "下限可能算出負的等待時間，不合理；直接取實際資料的第 2.5 與第 97.5 百分位數比較好",
+          "改用 平均 ± 2×標準差/\\(\\sqrt{n}\\)，只要 n 夠大就沒問題"], ans: 2,
+   tags: ["K2_ALWAYS_95", "OUTLIER_DELETE_BY_EYE", null, "SD_VS_SEM"],
+   exp: "與 ch09-q05 同構。對稱的 ±2SD 只適用於接近常態的分布；右偏分布應該用分位數給不對稱區間。拖尾是真實現象不是壞數據；除以 \\(\\sqrt{n}\\) 得到的是「平均值」的區間，不是個別等待時間的範圍。" },
+
+ /* ---------- 課後 post ---------- */
+ { id: "ch09-q01", v: 1, type: "concept", phase: "post",
+   q: "Kragten 法的本質是：",
+   opts: ["把每個輸入量當成機率分布，隨機抽 N 組代入模型",
+          "把所有輸入量「同時」加上各自的 u 再重算 y，差值就是 u<sub>c</sub>",
+          "「一次只把一個 x<sub>i</sub> 加上 u(x<sub>i</sub>) 重算 y」，差值就是該項的貢獻，再把各項貢獻平方和開根號",
+          "先用手算出每個偏微分，再填進試算表"], ans: 2,
+   tags: ["KRAGTEN_MC_CONFUSED", "UNC_LINEAR_ADD", null, "KRAGTEN_NEEDS_CALCULUS"],
+   exp: "u(y,x<sub>i</sub>) ≈ y(x<sub>i</sub>+u(x<sub>i</sub>)) − y(x<sub>i</sub>)，是偏微分的數值近似（QUAM Appendix E.2），所以完全不必手算微分。隨機抽樣是 Monte Carlo，不是 Kragten；若所有輸入同時加 u，得到的是各貢獻的直接（帶正負號）相加，不是平方和開根號。" },
+ { id: "ch09-q02", v: 1, type: "rout", phase: "post",
+   q: "Monte Carlo 模擬中，某輸入量 x 的證書只寫「±a」，沒有信賴水準（矩形分布）。在 R 中應如何抽樣？",
+   opts: ["rnorm(N, x, a)", "runif(N, x - a, x + a)", "runif(N, x - a/sqrt(3), x + a/sqrt(3))", "不必抽樣：證書上的值是確定的，固定為 x 即可"], ans: 1,
+   tags: ["TOLERANCE_IS_STD_UNC", null, "RECT_WRONG_DIVISOR", "OTHER"],
+   exp: "MC 的每個輸入量都是一個機率分布，形狀依 Type A／B 資訊決定：只知 ±a → 在 [x−a, x+a] 均勻抽樣，它的標準差自然就是 a/\\(\\sqrt{3}\\)。rnorm(N, x, a) 把界限 a 當成標準差；把界限再縮成 a/\\(\\sqrt{3}\\) 是重複換算；證書值也有不確定度，固定不抽等於當它是 0。" },
+ { id: "ch09-q03", v: 1, type: "calc", phase: "post",
+   q: "鎘標準液 c = 1000·m·P/V = 1002.7 mg/L，其中 V = 100.0 mL、u(V) = 0.07 mL。體積這一項對 c 的貢獻（mg/L）約為：",
+   opts: ["0.07：就是 u(V) 本身", "0.0007：0.07/100", "1.4：0.70 × 2", "0.70：1002.7 × 0.07/100"], ans: 3,
+   tags: ["UNC_ABS_REL_MIX", "UNC_ABS_REL_MIX", "U_VS_UC", null],
+   exp: "乘除模型：貢獻 = c × u(V)/V = 1002.7×0.0007 = 0.70 mg/L（Kragten 重算得 −0.701，大小相同）。0.07 的單位是 mL，不能直接當成濃度的貢獻；0.0007 是相對值，忘了乘回 c；×2 是擴展不確定度的步驟，要等全部合成完才做。三項貢獻 0.70（V）&gt; 0.50（m）≫ 0.06（P）：改善量瓶／控溫最划算。" },
+ { id: "ch09-q04", v: 1, type: "concept", phase: "post",
+   q: "下列哪一種情況「最需要」放棄解析法、改用 Monte Carlo？",
+   opts: ["結果接近零（如扣空白後的低濃度），輸出分布明顯不對稱",
+          "任何情況都需要：解析法只是近似，MC 才是正確答案",
+          "輸入量之間有相關時：照常各自獨立抽樣，MC 會自動處理相關",
+          "重複次數太少（n=3）時：用 MC 多模擬幾次可以補足實驗數據"], ans: 0,
+   tags: [null, "MC_MORE_ACCURATE_ALWAYS", "CORRELATION_IGNORED", "MC_REPLACES_DATA"],
+   exp: "輸出分布對稱、近似常態時解析法就夠用（本章三種方法都得 0.86）；近零結果分布歪斜，對稱的 ±U 不合理，MC 可直接給不對稱的涵蓋區間（QUAM §9.6）。獨立抽樣並不會自動帶入相關，必須刻意用聯合分布抽樣；模擬只是傳播你給它的輸入分布，無法憑空生出實驗資訊。" },
+ { id: "ch09-q05", v: 1, type: "concept", phase: "post",
+   q: "MC 模擬得到 100,000 個 y，分布明顯右偏。95% 涵蓋區間應取：",
+   opts: ["mean ± 2·SD", "mean ± 1.96·SD/\\(\\sqrt{N}\\)", "最小值到最大值", "第 2.5% 與第 97.5% 分位數"], ans: 3,
+   tags: ["K2_ALWAYS_95", "SD_VS_SEM", "OTHER", null],
+   exp: "分位數法不假設對稱，是不對稱分布的正確做法（R：quantile(y, c(.025,.975))；Excel：PERCENTILE）。mean±2SD 假設對稱常態，會把不對稱資訊丟掉；除以 \\(\\sqrt{N}\\) 得到的是「模擬平均值」的標準誤，N=100000 時窄到幾乎為零，與量測不確定度無關；min–max 涵蓋的是 100% 而且隨 N 變寬。" },
+ { id: "ch09-q06", v: 1, type: "misc", phase: "post",
+   q: "同學說：「<em>Monte Carlo 抽了 10 萬次，一定比 GUM 公式法更正確，以後不必管公式、只跑 MC 就好。</em>」這個說法的問題在哪？",
+   opts: ["線性、對稱的簡單模型，兩者幾乎相同（本章解析法、Kragten、MC 都是 0.86）；MC 的價值在非線性／不對稱／混合分布，而且結果好壞仍取決於輸入分布給得對不對",
+          "沒有問題：抽樣次數越多越接近真值，就算輸入的 u 估錯了，也會被平均掉",
+          "問題在 MC 用的是亂數、每次結果都不同，所以根本不能用在正式報告",
+          "沒有問題，而且其實只要跑 100 次就夠了"], ans: 0,
+   tags: [null, "MC_MORE_ACCURATE_ALWAYS", "MC_RANDOM_UNUSABLE", "MC_TOO_FEW_TRIALS"],
+   exp: "三種方法算的是同一個傳播問題，只是手段不同：在線性近似成立時（u(x)/x 很小）應該互相吻合，這本身就是最好的驗證。MC 只是把「你給的輸入分布」傳播出去——輸入估錯，抽再多次也是錯的。N 夠大時不同種子的差異可忽略，GUM S1 正式認可；N 太小時分位數會明顯跳動。QUAM 的立場：解析法用來理解，數值法用來交付。" },
+ { id: "ch09-q07", v: 1, type: "rout", phase: "post",
+   q: "MC 要為質量 m 產生 N 個模擬值（u_m 是 m 的<strong>標準不確定度</strong>，常態分布）。R 的正確寫法是（Excel 對應：<code>=m+NORMINV(RAND(),0,u_m)</code>）：",
+   opts: ["rnorm(N, m, 2*u_m)", "rnorm(N, m, u_m)", "dnorm(N, m, u_m)", "rnorm(N, m, u_m/sqrt(N))"], ans: 1,
+   tags: ["U_VS_UC", null, "R_FUNCTION_CONFUSION", "SD_VS_SEM"],
+   exp: "rnorm(N, mean, sd) 的 sd 就是標準不確定度 u_m。放 2*u_m 是把擴展不確定度 U 當成標準差，結果會膨脹一倍；dnorm 算的是機率密度、不是抽亂數（r 開頭才是 random）；除以 \\(\\sqrt{N}\\) 是把模擬次數誤當成量測重複次數，輸入的散布會被縮到幾乎為零。" },
+ { id: "ch09-q08", v: 1, type: "calc", phase: "post",
+   q: "Excel Kragten 表（鎘標準液）：基準 y = 1002.70 mg/L；三欄各只改一格後重算——m+u(m) → 1003.20、P+u(P) → 1002.76、V+u(V) → 1002.00。請計算 u<sub>c</sub>（mg/L，取 2 位小數）。",
+   num: { ans: 0.86, tol: 0.01, unit: "mg/L" },
+   errs: [ { val: 1.26, tol: 0.01, tag: "UNC_LINEAR_ADD" },
+           { val: -0.14, tol: 0.01, tag: "UNC_CANCELS_OUT" },
+           { val: 0.14, tol: 0.01, tag: "UNC_CANCELS_OUT" },
+           { val: 0.74, tol: 0.01, tag: "UNC_SQUARE_STEP_WRONG" } ],
+   exp: "各欄與基準的差 = 貢獻：+0.50、+0.06、−0.70 → u<sub>c</sub> = \\(\\sqrt{0.50^2+0.06^2+0.70^2}\\) = 0.86 mg/L，與解析法一致。V 在分母所以差值是負的，但平方之後正負號消失——不可以帶著正負號相加（−0.14），也不是絕對值直接相加（1.26）；0.74 是平方和忘了開根號。" },
+ { id: "ch09-q09", v: 1, type: "rout", phase: "post",
+   q: "鎘標準液 MC 模擬（N = 100000，c = 1002.7 mg/L）的 R 輸出如下。下列判讀何者正確？<pre>&gt; sd(y_mc)\n[1] 0.8633508\n&gt; round(quantile(y_mc, c(.025,.975)), 1)\n  2.5%  97.5% \n1001.0 1004.4 </pre>",
+   opts: ["95% 涵蓋區間就是 1002.7 ± 0.86",
+          "換一個 set.seed 重跑，數字只要有一點點不同，就代表模擬失敗",
+          "標準不確定度 ≈ 0.86 mg/L（與解析法一致）；95% 涵蓋區間直接讀分位數：1001.0–1004.4，半寬約 1.7 ≈ 2×0.86",
+          "N 不必到 100000，跑 100 次就能得到一樣穩定的 2.5%／97.5% 分位數"], ans: 2,
+   tags: ["U_VS_UC", "MC_RANDOM_UNUSABLE", null, "MC_TOO_FEW_TRIALS"],
+   exp: "sd(y_mc) 對應 u<sub>c</sub>（約 68%），不是 95% 區間；95% 區間由 quantile() 直接讀出，這裡分布對稱，所以半寬 1.7 ≈ k=2 的 U，與解析法互相驗證。亂數造成末位小幅跳動是正常的（Excel 按 F9 也會跳）；但尾端分位數需要大量樣本才穩定，100 次時 2.5% 分位數只由最小的兩三筆決定。" },
+
+ /* ---------- 回溯 spaced ---------- */
+ { id: "ch09-s01", v: 1, type: "calc", phase: "spaced", from: "ch07",
+   q: "要把滴定管放進 Kragten 表：證書只寫「±0.05 mL」，沒有信賴水準，也沒有其他資訊。u 那一欄應該填：",
+   opts: ["0.050 mL", "0.020 mL（0.05/\\(\\sqrt{6}\\)）", "0.026 mL（0.05/1.96）", "0.029 mL（0.05/\\(\\sqrt{3}\\)）"], ans: 3,
+   tags: ["TOLERANCE_IS_STD_UNC", "RECT_WRONG_DIVISOR", "RECT_WRONG_DIVISOR", null],
+   exp: "Ch7：只知 ±a、無信賴水準 → 矩形分布，u = a/\\(\\sqrt{3}\\) = 0.029 mL。Kragten 表與 MC 的輸入都必須是「標準不確定度」，把界限 0.05 直接填進去會高估 73%；\\(\\sqrt{6}\\) 需要「極端值罕見」的證據；1.96 需要證書明示 95% 信賴。輸入給錯，後面任何數值方法都救不回來。" }
 ];
 </script>
 <script src="assets/app.js"></script>
 <script src="assets/js/showout.js"></script>
+<script type="module" src="assets/js/assess.js"></script>
 
-<nav class="pager">
-<a href="ch08.html"><small>上一章</small>Ch8 合成與符合性判定</a>
-<a href="ch10.html"><small>下一章</small>Ch10 實戰案例：滴定與 HPLC</a>
-</nav>
+<nav class="pager" data-pager></nav>
 </main>
 <footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫</footer>
 </body>

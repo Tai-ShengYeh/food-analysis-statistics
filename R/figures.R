@@ -152,13 +152,13 @@ save_png("fig_distributions.png", {
          col = c("#1565C0","#EF6C00","#2E7D32"), lwd = 2.5, bty="n")
 })
 
-# ---- fig08: 不準度預算長條圖 (Cd 案例) ----
+# ---- fig08: 不確定度預算長條圖 (Cd 案例) ----
 save_png("fig_budget.png", {
   contrib <- c("體積 V"=1002.7*0.07/100, "質量 m"=1002.7*0.05/100.28,
                "純度 P"=1002.7*0.000058/0.9999)
   bp <- barplot(contrib, col = c("#1E88E5","#43A047","#FDD835"),
                 ylim = c(0, .85), las = 1, border = NA,
-                main = "鎘標準液的不準度預算 (uncertainty budget)",
+                main = "鎘標準液的不確定度預算 (uncertainty budget)",
                 ylab = "貢獻量 |u(y,x)| mg/L")
   text(bp[,1], contrib + .04, sprintf("%.2f", contrib), font = 2)
   uc <- sqrt(sum(contrib^2))
@@ -205,7 +205,7 @@ save_png("fig_compliance.png", {
   }
 })
 
-# ---- fig11: 內插濃度不準度隨濃度變化 (E.4) ----
+# ---- fig11: 內插濃度不確定度隨濃度變化 (E.4) ----
 save_png("fig_pred_unc.png", {
   x <- c(1,3,5,10,20); y <- c(.050,.140,.242,.521,.998)
   f <- lm(y ~ x); b1 <- coef(f)[2]; S <- summary(f)$sigma
@@ -213,7 +213,7 @@ save_png("fig_pred_unc.png", {
   nx <- seq(1, 20, len = 60)
   Ux <- 2*sapply(nx, function(xp) sqrt((S^2/b1^2)*(1/p + 1/n + (xp-xb)^2/Sxx)))
   plot(nx, Ux, type = "l", lwd = 2.5, col = "#6A1B9A",
-       main = "由標準曲線反推濃度的 95% 不準度",
+       main = "由標準曲線反推濃度的 95% 不確定度",
        xlab = "反推濃度 (ug/mL)", ylab = "±U (ug/mL)")
   rug(x, lwd = 2, col = "#1565C0")   # 校正點位置
   text(mean(x), max(Ux)*.92,
@@ -224,10 +224,10 @@ save_png("fig_pred_unc.png", {
 save_png("fig_fishbone.png", w = 1500, h = 780, {
   par(lheight = 1.3)
   plot(NA, xlim = c(0, 10), ylim = c(0, 6), axes = FALSE,
-       xlab = "", ylab = "", main = "滴定標定的因果(魚骨)圖：不準度來源")
+       xlab = "", ylab = "", main = "滴定標定的因果(魚骨)圖：不確定度來源")
   segments(0.3, 3, 9.0, 3, lwd = 3)                     # 主骨幹
   text(9.2, 3, "c(NaOH)
-相對不準度", font = 2, cex = 1.15)
+相對不確定度", font = 2, cex = 1.15)
   rib <- function(x0, y0, x1, y1, label, side) {
     segments(x0, y0, x1, y1, lwd = 2)
     # text to the left of the midpoint with a larger offset

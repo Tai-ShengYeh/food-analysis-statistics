@@ -25,14 +25,15 @@ round(c(blank_mean = x_blk, blank_sd = s_blk, LOD = LOD, LOQ = LOQ), 4)
 spiked <- c(1.02, 0.98, 1.05, 0.99, 1.01, 0.97, 1.03)  # 7 次加標樣品
 n <- length(spiked)
 mdl <- qt(0.99, n - 1) * sd(spiked)
-round(mdl, 3)      # -> 約 0.068 mg/L（涵蓋整個方法流程的變異）
+round(mdl, 3)      # -> 約 0.090 mg/L（涵蓋整個方法流程的變異）
 
 # ---------- 3. Shewhart 管制圖 ----------
 # 情境：實驗室每天用標準品(蛋白質 12.0%)監控方法是否穩定
 set.seed(7)
 qc_days <- 1:25
 qc_value <- round(rnorm(25, mean = 12.00, sd = 0.15), 3)
-# 人為加入兩個異常事件：第10天偏高(系統性漂移)、第18天爆表
+# 人為加入兩個異常事件：第8~11天連續偏高(系統性漂移，qc_value[8:11] 都加 0.28)、
+# 第18天單點爆表(直接設成 12.62)
 qc_value[8:11] <- qc_value[8:11] + 0.28     # 小漂移
 qc_value[18]   <- 12.62                     # 超過行動界限
 
@@ -52,12 +53,22 @@ legend("bottomright", c("CL","±2s 警告","±3s 行動"),
 
 # 自動找出失控點
 out_of_control <- qc_value[qc_value > ual | qc_value < lal]
-out_of_control          # 第10與18天超出 ±3s 行動界限（漂移累積+爆表）
+out_of_control          # 第10、18天超出 ±3s 行動界限（漂移累積+爆表）
 which(qc_value > ual | qc_value < lal)
+
+# 只超出 ±2s 警告界限、但還沒超過 ±3s 行動界限的天數
+warn_only <- which((qc_value > uwl | qc_value < lwl) & !(qc_value > ual | qc_value < lal))
+warn_only                # 第1、9、11、12、13天：只觸發警告，尚未達行動界限
+
+# 判讀規則②：連續多點落在中心線同一側，即使沒人超出 ±3s 也代表有系統性變因
+above_cl <- qc_value > cl
+run_info <- rle(above_cl)
+run_info                 # 第7~16天(連續10點)都在中心線上方，正是規則②抓得到、
+                          # 但只看「有沒有點超出±3s」會完全漏掉的訊號
 
 # 判讀口訣：
 #  - 點超出 ±3s 或連續規則違反 -> 停下來找根本原因(root cause)
-#  - 連續 7 點同側 / 連續上升下降 -> 有系統性變因
+#  - 連續 7 點同側 / 連續上升下降 -> 有系統性變因（本例第7~16天共10點同側）
 
 # ---------- 4. CuSum 累積和管制圖 (偵測微小漂移更靈敏) ----------
 csum <- cumsum(qc_value - target)
@@ -65,8 +76,9 @@ plot(qc_days, csum, type = "b", pch = 19, col = "darkgreen",
      main = "CuSum 管制圖",
      xlab = "分析日", ylab = "累積偏差 (CuSum)")
 abline(h = 0, lty = 2)
-# 解讀：第 8~11 天的 +0.28 漂移在 Shewhart 圖上只是「靠近警告線」，
-# 但 CuSum 的斜率明顯轉正 —— 小而持續的偏移無所遁形。
+# 解讀：第 8~11 天的 +0.28 漂移，在 Shewhart 圖上第 9 天先觸及 ±2s 警告線、
+# 第 10 天已衝出 ±3s 行動界限；但 CuSum 的斜率早在第 8 天就明顯轉正並持續攀升 ——
+# 比 Shewhart 更早、更清楚地顯示這是小而持續的系統性偏移，而非單點雜訊。
 
 # ---------- 5. 其他日常 QC 手段（名詞認識）----------
 # 空白試驗 blank        : 抓污染與背景干擾

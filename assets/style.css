@@ -188,6 +188,58 @@ pre.rout-body .prompt { color: #6FD3A7; font-weight: 700; }
 .qscore.good { color: var(--c-green); }
 .qscore.mid { color: var(--c-accent); }
 .qscore.low { color: var(--c-red); }
+/* 測驗 v2：學號閘門、把握程度、數值題、回溯題、我還不懂的地方 */
+.quizpre { border-left: 6px solid var(--c-accent); }
+.qgate { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 6px 0 14px; }
+.qgate-l { font-weight: 600; }
+.qgate .qsid, .qnum-in {
+  font: inherit; padding: 8px 12px; border: 2px solid var(--c-line); border-radius: 10px; width: 12em; max-width: 100%;
+}
+.qgate .qsid:focus, .qnum-in:focus, .qmuddy textarea:focus { outline: none; border-color: var(--c-primary-2); }
+.qgate-err { color: var(--c-red); font-size: .9rem; flex-basis: 100%; min-height: 1em; }
+.qnote { flex-basis: 100%; margin: 0; font-size: .85rem; color: var(--c-muted); line-height: 1.6; }
+.qwho { font-weight: 600; color: var(--c-primary); }
+.qlink {
+  background: none; border: none; padding: 0; font: inherit; font-size: .88rem;
+  color: var(--c-primary-2); text-decoration: underline; cursor: pointer;
+}
+.qitem label.key { outline: 2px solid var(--c-green); background: #E3F5E5; }
+.qitem .qnum { display: block; }
+.qitem .qnum:hover { background: none; }
+.qkey { margin-top: 8px; font-weight: 600; color: var(--c-green); }
+.qconf { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin-top: 8px; font-size: .85rem; color: var(--c-muted); }
+.qitem .qconf label {
+  display: inline-block; margin: 0; padding: 2px 10px; border: 1px solid var(--c-line); border-radius: 999px;
+}
+.qitem .qconf label:has(input:checked) { background: #D6E7F8; border-color: var(--c-primary-2); color: var(--c-primary); }
+.qitem .qconf input { margin-right: 4px; }
+.qspaced { margin: 26px 0 0; font-size: 1.05rem; color: var(--c-primary); }
+.qwarn { color: #8A5A00; font-size: .92rem; margin: 6px 0; min-height: 1em; }
+.qbtn.ghost { background: #fff; color: var(--c-primary-2); border: 2px solid var(--c-primary-2); padding: 7px 18px; font-size: .92rem; }
+.qbtn.ghost:hover { background: #F0F6FF; }
+.qmuddy { margin-top: 26px; padding-top: 18px; border-top: 1px dashed var(--c-line); }
+.qmuddy textarea {
+  display: block; width: 100%; margin: 8px 0; padding: 10px 12px; font: inherit;
+  border: 2px solid var(--c-line); border-radius: 10px; resize: vertical;
+}
+.qmuddy-msg, .qsync { font-size: .88rem; color: var(--c-muted); }
+.qfoot { margin-top: 16px; }
+.qbtn:focus-visible, .qlink:focus-visible, .qitem input:focus-visible, .navtoggle:focus-visible {
+  outline: 3px solid var(--c-accent); outline-offset: 2px;
+}
+
+/* 手機版：章節導覽收合 */
+.navtoggle { display: none; }
+@media (max-width: 900px) {
+  .navtoggle {
+    display: inline-block; margin-left: auto; font: inherit; font-size: .9rem; font-weight: 600;
+    background: rgba(255,255,255,.16); color: #fff; border: 1px solid rgba(255,255,255,.4);
+    border-radius: 8px; padding: 5px 12px; cursor: pointer;
+  }
+  .topnav { display: none; flex-basis: 100%; }
+  .topnav.open { display: flex; }
+  .topnav a { flex: 1 1 45%; padding: 8px 10px; }
+}
 
 /* ---------- 上下頁 ---------- */
 .pager { display: flex; justify-content: space-between; margin-top: 34px; gap: 12px; }
@@ -220,6 +272,8 @@ footer { text-align: center; color: var(--c-muted); font-size: .85rem; padding: 
 .chapcard p { color: var(--c-muted); font-size: .86rem; margin: 0; }
 .chapcard.part2 { border-top-color: var(--c-green); }
 .chapcard.part3 { border-top-color: var(--c-red); }
+.chapcard.part1b { border-top-color: var(--c-accent); }
+.chapcard.part4 { border-top-color: #6A3FA0; }
 @media print { .topbar, .pager, footer { display: none; } body { background: #fff; } }
 
 /* 參考文獻 */

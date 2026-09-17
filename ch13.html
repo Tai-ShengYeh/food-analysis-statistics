@@ -15,9 +15,7 @@
 <body>
 <header class="topbar"><div class="inner">
 <a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
-<nav class="topnav">
-<a href="index.html">首頁</a><a href="ch00.html">Ch0 入門</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a><a href="ch13.html">Ch13 FDC配方</a><a href="ch14.html">Ch14 DOE/RSM</a>
-</nav></div></header>
+<nav class="topnav" data-nav></nav></div></header>
 
 <main>
 <div class="crumbs">Part 3 進階延伸／第 13 章（建議先修：Ch1–Ch2 統計基礎）</div>
@@ -41,6 +39,8 @@
 <li>會把配方加權成<strong>營養標籤</strong>（台灣每 100 g / 美國每份 66 g），並用 Atwater 4-4-9 檢核</li>
 <li>會做<strong>逆向工程</strong>：由競品檢驗值反推等效配方，並指出解為何不唯一</li>
 </ul></div>
+
+<div class="quiz" data-phase="pre"></div>
 
 <div class="callout"><span class="t">🧪 情境</span>
 <a href="https://owlsoft.com/techwizard/" target="_blank" rel="noopener">TechWizard™</a>
@@ -280,39 +280,158 @@ best_re[which.min(best_re$cost), c("cream","milk","smp","water","cost")]
 
 <div class="quiz" id="quiz"></div>
 <script>
+const CHAPTER = "ch13";
+const MISC = {
+  COMMERCIAL_SOFTWARE_MAGIC:    "以為商業配方軟體有無法重現的專有魔法，而不是質量平衡＋加權平均這類基礎代數",
+  FDC_COVERS_ALL:               "以為公開資料庫涵蓋所有原料，不需要供應商規格書（COA）",
+  NEWER_DATA_BETTER:            "以為資料越新品質就越好，忽略採樣與分析方法等後設資料",
+  BRANDED_LABEL_AS_TRUTH:       "把市售標籤值（廠商自報、經過捨入）當成精確的分析真值",
+  UNDERDETERMINED_MISREAD:      "未知數多於方程式時，誤以為無解或仍然只有唯一解",
+  NEGATIVE_SOLUTION_OK:         "以為聯立方程數學上解得出來就是可行配方，忽略用量不能為負",
+  LP_INTERIOR_OPTIMUM:          "不知道線性目標的最佳解必在可行範圍的端點（以為在中間折衷點、要微分或逐一試算）",
+  CHEAPEST_INGREDIENT_GREEDY:   "以為最低成本配方就是盡量多用單價最便宜的原料，忽略規格限制的連動",
+  SIMPLE_AVERAGE_NOT_WEIGHTED:  "混合物的成分用簡單平均或直接相加，而不是依用量加權平均",
+  ATWATER_FACTOR_MIX:           "Atwater 係數用錯（脂肪該乘 9 卻乘 4，或碳水與脂肪的係數對調）",
+  SERVING_VOLUME_WEIGHT_MIX:    "把體積份量直接當成重量，忽略密度與打入的空氣（overrun）",
+  REVERSE_ENG_UNIQUE:           "以為逆向工程反推出來的配方就是競品唯一的真實配方",
+  SIGFIG_KEEP_ALL_DIGITS:       "把計算機／軟體顯示的位數全部報出來",
+  UNIT_CONVERSION:              "單位換算錯誤（mg/kg、%、ppm…）",
+  R_FUNCTION_CONFUSION:         "R 函數或參數用錯（如 pnorm/qnorm、qt 的機率參數）",
+  EXCEL_FUNCTION_CONFUSION:     "Excel 函數用錯（如 T.INV vs T.INV.2T、STDEV.P vs STDEV.S）",
+  PSEUDO_REPLICATION:           "把同一樣品溶液的重複注射／重複讀值當成獨立重複",
+  REPEATABILITY_AS_INTERMEDIATE:"以為短期重複性（同批雙重複）就能代表長期中間精密度",
+  INSTRUMENT_DECIDES_UNC:       "以為不確定度主要由儀器等級決定（儀器好就可忽略、要改善就換儀器），忽略方法與取樣",
+  OTHER:                        "不對應特定迷思的湊數選項"
+};
 const QUIZ = [
- { q: "TechWizard™ 的原料資料庫與 USDA FoodData Central 的關係是：",
-   opts: ["完全無關", "TechWizard 內建整套 USDA 食品成分資料庫，所以可用免費的 FDC 重現其工作流", "FDC 是 TechWizard 的子公司", "兩者格式不相容"], ans: 1,
-   exp: "TechWizard 官網明載其原料檔內含整個 USDA Food Composition database。FDC 以 CC0 釋出，教學上用 R 即可免費重現配方、標籤、逆向工程等工作流。" },
- { q: "FDC 五種資料型中，附完整採樣與分析後設資料、最適合當方法對照真值的是：",
-   opts: ["Branded", "SR Legacy", "Foundation Foods", "Survey (FNDDS)"], ans: 2,
-   exp: "Foundation Foods 是 USDA 自行分析、樣品層級並附 dataPoints/min/max 等後設資料的資料型——品質判斷的依據，就像 QC 紀錄。SR Legacy 雖最常用於配方但 2018 年已定稿。" },
- { q: "冰淇淋配方 4 個未知數卻只有 3 條質量平衡方程式，代表：",
-   opts: ["無解", "唯一解", "存在一個自由度的配方家族，需要額外準則（如成本最低）才能選出唯一配方", "必須改用 Monte Carlo"], ans: 2,
-   exp: "規格只圈出可行範圍。1 個自由度 = 一條可行線段上的整個配方家族；「最低成本」就是那個把問題收斂到唯一解的額外準則。" },
- { q: "為什麼最低成本解落在可行線段的端點？",
-   opts: ["因為成本函數是二次曲線", "因為線性目標函數在凸可行區域的極值必出現在頂點（本題可行集合是線段）", "電腦隨機挑的", "因為端點的水最少"], ans: 1,
-   exp: "這是線性規劃的基本定理。本題成本沿線段單調遞增，最便宜解在「水→0」端點；TechWizard 的 AI 引擎只是把同樣邏輯自動化到多原料多限制式。" },
- { q: "美國營養標籤上冰淇淋「每份 66 g」的 66 g 是：",
-   opts: ["一杯牛奶的重量", "FDA 的 RACC 2/3 杯換算的重量，已把打入的空氣（overrun）算進去", "配方原料總重", "法規隨機規定"], ans: 1,
-   exp: "冰淇淋含大量空氣，密度可低至約 0.56 g/mL，2/3 杯的重量因此只有約 66 g。配方在「重量世界」、份量在「體積世界」，overrun 是兩者間的橋樑。" },
- { q: "逆向工程反推出的配方為什麼「不唯一」？",
-   opts: ["因為 solve() 有隨機性", "因為檢驗不確定度、標籤捨入、MSNF 推估假設與原料批次變異，只能得到等效近似解", "因為 FDC 資料有版權限制", "因為成本每天都在變"], ans: 1,
-   exp: "呼應 Ch6–Ch8：量測與模型都帶不確定度，反推解是近似而非唯一真值——報告配方時也應像報告分析結果一樣附上可信範圍。" }
-,
- { q: "在本章配方計算中，R 語言的 `solve()` 函數對應到 Excel 中的哪一項功能？",
-   opts: ["`VLOOKUP` (垂直查詢)", "`SUMPRODUCT` (乘積和)", "規劃求解 (Solver)", "目標搜尋 (Goal Seek)"], ans: 2,
-   exp: "R 的 `solve()` 用來解線性聯立方程，在 Excel 中進行多變數的限制條件尋優或解聯立方程，對應的強大工具是「規劃求解 (Solver)」。" },
- { q: "在 Excel 中進行營養標籤加權計算，或計算配方總成本時，最適合使用下列哪一個函數來將「各原料用量」與「每單位成分/單價」相乘並加總？",
-   opts: ["`SUMIF`", "`SUMPRODUCT`", "`COUNTIFS`", "`VLOOKUP`"], ans: 1,
-   exp: "`SUMPRODUCT` 函數可以將兩個對應範圍的陣列元素相乘後直接加總，非常適合用於計算配方中各原料的營養貢獻總和與總成本。" },
- { q: "在 R 語言的程式範例中，使用 `solve(A, b)` 解出原料用量後，必須加上 `all(x >= -1e-9)` 的邏輯判斷。這個判斷的實務意義是什麼？",
-   opts: ["因為配方的總成本不能是負的", "避免浮點數誤差導致的當機", "確保解出來的各項原料用量在物理上可行（不可為負數）", "用來去除單價過高的原料"], ans: 2,
-   exp: "數學上的聯立方程可能解出「負的原料用量」，但實體世界不可能加入負的鮮奶油。加上此條件可篩選出真正可行的配方解，`-1e-9` 是為了寬容浮點數運算的微小誤差。" }
+  /* ---------- 前測 pre ---------- */
+  { id:"ch13-p01", v:1, type:"calc", phase:"pre",
+    q:"把 1 公斤含糖 10% 的果汁和 3 公斤含糖 30% 的果汁混在一起，混合後的含糖量是多少？",
+    opts:["25%", "20%", "40%", "30%：以量多的那一種為準"],
+    ans:0,
+    tags:[null, "SIMPLE_AVERAGE_NOT_WEIGHTED", "SIMPLE_AVERAGE_NOT_WEIGHTED", "OTHER"],
+    exp:"糖的總量 = 1×0.10 + 3×0.30 = 1.0 kg，總重 4 kg → 25%（依用量加權）。20% 是不管用量的簡單平均；40% 是把百分比直接相加；量多的一方影響大，但不會完全蓋掉另一方。" },
+  { id:"ch13-p02", v:1, type:"concept", phase:"pre",
+    q:"兩種原料 A（每公斤 40 元）和 B（每公斤 25 元）可以互相替代，但產品規格要求 B 最多只能用到 60%。總成本隨 B 的比例「直線」下降。最便宜的配方在哪裡？",
+    opts:["A、B 各一半：折衷最保險，通常也最便宜",
+          "100% 用 B：它最便宜，規格之後再說",
+          "B 用到規格允許的上限 60%（可行範圍的端點）",
+          "無法事先判斷，必須把所有比例逐一試算"],
+    ans:2,
+    tags:["LP_INTERIOR_OPTIMUM", "CHEAPEST_INGREDIENT_GREEDY", null, "LP_INTERIOR_OPTIMUM"],
+    exp:"成本是直線：B 每多一點就便宜一點，所以一路走到規格允許的端點為止——這就是線性規劃「最佳解在端點」的直覺。中間點不可能最便宜；超出規格的配方不可行，再便宜也沒用。" },
+  { id:"ch13-p03", v:1, type:"misc", phase:"pre",
+    q:"競品冰淇淋的營養標籤寫：每 100 g 脂肪 11 g、蛋白質 4 g。同事說：「用這兩個數字解聯立方程，就能算出對方的真實配方。」你認為：",
+    opts:["對：數學解是唯一的，算出來就是對方的配方",
+          "對：標籤值是法定數字，等同精確的實驗室分析值",
+          "對：只要標籤多標一位小數（11.0、4.0），反推結果就會是真實配方",
+          "不對：標籤值經過捨入、有容許誤差，而且不同的原料組合可以給出相同的成分；只能得到「可能的配方之一」"],
+    ans:3,
+    tags:["REVERSE_ENG_UNIQUE", "BRANDED_LABEL_AS_TRUTH", "SIGFIG_KEEP_ALL_DIGITS", null],
+    exp:"反推的輸入（標籤值）本身帶著捨入與容許誤差，輸出也因此是一個範圍；而且原料選擇不只一種，同樣的脂肪／蛋白質可以由很多組合達成。多標一位小數不會讓數字變準。" },
+
+  /* ---------- 課後 post ---------- */
+  { id:"ch13-q01", v:1, type:"concept", phase:"post",
+    q:"老闆問：「不買 TechWizard™，只用免費的 FoodData Central（FDC）加上 R，真的能重現它的配方與標籤功能嗎？」最恰當的回答是：",
+    opts:["不行：商業軟體用的是不公開的專有演算法，外人無法重現",
+          "可以，而且 FDC 已涵蓋所有原料（含安定劑、玉米糖漿），不需要任何其他資料",
+          "可以，但只限營養標籤；最低成本配方一定要靠軟體的 AI 引擎",
+          "可以：TechWizard 的原料庫本來就內建 USDA 資料庫，核心運算是質量平衡聯立方程＋加權平均；但複合加工原料仍要向供應商索取規格書"],
+    ans:3,
+    tags:["COMMERCIAL_SOFTWARE_MAGIC", "FDC_COVERS_ALL", "COMMERCIAL_SOFTWARE_MAGIC", null],
+    exp:"FDC 以 CC0 釋出，TechWizard 官網也明載其原料檔內含整個 USDA 資料庫；配方＝解聯立方程、最低成本＝線性規劃、標籤＝加權平均＋捨入，沒有魔法。但玉米糖漿、安定劑這類複合原料 FDC 沒有（或只有籠統值），必須靠供應商 COA。" },
+  { id:"ch13-q02", v:1, type:"concept", phase:"post",
+    q:"要找一筆「能判斷數據品質」的成分數據，當作自己分析方法的比對參考，應優先選 FDC 的哪一種資料型？",
+    opts:["Branded：每月更新，資料最新所以最可信",
+          "Branded：標籤值就是廠商的實測值，最接近真值",
+          "Foundation Foods：USDA 自行分析，樣品層級並附樣品數、min/max 與分析方法等後設資料",
+          "SR Legacy：配方業界最常用，最多人用的數據品質一定最好"],
+    ans:2,
+    tags:["NEWER_DATA_BETTER", "BRANDED_LABEL_AS_TRUTH", null, "OTHER"],
+    exp:"「哪一筆可信」比「新不新」重要：Foundation Foods 附完整後設資料，就像 Ch3 的 QC 紀錄，讓你能判斷精密度與準確度。Branded 是廠商自報且經過捨入的標籤值；SR Legacy 適合配方計算，但多為彙編值、2018 年後不再更新。" },
+  { id:"ch13-q03", v:1, type:"concept", phase:"post",
+    q:"冰淇淋配方有 4 個未知數（鮮奶油、鮮乳、脫脂奶粉、水），卻只有 3 條質量平衡方程式。這代表：",
+    opts:["存在「一個自由度」的配方家族；需要額外準則（例如成本最低）才能選出唯一配方",
+          "方程式不夠，所以無解",
+          "仍然只有唯一解，solve() 會自動找到",
+          "有無限多組解，而且每一組都可以用（用量算出來是負的也沒關係）"],
+    ans:0,
+    tags:[null, "UNDERDETERMINED_MISREAD", "UNDERDETERMINED_MISREAD", "NEGATIVE_SOLUTION_OK"],
+    exp:"少一條方程式＝多一個自由度：規格只圈出一條可行線段上的配方家族，「成本最低」是把問題收斂到唯一解的額外準則。不是無解、也不是唯一解；而且只有用量全部 ≥ 0 的那一段才可行（奶粉 5.50–9.55 kg）。" },
+  { id:"ch13-q04", v:1, type:"concept", phase:"post",
+    q:"本章的最低成本解，為什麼落在可行線段的「端點」（水→0）？",
+    opts:["因為成本函數是曲線，最低點要用微分求，剛好落在那裡",
+          "因為成本是各用量的線性函數：線性目標在可行區域上的極值必出現在頂點（本題可行集合是一條線段）",
+          "其實取線段中點比較好：兩個端點都是極端配方，折衷才是最佳",
+          "因為水每公斤只要 0.5 元，盡量多用最便宜的原料一定最省"],
+    ans:1,
+    tags:["LP_INTERIOR_OPTIMUM", null, "LP_INTERIOR_OPTIMUM", "CHEAPEST_INGREDIENT_GREEDY"],
+    exp:"成本 = 230c + 38m + 280s + 0.5w 是線性的，沿線段單調變化，最小值只會在端點（線性規劃基本定理）。有趣的是最便宜解反而是「水→0」：多加水就得用更貴的奶粉與鮮奶油補回脂肪與 MSNF——只看單價的貪心想法會選錯。" },
+  { id:"ch13-q05", v:1, type:"concept", phase:"post",
+    q:"美國營養標籤上，冰淇淋「每份 2/3 杯」標示為 66 g。關於這個 66 g，正確的理解是：",
+    opts:["2/3 杯大約 158 mL，所以應該是 158 g；66 g 是標示錯誤",
+          "是 FDA 參考份量（體積）換算成的重量，已經把打入的空氣（overrun）算進去，所以遠比同體積的配方原料輕",
+          "是 100 kg 配方換算出來的原料重量，與空氣無關",
+          "每 100 g 的營養值乘上 0.66，是為了扣掉空氣所含的熱量"],
+    ans:1,
+    tags:["SERVING_VOLUME_WEIGHT_MIX", null, "SERVING_VOLUME_WEIGHT_MIX", "OTHER"],
+    exp:"配方是「重量世界」，份量是「體積世界」，橋樑是 overrun：冰淇淋含大量空氣，密度遠小於 1 g/mL，不能把 mL 直接當 g。乘 0.66 只是把每 100 g 的值換算成每 66 g；空氣沒有熱量，也不需要扣。" },
+  { id:"ch13-q06", v:1, type:"misc", phase:"post",
+    q:"以競品檢驗值（脂肪 10.8%、蛋白質 4.4%）重解聯立方程，得到「鮮奶油 25.2、鮮乳 50.4、脫脂奶粉 6.8、水 0.1」。同事說：「這就是對方的真實配方。」這個說法：",
+    opts:["不對：檢驗值有量測不確定度、標籤有捨入、MSNF 是由蛋白質 ÷ 0.36 推估的模型假設、原料有批次變異——得到的只是「等效近似解」",
+          "對：聯立方程的解是唯一的，數學不會錯",
+          "不對：因為 solve() 每次執行的結果都會隨機變動",
+          "對：只要檢驗值多報幾位小數，反推出來就是真實配方"],
+    ans:0,
+    tags:[null, "REVERSE_ENG_UNIQUE", "R_FUNCTION_CONFUSION", "SIGFIG_KEEP_ALL_DIGITS"],
+    exp:"呼應 Ch6–Ch8：輸入帶著不確定度，輸出就是一個範圍；而且對方未必用同樣的原料。solve() 是確定性的線性代數，不會隨機變動；位數多不等於準。配方也該像分析結果一樣，連同它的不確定度一起解讀。" },
+  { id:"ch13-q07", v:1, type:"rout", phase:"post",
+    q:"本章 R 的兩個核心動作——① <code>solve()</code> 在限制條件下解出各原料用量、② 把「各原料用量 × 每單位成分（或單價）」加總——在 Excel 分別對應什麼工具？",
+    opts:["① 目標搜尋（Goal Seek）　② SUMIF",
+          "① 規劃求解（Solver）　② SUMPRODUCT",
+          "① VLOOKUP　② AVERAGE",
+          "① 規劃求解（Solver）　② AVERAGE"],
+    ans:1,
+    tags:["EXCEL_FUNCTION_CONFUSION", null, "EXCEL_FUNCTION_CONFUSION", "SIMPLE_AVERAGE_NOT_WEIGHTED"],
+    exp:"多個變數、多條限制式要用 Solver（Goal Seek 一次只能調一個儲存格）；加權加總用 SUMPRODUCT(用量欄, 成分欄)。AVERAGE 是不看用量的簡單平均，算不出配方的營養值與成本。" },
+  { id:"ch13-q08", v:1, type:"calc", phase:"post",
+    q:"把 30 kg 鮮奶油（脂肪 36%）和 70 kg 全脂鮮乳（脂肪 3%）混合成 100 kg，混合物的脂肪含量是：",
+    opts:["12.9%", "19.5%", "39%", "0.129%"],
+    ans:0,
+    tags:[null, "SIMPLE_AVERAGE_NOT_WEIGHTED", "SIMPLE_AVERAGE_NOT_WEIGHTED", "UNIT_CONVERSION"],
+    exp:"脂肪總量 = 30×0.36 + 70×0.03 = 12.9 kg，÷100 kg = 12.9%（依用量加權）。19.5% 是不管用量的簡單平均 (36+3)/2；39% 是把百分比直接相加；0.129% 是已經用小數算過、又多除了一次 100。" },
+  { id:"ch13-q09", v:1, type:"rout", phase:"post",
+    q:"掃描脫脂奶粉用量 0–12 kg，每個用量解一次聯立方程，並以 <code>all(x &gt;= -1e-9)</code> 標記可行（ok）。下面的輸出代表什麼？<pre>&gt; range(sol$smp[sol$ok])\n[1] 5.50 9.55</pre>",
+    opts:["奶粉用量在 5.50–9.55 kg 之外時，solve() 無解（矩陣不可逆）",
+          "範圍外的解其實也能用：負的用量就代表「少加一點」",
+          "建議用量是中點 7.5 kg；兩端只是極端情況，不能採用",
+          "只有奶粉用量在 5.50–9.55 kg 之間，解出的鮮奶油／鮮乳／水才全部 ≥ 0；這就是可行線段，範圍外數學上有解、但用量為負"],
+    ans:3,
+    tags:["R_FUNCTION_CONFUSION", "NEGATIVE_SOLUTION_OK", "LP_INTERIOR_OPTIMUM", null],
+    exp:"solve() 在每個奶粉用量都解得出來，但範圍外會出現負的水量或鮮乳量——現實中不可能「加入負的原料」，所以要用 x ≥ 0 篩選（−1e-9 只是容忍浮點誤差）。兩個端點不但可以用，最低成本解就在其中一端（5.50 kg，水→0）。" },
+  { id:"ch13-q10", v:1, type:"calc", phase:"post",
+    q:"最便宜配方加權後每 100 g 含蛋白質 4.09 g、碳水化合物 22.30 g、脂肪 12.00 g。用 Atwater 係數（4-4-9）計算熱量是多少 kcal/100 g？（取 1 位小數）",
+    num:{ ans:213.6, tol:0.5, unit:"kcal" },
+    errs:[ { val:153.6, tol:0.5, tag:"ATWATER_FACTOR_MIX" },
+           { val:265.1, tol:0.5, tag:"ATWATER_FACTOR_MIX" },
+           { val:140.5, tol:1.0, tag:"SERVING_VOLUME_WEIGHT_MIX" } ],
+    exp:"4×4.09 + 4×22.30 + 9×12.00 = 213.6 kcal/100 g（標示 214）。153.6 是三者全乘 4（忘了脂肪是 9）；265.1 是把碳水與脂肪的係數對調；填 140–141 是已換算成每份 66 g 的值（標籤上的 140 kcal），但題目問的是每 100 g。" },
+
+  /* ---------- 回溯 spaced ---------- */
+  { id:"ch13-s01", v:1, type:"concept", phase:"spaced", from:"ch10",
+    q:"要評估「營養標示檢驗：脂肪含量」這個方法的不確定度。品管員把同一份均質樣品當天連續做 6 次，RSD = 0.8%，打算就用 0.8% 當作精密度項放進預算。回想 Ch10 農藥案例，這樣做的問題是：",
+    opts:["沒有問題：RSD 就是方法的精密度",
+          "6 次不夠：同一天做滿 30 次，RSD 才有代表性",
+          "同一天、同一人、同一批試劑只反映短期重複性；預算要用跨天、跨人、跨校正週期的中間精密度，通常明顯更大",
+          "問題出在儀器：換更高級的萃取設備，RSD 就能代表不確定度"],
+    ans:2,
+    tags:["REPEATABILITY_AS_INTERMEDIATE", "PSEUDO_REPLICATION", null, "INSTRUMENT_DECIDES_UNC"],
+    exp:"Ch10 的教訓：雙重複算出的短期 RSD（約 0.10）遠小於長期中間精密度（0.27），用短期值會低估不確定度。同一天做再多次也還是同一組條件，補不到天與天、人與人的變異；這也不是換儀器能解決的事。" }
 ];
 </script>
 <script src="assets/app.js"></script>
 <script src="assets/js/showout.js"></script>
+<script type="module" src="assets/js/assess.js"></script>
 
 <h2>13.8 參考文獻</h2>
 <ol class="refs">
@@ -322,10 +441,7 @@ const QUIZ = [
 <li>Smith, J. S. Evaluation of Analytical Data. In <i>Nielsen’s Food Analysis</i>, 6th ed.; Ismail, B. P., Nielsen, S. S., Eds.; Springer, 2024; Chapter 4.（本課程數據品管統計之主軸教材）.</li>
 </ol>
 
-<nav class="pager">
-<a href="ch12.html"><small>上一章</small>Ch12 進階案例 LC-MS/MS</a>
-<a href="ch14.html"><small>下一章</small>Ch14 實驗設計與反應曲面法 (DOE/RSM)</a>
-</nav>
+<nav class="pager" data-pager></nav>
 </main>
 <footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫 · 原料數據來自 USDA FoodData Central (CC0)</footer>
 </body>

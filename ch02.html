@@ -10,14 +10,12 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
-  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\[', right: '\]', display: true}]});"></script>
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true}]});"></script>
 </head>
 <body>
 <header class="topbar"><div class="inner">
 <a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
-<nav class="topnav">
-<a href="index.html">首頁</a><a href="ch00.html">Ch0 入門</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a><a href="ch13.html">Ch13 FDC配方</a><a href="ch14.html">Ch14 DOE/RSM</a>
-</nav></div></header>
+<nav class="topnav" data-nav></nav></div></header>
 
 <main>
 <div class="crumbs">Part 1 數據品管統計（Nielsen's Food Analysis 第4章）／第 2 章</div>
@@ -39,6 +37,8 @@
 <li>會計算 95% 信賴區間並正確解讀其意義</li>
 <li>了解標準誤 SEM = SD/\(\sqrt{n}\)，以及「增加重複次數」的邊際效益</li>
 </ul></div>
+
+<div class="quiz" data-phase="pre"></div>
 
 <h2>2.1 常態分配：隨機誤差的長相</h2>
 <p>只受<strong>隨機誤差</strong>影響的重複量測，數據會呈鐘形分布。它的特性用「標準差倍數」就能記憶：</p>
@@ -64,6 +64,8 @@ CI = <i>x̄</i> ± Z × <span class="frac"><span class="num">SD</span><span clas
 <tr><th>信心水準</th><th class="num">80%</th><th class="num">90%</th><th class="num">95%</th><th class="num">99%</th><th class="num">99.9%</th></tr>
 <tr><td>Z 值</td><td class="num">1.29</td><td class="num">1.64</td><td class="num">1.96</td><td class="num">2.58</td><td class="num">3.29</td></tr>
 </table>
+<p><small>課本 Table 4.2 的 80% 那一欄列的是 1.29；R 的 <code>qnorm(0.90)</code> 精確值為
+<strong>1.2816</strong>（四捨五入約 1.28），差異來自課本查表時的捨入，不是計算錯誤。</small></p>
 <p><strong>課本範例</strong>：假設水分測了 n=25 次，x̄=64.72、SD=0.2927：<br>
 CI = 64.72 ± 1.96 × 0.2927/\(\sqrt{25}\) = <strong>64.72 ± 0.115%</strong>。
 其中 SD/\(\sqrt{n}\) 這一項稱為<strong>平均數標準誤（SEM）</strong>——它才是「平均值」的不準度，
@@ -76,17 +78,18 @@ CI = <i>x̄</i> ± t × <span class="frac"><span class="num">SD</span><span clas
 <span class="note">Nielsen 式 (4.10)：t 值查 Table 4.3，或用 R 的 qt()</span>
 </div>
 <p><strong>水分範例（n=4，df=3，95%）</strong>：t = 3.18<br>
-CI = 64.72 ± 3.18 × 0.2927/\(\sqrt{4}\) = <strong>64.72 ± 0.465%</strong>，即 64.255 ~ 65.185%。<br>
-注意：同樣的數據，小樣本的 ±0.465% 遠寬於 n=25 時的 ±0.115% —— 這就是「重複次數的價值」。</p>
+CI = 64.72 ± 3.18 × 0.2927/\(\sqrt{4}\) = <strong>64.72 ± 0.465%</strong>，即 64.255 ~ 65.185%
+（課本用查表值 t=3.18 手算得 0.465；R 用完整精度 t=3.182446 得 <strong>0.466</strong>，即 64.249 ~ 65.181%——差異只是捨入，下文一律採 R 的完整精度結果）。<br>
+注意：同樣的數據，小樣本的 ±0.466% 遠寬於 n=25 時的 ±0.115% —— 這就是「重複次數的價值」。</p>
 
 <pre class="rcode" data-file="ch02_ex2.R">moisture &lt;- c(64.53, 64.45, 65.10, 64.78)
 xbar &lt;- mean(moisture); s &lt;- sd(moisture); n &lt;- length(moisture)
 
 qt(0.975, df = 3)              #&gt; 3.182446  (=課本 t 值 3.18)
 half &lt;- qt(0.975, n-1) * s / sqrt(n)
-round(half, 3)                 #&gt; 0.465
+round(half, 3)                 #&gt; 0.466
 round(xbar + c(-1,1) * half, 3)
-#&gt; 64.249 65.181   -> 報告：64.72 ± 0.46 % (95%, n=4)
+#&gt; 64.249 65.181   -> 報告：64.72 ± 0.47 % (95%, n=4)
 
 # 標準誤 SEM
 s / sqrt(n)                    #&gt; 0.1463</pre>
@@ -127,8 +130,8 @@ SEM = SD/\(\sqrt{n}\)：n 從 4 → 16，SEM 減半；16 → 64，再減半。
 <table>
 <tr><th>任務</th><th>Excel 公式</th><th>說明</th></tr>
 <tr><td>t 值 (df=3, 95%)</td><td><code>=T.INV.2T(0.05, 3)</code></td><td>→ 3.182（雙尾）</td></tr>
-<tr><td>95% CI 半寬</td><td><code>=T.INV.2T(0.05,3)*STDEV(A1:A4)/SQRT(4)</code></td><td>→ 0.465</td></tr>
-<tr><td>CI 下/上限</td><td><code>=AVERAGE(A1:A4)±半寬</code></td><td>64.255 ~ 65.185</td></tr>
+<tr><td>95% CI 半寬</td><td><code>=T.INV.2T(0.05,3)*STDEV(A1:A4)/SQRT(4)</code></td><td>→ 0.466</td></tr>
+<tr><td>CI 下/上限</td><td><code>=AVERAGE(A1:A4)±半寬</code></td><td>64.249 ~ 65.181</td></tr>
 <tr><td>標準誤 SEM</td><td><code>=STDEV(A1:A4)/SQRT(4)</code></td><td>→ 0.1463</td></tr>
 <tr><td>常態機率 68/95/99.7</td><td><code>=NORM.S.DIST(1,TRUE)-NORM.S.DIST(-1,TRUE)</code></td><td>→ 0.6827</td></tr>
 </table>
@@ -136,43 +139,144 @@ SEM = SD/\(\sqrt{n}\)：n 從 4 → 16，SEM 減半；16 → 64，再減半。
 
 <div class="quiz" id="quiz"></div>
 <script>
+const CHAPTER = "ch02";
+const MISC = {
+  CI_TRUE_VALUE_PROB:          "以為「真值有 95% 機率落在這個區間」",
+  CI_COVERS_DATA:              "把信賴區間當成涵蓋 95% 量測數據的範圍",
+  CI_IS_PRECISION:             "以為 95% 指的是方法的精密度或準確率",
+  MORE_CONFIDENCE_NARROWER:    "以為信心水準越高區間越窄",
+  USED_Z_NOT_T:                "小樣本仍用 Z=1.96 而不是 t",
+  DF_EQUALS_N:                 "自由度用 n 而不是 n−1",
+  ONE_TAIL_TWO_TAIL:           "單尾／雙尾機率用錯（如 qt(0.95) 當雙尾 95%）",
+  FORGOT_SQRT_N:               "算 SEM／CI 時忘了除以 √n",
+  SD_VS_SEM:                   "分不清標準差 SD 與平均數標準誤 SEM",
+  SEM_IS_CI_HALFWIDTH:         "以為 SEM 本身就是 95% 信賴區間半寬（忘了乘 t）",
+  RULE_68_95_997_MIXUP:        "68–95–99.7 法則的 ±1／±2／±3 SD 對應記錯",
+  SYSTEMATIC_FIXED_BY_REPEATS: "以為多做幾次重複就能消除系統誤差",
+  MORE_REPEATS_MORE_ERROR:     "以為重複次數越多，累積的誤差越大（平均值越不準）",
+  EXCEL_FUNCTION_CONFUSION:    "Excel 函數用錯（如 T.INV vs T.INV.2T、STDEV.P vs STDEV.S）",
+  OTHER:                       "不對應特定迷思的湊數選項（盡量少用）"
+};
 const QUIZ = [
- { q: "常態分配中，約有多少比例的數據落在 ±2 SD 之間？",
-   opts: ["68%", "95%", "99.7%", "50%"], ans: 1,
-   exp: "±1σ→68%、±2σ→95%、±3σ→99.7%。R 可用 pnorm(2)-pnorm(-2)=0.9545 驗證。" },
- { q: "n=4、SD=0.2927、95% 信賴水準，計算信賴區間半寬要用哪一個乘數？",
-   opts: ["Z=1.96", "t=3.18 (df=3)", "t=2.78 (df=4)", "Q=0.76"], ans: 1,
-   exp: "小樣本用 t，df=n−1=3，t₀.₉₇₅,₃=3.18。半寬=3.18×0.2927/\\(\\sqrt{4}\\)=0.465。Z 只適用大樣本；Q 是異常值檢定。" },
- { q: "標準誤（SEM）= SD/\\(\\sqrt{n}\\)。若重複次數從 4 次增加到 16 次，SEM 會：",
-   opts: ["變 4 倍", "減半", "變 1/4", "不變"], ans: 1,
-   exp: "\\(\\sqrt{16}\\)/\\(\\sqrt{4}\\) = 4/2 = 2，SEM 減半。SEM 與 1/\\(\\sqrt{n}\\) 成正比，報酬遞減。" },
- { q: "「95% 信賴區間」的正確解讀是：",
-   opts: ["真值有 95% 機率在此區間內", "此區間涵蓋 95% 的量測數據", "用此方法建構的區間，長期而言約 95% 會蓋住真值", "此方法有 95% 的精密度"], ans: 2,
-   exp: "真值是固定值（沒有機率可言）；區間涵蓋 95% 數據是 ±2SD 的事。正確解讀是對「建構程序」的長期性質，本章模擬（94.4%）示範了這一點。" },
- { q: "同樣的數據，把信心水準從 95% 提高到 99%，信賴區間會：",
-   opts: ["變窄", "變寬", "不變", "變不對稱"], ans: 1,
-   exp: "信心越高，需要的 t/Z 越大（3.18→5.84, df=3），區間越寬。天下沒有免費的信心。" },
- { q: "報告「64.72 ± 0.46%（95%, n=4）」時，0.46 這個數字是：",
-   opts: ["標準差 SD", "相對誤差", "信賴區間半寬 t·SD/\\(\\sqrt{n}\\)", "變異係數"], ans: 2,
-   exp: "這是 95% CI 的半寬。SD=0.293；CV=0.452%；相對誤差要與真值比較才知道。專業報告務必附上信心水準與 n。" },
- { q: "若要在 R 軟體中計算 95% 信賴區間所需要的 t 值（自由度 df = 3），下列哪一個指令正確？",
-   opts: ["qt(0.95, 3)", "qt(0.975, df = 3)", "t.test(0.95, 3)", "pnorm(0.975, 3)"], ans: 1,
-   exp: "要得到 95% 雙尾區間的 t 值，累積機率需設定為 0.975，即 qt(0.975, df = 3)。" },
- { q: "在 Excel 中，若要直接計算雙尾 95%、自由度 3 的 t 值，應使用哪一個函數？",
-   opts: ["=T.INV(0.05, 3)", "=T.INV.2T(0.05, 3)", "=NORM.S.INV(0.05)", "=T.DIST(0.95, 3)"], ans: 1,
-   exp: "Excel 的 T.INV.2T(0.05, 3) 可以直接給出雙尾（2T）α=0.05（即 95% 信心水準）的 t 值，結果為 3.182。" },
- { q: "關於平均數標準誤 (SEM) 的計算，Excel 的 =STDEV(A1:A4)/SQRT(4) 相當於 R 的哪段程式碼？",
-   opts: ["sd(moisture) / sqrt(4)", "var(moisture) / 4", "mean(moisture) / sqrt(4)", "SEM(moisture, 4)"], ans: 0,
-   exp: "標準誤的公式是 SD / \\(\\sqrt{n}\\)，在 Excel 中對應 STDEV() / SQRT()，在 R 中則是 sd() / sqrt()。" }
+ /* ---------- 前測 ---------- */
+ { id: "ch02-p01", v: 1, type: "concept", phase: "pre",
+   q: "民調報導：「某政策支持率 40%，在 95% 信心水準下，抽樣誤差 ±3 個百分點。」下列哪一個理解最合理？",
+   opts: ["全國真正的支持率有 95% 的機率落在 37%～43% 之間",
+          "用同樣的方法重複做很多次民調，大約 95% 次得到的區間會涵蓋真正的支持率",
+          "有 95% 的受訪者，其支持程度落在 37%～43% 之間",
+          "這份民調的準確率是 95%"],
+   ans: 1,
+   tags: ["CI_TRUE_VALUE_PROB", null, "CI_COVERS_DATA", "CI_IS_PRECISION"],
+   exp: "真正的支持率是一個固定的數，沒有「機率」可言；95% 描述的是「這種做法」長期的命中率。區間也不是涵蓋 95% 的個別資料，更不是準確率。（與 ch02-q04 同構）" },
+ { id: "ch02-p02", v: 1, type: "concept", phase: "pre",
+   q: "氣象預報員原本預報「明天高溫 28～32 °C」。如果他想<strong>更有把握</strong>說中，在手上資料不變的情況下，應該把預報範圍：",
+   opts: ["縮窄，例如 29～31 °C——越有把握，範圍就越精確",
+          "不必改，把握程度和範圍寬窄無關",
+          "放寬，例如 26～34 °C"],
+   ans: 2,
+   tags: ["MORE_CONFIDENCE_NARROWER", "OTHER", null],
+   exp: "資料不變時，想要更高的把握只能把範圍放寬；範圍越窄越容易落空。信賴區間同理：95% → 99%，區間變寬。（與 ch02-q05 同構）" },
+ { id: "ch02-p03", v: 1, type: "concept", phase: "pre",
+   q: "同一個樣品，「量 4 次取平均」與「量 16 次取平均」相比，16 次平均值的不準度大約是 4 次平均值的：",
+   opts: ["一半",
+          "四分之一——次數變 4 倍，不準度就變 1/4",
+          "一樣——儀器沒換，量幾次都一樣",
+          "更大——量越多次，累積的誤差越多"],
+   ans: 0,
+   tags: [null, "FORGOT_SQRT_N", "SD_VS_SEM", "MORE_REPEATS_MORE_ERROR"],
+   exp: "平均值的不準度（標準誤）與 1/√n 成正比：√16/√4 = 2，只會減半而不是變 1/4，這就是報酬遞減。單次量測的散布（SD）不會因為多量而改變，但「平均值」會越來越穩。（與 ch02-q03 同構）" },
+
+ /* ---------- 課後 ---------- */
+ { id: "ch02-q01", v: 1, type: "calc", phase: "post",
+   q: "某 QC 標準品的長期平均為 12.00%、SD = 0.15%，且測值呈常態分配。約有多少比例的測值會落在 11.70%～12.30% 之間？",
+   opts: ["68%", "90%", "99.7%", "95%"],
+   ans: 3,
+   tags: ["RULE_68_95_997_MIXUP", "OTHER", "RULE_68_95_997_MIXUP", null],
+   exp: "11.70～12.30 = 12.00 ± 0.30 = ±2 SD，約 95%（R：pnorm(2)-pnorm(-2) = 0.9545）。68% 是 ±1 SD（11.85～12.15），99.7% 是 ±3 SD（11.55～12.45）。" },
+ { id: "ch02-q02", v: 1, type: "concept", phase: "post",
+   q: "n = 4、SD = 0.2927，要算 95% 信賴區間的半寬，應該用哪一個乘數？",
+   opts: ["t = 3.18（df = 3）",
+          "Z = 1.96",
+          "t = 2.78（df = 4）",
+          "t = 2.35（df = 3，由 qt(0.95, 3) 查得）"],
+   ans: 0,
+   tags: [null, "USED_Z_NOT_T", "DF_EQUALS_N", "ONE_TAIL_TWO_TAIL"],
+   exp: "小樣本用 t，df = n−1 = 3，雙尾 95% 要查累積機率 0.975：qt(0.975, 3) = 3.182。Z = 1.96 只適用大樣本（n>30），小樣本用它會讓區間太窄；2.78 是 df = 4（把 n 當自由度）；2.35 是 qt(0.95, 3)，兩尾各留 5%，其實只有 90% 信心。" },
+ { id: "ch02-q03", v: 1, type: "calc", phase: "post",
+   q: "標準誤 SEM = SD/\\(\\sqrt{n}\\)。若 SD 不變，重複次數從 4 次增加到 16 次，SEM 會：",
+   opts: ["變成 1/4", "不變", "減半", "變成 2 倍（量越多次，累積的誤差越多）"],
+   ans: 2,
+   tags: ["FORGOT_SQRT_N", "SD_VS_SEM", null, "MORE_REPEATS_MORE_ERROR"],
+   exp: "\\(\\sqrt{16}/\\sqrt{4}\\) = 2，SEM 減半。SEM 與 1/\\(\\sqrt{n}\\)（不是 1/n）成正比，所以不是 1/4——報酬遞減。「不變」的是單次量測的 SD；SEM 是平均值的不準度，會隨 n 變小而不是變大。" },
+ { id: "ch02-q04", v: 1, type: "concept", phase: "post",
+   q: "水分的 95% 信賴區間為 64.25%～65.18%。「95%」的正確解讀是：",
+   opts: ["真值有 95% 的機率落在 64.25%～65.18% 之間",
+          "用這種方法建構的區間，長期而言約 95% 會蓋住真值",
+          "有 95% 的量測數據落在 64.25%～65.18% 之間",
+          "此方法有 95% 的精密度（準確率）"],
+   ans: 1,
+   tags: ["CI_TRUE_VALUE_PROB", null, "CI_COVERS_DATA", "CI_IS_PRECISION"],
+   exp: "真值是固定的數，沒有機率可言；算出來的這一個區間要嘛蓋住、要嘛沒蓋住。95% 是「建構程序」的長期命中率——本章模擬 1000 次得 94.4% 就是在驗證這件事。涵蓋約 95% 個別數據的是 x̄ ± 2SD，不是 CI；95% 也不是精密度或準確率。" },
+ { id: "ch02-q05", v: 1, type: "concept", phase: "post",
+   q: "同一組數據（x̄、SD、n 都不變），把信心水準從 95% 提高到 99%，信賴區間會：",
+   opts: ["變寬",
+          "變窄——信心越高，代表估得越精確",
+          "不變——區間只由 x̄、SD、n 決定"],
+   ans: 0,
+   tags: [null, "MORE_CONFIDENCE_NARROWER", "OTHER"],
+   exp: "信心越高，需要的 t 越大（df = 3：3.18 → 5.84），半寬從 0.466 變成 0.855，區間變寬。想要「又有把握又窄」只能靠增加 n 或降低 SD，不能只改信心水準。乘數 t 本身就隨信心水準改變，所以區間不可能不變。" },
+ { id: "ch02-q06", v: 1, type: "rout", phase: "post",
+   q: "本章 ch02_ex2.R 依序印出 qt(0.975, 3)、半寬、CI 上下限、s/sqrt(n)：<pre>[1] 3.182446\n[1] 0.466\n[1] 64.249 65.181\n[1] 0.1463159</pre>哪一個數字是「平均數標準誤 SEM」？它代表什麼？",
+   opts: ["0.1463；它就是 4 個測值的標準差 SD",
+          "0.466；SEM 就是 95% 信賴區間的半寬",
+          "0.1463；它是 SD 除以 n（0.2927/4）",
+          "0.1463；它是平均值的不準度 SD/\\(\\sqrt{n}\\) = 0.2927/2"],
+   ans: 3,
+   tags: ["SD_VS_SEM", "SEM_IS_CI_HALFWIDTH", "FORGOT_SQRT_N", null],
+   exp: "SEM = SD/\\(\\sqrt{n}\\) = 0.2927/\\(\\sqrt{4}\\) = 0.1463，是「平均值」的不準度；SD = 0.2927 才是單次測值的散布。SEM 還要再乘 t = 3.182 才是 95% CI 半寬 0.466——報告 x̄ ± SEM 卻當成 95% 區間，是很常見的錯誤。0.2927/4 = 0.073，除的是 √n 不是 n。" },
+ { id: "ch02-q07", v: 1, type: "rout", phase: "post",
+   q: "n = 4 次重複測定，要在 R 中查出 95% 信賴區間所需的 t 值，哪一個指令正確？",
+   opts: ["qt(0.95, df = 3)",
+          "qnorm(0.975)",
+          "qt(0.975, df = 3)",
+          "qt(0.975, df = 4)"],
+   ans: 2,
+   tags: ["ONE_TAIL_TWO_TAIL", "USED_Z_NOT_T", null, "DF_EQUALS_N"],
+   exp: "雙尾 95% → 兩尾各 2.5% → 累積機率 0.975；df = n−1 = 3，得 3.182。qt(0.95, 3) = 2.353 只對應 90% 雙尾；qnorm(0.975) = 1.96 是 Z 值，小樣本不適用；df = 4 是把 n 當成自由度（得 2.776）。" },
+ { id: "ch02-q08", v: 1, type: "rout", phase: "post",
+   q: "在 Excel 中要直接得到「雙尾 95%、自由度 3」的 t 值（3.182），應該輸入：",
+   opts: ["=T.INV(0.05, 3)",
+          "=T.INV.2T(0.05, 3)",
+          "=T.INV.2T(0.95, 3)",
+          "=NORM.S.INV(0.975)"],
+   ans: 1,
+   tags: ["ONE_TAIL_TWO_TAIL", null, "EXCEL_FUNCTION_CONFUSION", "USED_Z_NOT_T"],
+   exp: "T.INV.2T(α, df) 的第一個參數是雙尾的 α = 0.05（不是信心水準 0.95），結果 3.182。T.INV 是單尾累積機率版：T.INV(0.05, 3) = −2.353，要寫成 T.INV(0.975, 3) 才同值。NORM.S.INV(0.975) = 1.96 是 Z 值，小樣本不適用。" },
+ { id: "ch02-q09", v: 1, type: "misc", phase: "post",
+   q: "小明說：「SEM = SD/\\(\\sqrt{n}\\)，所以只要重複次數夠多，SEM 趨近 0，平均值就一定會等於真值。」這句話：",
+   opts: ["對：SEM 趨近 0，代表平均值就是真值",
+          "對：而且很划算——n 加倍，SEM 就減半",
+          "錯：增加 n 只能縮小隨機誤差造成的 SEM；系統誤差不會因重複而消失，平均值可能穩穩地偏在錯的地方",
+          "錯：增加 n 變小的是 SD，SEM 並不會變小"],
+   ans: 2,
+   tags: ["SYSTEMATIC_FIXED_BY_REPEATS", "FORGOT_SQRT_N", null, "SD_VS_SEM"],
+   exp: "SEM 只描述隨機誤差對平均值的影響。移液器少吸、儀器未校正這類系統誤差，重複一萬次也還在。而且 SEM 與 1/\\(\\sqrt{n}\\) 成正比：n 要變 4 倍 SEM 才減半，報酬遞減；一般 3～7 次重複即可，把成本花在減少系統誤差更划算。隨 n 變小的是 SEM，SD 並不會。" },
+ { id: "ch02-q10", v: 1, type: "calc", phase: "post",
+   q: "某樣品粗脂肪 5 次重複測定：x̄ = 12.40%、SD = 0.25%。請計算 95% 信賴區間的<strong>半寬</strong>（取 3 位小數；可用 R 的 qt()）。",
+   num: { ans: 0.310, tol: 0.002, unit: "%" },
+   errs: [ { val: 0.219, tol: 0.002, tag: "USED_Z_NOT_T" },
+           { val: 0.694, tol: 0.003, tag: "FORGOT_SQRT_N" },
+           { val: 0.287, tol: 0.002, tag: "DF_EQUALS_N" },
+           { val: 0.238, tol: 0.002, tag: "ONE_TAIL_TWO_TAIL" },
+           { val: 0.112, tol: 0.002, tag: "SEM_IS_CI_HALFWIDTH" } ],
+   exp: "半寬 = t × SD/\\(\\sqrt{n}\\) = qt(0.975, 4) × 0.25/\\(\\sqrt{5}\\) = 2.776 × 0.1118 = 0.310%。常見錯誤：用 Z = 1.96 得 0.219；忘了除以 \\(\\sqrt{n}\\) 得 0.694；df 用 n = 5 得 0.287；用 qt(0.95, 4) 得 0.238；只算到 SEM 沒乘 t 得 0.112。" }
 ];
 </script>
 <script src="assets/app.js"></script>
 <script src="assets/js/showout.js"></script>
+<script type="module" src="assets/js/assess.js"></script>
 
-<nav class="pager">
-<a href="ch01.html"><small>上一章</small>Ch1 統計入門</a>
-<a href="ch03.html"><small>下一章</small>Ch3 LOD、LOQ 與品質管制圖</a>
-</nav>
+<nav class="pager" data-pager></nav>
 </main>
 <footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫</footer>
 </body>

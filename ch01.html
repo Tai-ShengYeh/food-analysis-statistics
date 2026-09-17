@@ -10,14 +10,12 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
-  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\[', right: '\]', display: true}]});"></script>
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true}]});"></script>
 </head>
 <body>
 <header class="topbar"><div class="inner">
 <a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
-<nav class="topnav">
-<a href="index.html">首頁</a><a href="ch00.html">Ch0 入門</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a><a href="ch13.html">Ch13 FDC配方</a><a href="ch14.html">Ch14 DOE/RSM</a>
-</nav></div></header>
+<nav class="topnav" data-nav></nav></div></header>
 
 <main>
 <div class="crumbs">Part 1 數據品管統計（Nielsen's Food Analysis 第4章）／第 1 章</div>
@@ -39,6 +37,8 @@
 <li>能分辨「準確度」與「精密度」，並說出三大誤差來源</li>
 <li>會計算絕對誤差與相對誤差百分比（%E<sub>rel</sub>）</li>
 </ul></div>
+
+<div class="quiz" data-phase="pre"></div>
 
 <h2>1.1 為什麼需要統計？</h2>
 <p>食品分析的結果（水分、粗脂肪、重金屬、農藥殘留…）會拿來做<strong>重大決策</strong>：
@@ -187,43 +187,131 @@ round(c(mean = mean(dry), SD = sd(dry),
 
 <div class="quiz" id="quiz"></div>
 <script>
+const CHAPTER = "ch01";
+const MISC = {
+  PRECISION_IS_ACCURACY:       "以為重複性好（SD/CV 小）就代表結果準確",
+  SYSTEMATIC_FIXED_BY_REPEATS: "以為多做幾次重複就能消除系統誤差",
+  ERROR_TYPE_CONFUSION:        "分不清系統誤差、隨機誤差與疏失",
+  SD_N_NOT_N_MINUS_1:          "樣本標準差用 n 而不是 n−1 當分母",
+  N_MINUS_1_OVERAPPLIED:       "以為平均數也要除以 n−1",
+  VAR_VS_SD:                   "分不清變異數與標準差（忘了開根號）",
+  MEAN_VS_MEDIAN:              "分不清平均數與中位數",
+  CV_UNIT:                     "以為 CV 有單位，或忘了乘 100／除以平均",
+  CV_INVERTED:                 "把 CV 算成「平均 ÷ 標準差」（分子分母顛倒）",
+  REL_ERROR_SIGN:              "相對誤差的正負號弄反或丟掉（用真值減測值）",
+  ABS_VS_REL_ERROR:            "分不清絕對誤差與相對誤差",
+  REL_ERROR_DENOMINATOR:       "相對誤差除以測得值而不是真值",
+  OUTLIER_DELETE_BY_EYE:       "看起來怪就刪，不做檢定也不記錄",
+  R_FUNCTION_CONFUSION:        "R 函數或參數用錯（如 pnorm/qnorm、qt 的機率參數）",
+  EXCEL_FUNCTION_CONFUSION:    "Excel 函數用錯（如 T.INV vs T.INV.2T、STDEV.P vs STDEV.S）",
+  OTHER:                       "不對應特定迷思的湊數選項（盡量少用）"
+};
 const QUIZ = [
- { q: "同一樣品重複測定 4 次得 64.53、64.45、65.10、64.78，平均數是多少？",
-   opts: ["64.72 %", "64.655 %", "65.05 %", "0.293 %"], ans: 0,
-   exp: "Σx/n = 258.86/4 = 64.72%。64.655% 是中位數；65.05% 是假設的真值；0.293 是標準差。" },
- { q: "計算樣本標準差時分母用 n−1 而不是 n，原因是：",
-   opts: ["讓數字比較好看", "真實平均值未知，用樣本平均數代替會低估變異，n−1 可修正", "統計軟體規定的習慣", "因為食品數據不是常態分布"], ans: 1,
-   exp: "以 x̄ 代替 μ 會損失 1 個自由度；除以 n−1（Bessel 修正）才能得到變異的無偏估計。Nielsen 4.3.1 明確說明小樣本（約≤30）一律用 n−1。" },
- { q: "CV = 0.452% 代表什麼？",
-   opts: ["結果偏離真值 0.452%", "標準差只占平均數的 0.452%，重複性非常好", "此方法有 0.452% 的機率出錯", "數據有 0.452% 是異常值"], ans: 1,
-   exp: "CV% = SD/x̄ × 100，是「相對」精密度指標。經驗法則 CV<5% 可接受。它與準確度（接近真值）無關。" },
- { q: "移液器每次都固定吸取 0.96 mL 而非 1.00 mL，這是哪一種誤差？",
-   opts: ["隨機誤差", "系統誤差", "疏失", "計算誤差"], ans: 1,
-   exp: "固定方向、固定大小的偏差是系統（determinate）誤差，靠校正移液器解決；增加重複次數無法消除它。（Nielsen 章末習題 6a）" },
- { q: "真值 65.05%，測得平均 64.72%，%相對誤差為：",
-   opts: ["+0.507%", "−0.507%", "−0.33%", "+0.452%"], ans: 1,
-   exp: "%Erel=(64.72−65.05)/65.05×100=−0.507%。保留負號表示偏低方向；−0.33 是絕對誤差。" },
- { q: "下列哪一個「不能」用來改善精密度？",
-   opts: ["增加重複測定次數", "減少讀數判讀的主觀誤差", "校正天平與玻璃器皿", "以上都能改善精密度"], ans: 3,
-   exp: "校正器皿改善的是「系統誤差＝準確度」，不是精密度。精密度靠增加重複次數與降低隨機變異來改善——這是本課程最常考的觀念陷阱。" },
- { q: "在 R 語言中，若要將一組數字合併存成向量，應該使用下列哪個函數？",
-   opts: ["c()", "v()", "vector()", "list()"], ans: 0,
-   exp: "R 語言中使用 c() 函數（combine）將多個數值組合成一個向量。" },
- { q: "要在 R 語言與 Excel 中計算樣本標準差（分母為 n-1），下列哪一組函數是對應的？",
-   opts: ["R: var(), Excel: VAR()", "R: sd(), Excel: STDEV()", "R: mean(), Excel: AVERAGE()", "R: stdev(), Excel: SD()"], ans: 1,
-   exp: "R 計算標準差的函數為 sd()，Excel 則為 STDEV()（或 STDEV.S），且兩者預設皆以 n-1 作為分母。" },
- { q: "在計算變異係數 (CV%) 時，因為 R 和 Excel 預設皆無直接的 CV 函數，我們應如何組合指令計算？",
-   opts: ["R: mean()/sd()*100, Excel: =AVERAGE()/STDEV()*100", "R: sd()/mean()*100, Excel: =STDEV()/AVERAGE()*100", "R: sd()/median()*100, Excel: =STDEV()/MEDIAN()*100", "R: var()/mean()*100, Excel: =VAR()/AVERAGE()*100"], ans: 1,
-   exp: "變異係數的公式為「標準差 ÷ 平均數 × 100」，因此在 R 寫作 sd()/mean()*100，在 Excel 寫作 =STDEV()/AVERAGE()*100。" }
+ /* ---------- 前測 ---------- */
+ { id: "ch01-p01", v: 1, type: "concept", phase: "pre",
+   q: "你用同一台體重計連續量 5 次，每次都顯示 60.2 kg，幾乎一模一樣。可以下什麼結論？",
+   opts: ["這台體重計很準，我的體重就是 60.2 kg",
+          "再多量幾次，就能知道它準不準",
+          "讀值很穩定，但光憑這樣還不知道準不準（可能整台偏掉）",
+          "5 次讀值都一樣，代表這次量測沒有任何誤差"],
+   ans: 2,
+   tags: ["PRECISION_IS_ACCURACY", "SYSTEMATIC_FIXED_BY_REPEATS", null, "PRECISION_IS_ACCURACY"],
+   exp: "讀值一致只說明精密度好，不代表沒有誤差；要知道準不準，必須拿已知重量的標準砝碼來比。若體重計固定多 0.5 kg，量 100 次也還是一致地多 0.5 kg。（與 ch01-q06 同構）" },
+ { id: "ch01-p02", v: 1, type: "concept", phase: "pre",
+   q: "廚房電子秤<strong>每次</strong>都固定多顯示 5 g。想得到正確的重量，最有效的做法是：",
+   opts: ["把秤歸零／校正，或每次把讀值扣掉 5 g",
+          "同一份材料多秤幾次，取平均",
+          "換另一個人來秤",
+          "把最高和最低的讀值刪掉再平均"],
+   ans: 0,
+   tags: [null, "SYSTEMATIC_FIXED_BY_REPEATS", "ERROR_TYPE_CONFUSION", "OUTLIER_DELETE_BY_EYE"],
+   exp: "固定方向、固定大小的偏差是系統誤差，只能靠校正或修正來解決；取平均只能壓低隨機誤差，平均 100 次還是多 5 g。換人秤是把它當成操作者的隨機差異；刪數據更沒有依據。（與 ch01-q04 同構）" },
+ { id: "ch01-p03", v: 1, type: "calc", phase: "pre",
+   q: "兩台充填機：A 機每瓶平均 1000 mL，瓶與瓶之間大約差 10 mL；B 機每瓶平均 100 mL，瓶與瓶之間大約差 5 mL。<strong>相對來說</strong>哪一台比較不穩定？",
+   opts: ["A 機，因為 10 mL 比 5 mL 大",
+          "B 機，因為 5 mL 占 100 mL 的 5%，而 10 mL 只占 1000 mL 的 1%",
+          "兩台的容量不同，無法比較"],
+   ans: 1,
+   tags: ["CV_UNIT", null, "CV_UNIT"],
+   exp: "比較不同大小的東西要看「相對」變異：A = 10/1000 = 1%，B = 5/100 = 5%，B 比較不穩定。這就是變異係數 CV 的想法。直接比 10 與 5 是忘了除以平均。（與 ch01-q09 同構）" },
+
+ /* ---------- 課後 ---------- */
+ { id: "ch01-q01", v: 1, type: "calc", phase: "post",
+   q: "同一樣品重複測定 4 次得 64.53、64.45、65.10、64.78（%），平均數是多少？",
+   opts: ["64.655 %", "86.29 %", "64.72 %", "64.775 %"],
+   ans: 2,
+   tags: ["MEAN_VS_MEDIAN", "N_MINUS_1_OVERAPPLIED", null, "OTHER"],
+   exp: "Σx/n = 258.86/4 = 64.715 ≈ 64.72%。64.655% 是中位數（排序後中間兩個的平均）；86.29% 是把總和除以 n−1 = 3——n−1 只用在標準差，平均數一律除以 n；64.775% 是（最大＋最小）/2，不是平均數。" },
+ { id: "ch01-q02", v: 1, type: "calc", phase: "post",
+   q: "某樣品粗蛋白 3 次重複測定：12.1、12.4、12.5（%）。請計算<strong>樣本標準差 SD</strong>（取 3 位小數）。",
+   num: { ans: 0.208, tol: 0.002, unit: "%" },
+   errs: [ { val: 0.170, tol: 0.002, tag: "SD_N_NOT_N_MINUS_1" },
+           { val: 0.043, tol: 0.001, tag: "VAR_VS_SD" } ],
+   exp: "x̄ = 12.333；Σ(x−x̄)² = 0.0544 + 0.0044 + 0.0278 = 0.0867；SD = \\(\\sqrt{0.0867/(3-1)}\\) = 0.208%（R：sd(c(12.1,12.4,12.5))）。分母用 n = 3 會得到 0.170——因為以 x̄ 代替未知的真實平均會低估變異，要用 n−1 修正（Nielsen 式 4.5）。0.043 是變異數，忘了開根號。" },
+ { id: "ch01-q03", v: 1, type: "concept", phase: "post",
+   q: "水分 4 次測定的 CV = 0.452%，代表什麼？",
+   opts: ["結果偏離真值 0.452%",
+          "標準差是 0.452 個百分點的水分（SD = 0.452%）",
+          "這個方法有 0.452% 的機率出錯",
+          "標準差只占平均數的 0.452%，重複性非常好"],
+   ans: 3,
+   tags: ["PRECISION_IS_ACCURACY", "CV_UNIT", "OTHER", null],
+   exp: "CV% = SD/x̄ × 100 = 0.2927/64.72 × 100，是沒有單位的「相對」精密度指標；經驗法則 CV &lt; 5% 可接受。它與偏離真值多少（準確度）無關——那要和真值比才知道。本例 SD 是 0.293%（水分百分點），不要和 CV 的 0.452% 混淆：兩個都寫 %，意義完全不同。" },
+ { id: "ch01-q04", v: 1, type: "concept", phase: "post",
+   q: "移液器每次都固定吸取 0.96 mL 而非 1.00 mL。下列哪一個處理方式有效？",
+   opts: ["每個樣品多做幾次重複、取平均，偏差就會被平均掉",
+          "校正移液器（或改用校正後的實際體積計算）",
+          "重複測定的 CV 很小，代表結果沒問題，不必處理",
+          "這是隨機誤差，做統計時自然會被處理掉"],
+   ans: 1,
+   tags: ["SYSTEMATIC_FIXED_BY_REPEATS", null, "PRECISION_IS_ACCURACY", "ERROR_TYPE_CONFUSION"],
+   exp: "固定方向、固定大小的偏差是系統（determinate）誤差，要靠校正解決（Nielsen 章末習題 6a）。增加重複次數只能壓低隨機誤差：平均 100 次還是少 4%。CV 小只代表精密，無法看出整體偏低。" },
+ { id: "ch01-q05", v: 1, type: "calc", phase: "post",
+   q: "標準品真值 65.05%，測得平均 64.72%，%相對誤差（%E<sub>rel</sub>）為：",
+   opts: ["−0.507%", "+0.507%", "−0.33%", "−0.510%"],
+   ans: 0,
+   tags: [null, "REL_ERROR_SIGN", "ABS_VS_REL_ERROR", "REL_ERROR_DENOMINATOR"],
+   exp: "%E<sub>rel</sub> = (64.72−65.05)/65.05 × 100 = −0.507%。負號代表偏低，方向資訊要保留，寫成 +0.507% 是用「真值−測值」或把符號丟了；−0.33% 是絕對誤差 E<sub>abs</sub>，還沒除以真值；−0.510% 是除以測得值 64.72——分母應該是真值 T。" },
+ { id: "ch01-q06", v: 1, type: "misc", phase: "post",
+   q: "小華說：「我把天平和玻璃器皿都校正過了，所以接下來重複測定的 CV 一定會變小。」這句話：",
+   opts: ["對：校正之後，準確度和精密度會一起變好",
+          "錯：校正沒有實際用處，只有增加重複次數才能改善數據品質",
+          "錯：校正修正的是系統誤差（準確度）；CV 反映的是隨機誤差（精密度），不會因此變小",
+          "對：校正會把隨機誤差轉變成系統誤差，所以 CV 變小"],
+   ans: 2,
+   tags: ["PRECISION_IS_ACCURACY", "SYSTEMATIC_FIXED_BY_REPEATS", null, "ERROR_TYPE_CONFUSION"],
+   exp: "準確度與精密度是兩件獨立的事。校正器皿消除的是固定偏差（系統誤差→準確度）；CV 要變小，得靠降低隨機變異（例如減少讀數判讀的主觀差異）。反過來，增加重複次數也救不了系統誤差，所以校正絕對不是「沒用」。" },
+ { id: "ch01-q07", v: 1, type: "rout", phase: "post",
+   q: "Nielsen 習題的乾物質 4 次測定 dry &lt;- c(88.62, 88.74, 89.20, 82.20)，R 輸出如下：<pre> mean    SD    CV\n87.19  3.34  3.83</pre>下列判讀何者正確？",
+   opts: ["SD = 3.34 表示這組結果偏離真值 3.34%",
+          "CV 的單位是 %（乾物質），所以 CV = 3.83 就是標準差為 3.83 個百分點",
+          "82.20 明顯偏低，直接刪掉、用剩下 3 個值重算即可",
+          "CV = 3.83% 表示 SD 約占平均的 3.83%；雖然小於 5%，82.20 仍然可疑，應以檢定（Ch5）客觀判斷並記錄"],
+   ans: 3,
+   tags: ["PRECISION_IS_ACCURACY", "CV_UNIT", "OUTLIER_DELETE_BY_EYE", null],
+   exp: "CV = 3.34/87.19 × 100 = 3.83%，是相對精密度。SD 與 CV 都只描述數據彼此的散布，和真值無關；CV 是無單位的比值，標準差才是 3.34 個百分點。「CV &lt; 5%」只是經驗法則，不代表數據沒問題；但可疑值也不能看起來怪就刪——要先找原因、做 Q 檢定並留下紀錄（Ch5）。" },
+ { id: "ch01-q08", v: 1, type: "rout", phase: "post",
+   q: "要計算<strong>樣本</strong>標準差（分母 n−1），R 與 Excel 的正確對應是哪一組？",
+   opts: ["R：sd()　／　Excel：=STDEV()（或 =STDEV.S()）",
+          "R：sd()　／　Excel：=STDEV.P()",
+          "R：var()　／　Excel：=VAR()",
+          "R：stdev()　／　Excel：=SD()"],
+   ans: 0,
+   tags: [null, "EXCEL_FUNCTION_CONFUSION", "VAR_VS_SD", "R_FUNCTION_CONFUSION"],
+   exp: "R 的 sd() 與 Excel 的 STDEV()／STDEV.S() 都內建 n−1，水分例皆得 0.2927。STDEV.P() 是母體版（分母 n），會算出偏小的 0.2534；var()／VAR() 是變異數（SD 的平方），還沒開根號；R 沒有 stdev()，Excel 也沒有 SD() 這個函數。" },
+ { id: "ch01-q09", v: 1, type: "calc", phase: "post",
+   q: "某方法測鈉含量：平均 250 mg/100 g，標準差 5 mg/100 g。變異係數 CV 是多少？（R：sd()/mean()*100）",
+   opts: ["50", "2.0 %", "2.0 mg/100 g", "0.02 %"],
+   ans: 1,
+   tags: ["CV_INVERTED", null, "CV_UNIT", "CV_UNIT"],
+   exp: "CV% = SD/x̄ × 100 = 5/250 × 100 = 2.0%。50 是把分子分母顛倒（250/5）；CV 是比值，單位已經約掉，不會是 mg/100 g；0.02 是忘了乘 100，寫成 0.02% 就差了 100 倍。R 與 Excel 都沒有內建 CV 函數，要自己組合：sd()/mean()*100、=STDEV()/AVERAGE()*100。" }
 ];
 </script>
 <script src="assets/app.js"></script>
 <script src="assets/js/showout.js"></script>
+<script type="module" src="assets/js/assess.js"></script>
 
-<nav class="pager">
-<a href="ch00.html"><small>上一章</small>Ch0 課程導覽與入門</a>
-<a href="ch02.html"><small>下一章</small>Ch2 常態分配與信賴區間</a>
-</nav>
+<nav class="pager" data-pager></nav>
 </main>
 <footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫</footer>
 </body>

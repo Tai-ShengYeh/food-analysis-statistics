@@ -5,3 +5,6 @@ Rplots.pdf
 # 系統檔
 Thumbs.db
 .DS_Store
+# 教師端報表（含學生作答，不進版控）
+report/
+__pycache__/

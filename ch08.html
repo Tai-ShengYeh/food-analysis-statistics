@@ -10,14 +10,12 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
-  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\[', right: '\]', display: true}]});"></script>
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true}]});"></script>
 </head>
 <body>
 <header class="topbar"><div class="inner">
 <a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
-<nav class="topnav">
-<a href="index.html">首頁</a><a href="ch00.html">Ch0 入門</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a><a href="ch13.html">Ch13 FDC配方</a><a href="ch14.html">Ch14 DOE/RSM</a>
-</nav></div></header>
+<nav class="topnav" data-nav></nav></div></header>
 
 <main>
 <div class="crumbs">Part 2 量測不確定度（QUAM §8–§9）／第 8 章</div>
@@ -39,6 +37,8 @@
 <li>會按 QUAM 建議格式報告結果</li>
 <li>會依決策規則判定「符合／不符合／灰色地帶」</li>
 </ul></div>
+
+<div class="quiz" data-phase="pre"></div>
 
 <h2>8.1 一般式：不確定度傳播法則</h2>
 <div class="formula">
@@ -117,7 +117,7 @@ round(uc1, 2)                        #&gt; 0.26
 y2 &lt;- 2.46*4.32/(6.38*2.99)          #&gt; 0.557
 rel &lt;- sqrt((0.02/2.46)^2 + (0.13/4.32)^2 +
             (0.11/6.38)^2 + (0.07/2.99)^2)
-y2 * rel                             #&gt; 0.0239 -> 0.024
+y2 * rel                             #&gt; 0.0237 -> 0.024
 
 # ---- t 值 k：稱重例 ----
 uc_w &lt;- sqrt(0.01^2 + 0.08^2)        #&gt; 0.0806
@@ -140,7 +140,7 @@ u &lt;- c(rep=0.006, cal=0.004, blank=0.002, vol=0.0015, rec=0.005)
 U_Pb &lt;- 2 * sqrt(sum(u^2))
 sprintf("Pb = (%.3f ± %.3f) mg/L (k=2)", Pb, U_Pb)
 #&gt; "Pb = (0.085 ± 0.018) mg/L (k=2)"
-judge(Pb, U_Pb, 0.10)  #&gt; 0.085+0.017=0.102 &gt; 0.10 -> 灰色地帶!</pre>
+judge(Pb, U_Pb, 0.10)  #&gt; 0.085+0.018=0.103 &gt; 0.10 -> 灰色地帶!</pre>
 <div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
 <pre class="rout-body">[1] 0.26
 [1] 0.02374689
@@ -167,44 +167,131 @@ judge(Pb, U_Pb, 0.10)  #&gt; 0.085+0.017=0.102 &gt; 0.10 -> 灰色地帶!</pre>
 
 <div class="quiz" id="quiz"></div>
 <script>
+const CHAPTER = "ch08";
+const MISC = {
+  UNC_LINEAR_ADD:               "把不確定度分量直接相加而不是平方和開根號",
+  UNC_CANCELS_OUT:              "以為輸入量相加減時，不確定度會跟著相減、互相抵消、變小或維持不變",
+  UNC_SQUARE_STEP_WRONG:        "合成時平方／開根號的步驟弄錯（忘了先平方，或忘了最後開根號）",
+  UNC_ABS_REL_MIX:              "乘除模型該用相對不確定度卻用絕對值（或相反）",
+  K2_ALWAYS_95:                 "以為 k=2 永遠恰好是 95%（忽略有效自由度）",
+  USED_Z_NOT_T:                 "小樣本仍用 Z=1.96 而不是 t",
+  DF_EQUALS_N:                  "自由度用 n 而不是 n−1",
+  ONE_TAIL_TWO_TAIL:            "單尾／雙尾機率用錯（如 qt(0.95) 當雙尾 95%）",
+  R_FUNCTION_CONFUSION:         "R 函數或參數用錯（如 pnorm/qnorm、qt 的機率參數）",
+  U_VS_UC:                      "分不清合成標準不確定度 u_c 與擴展不確定度 U",
+  UNC_TOO_MANY_DIGITS:          "不確定度報太多位數，或結果與不確定度位數不一致",
+  COMPLIANCE_IGNORE_U:          "判定是否符合限值時只看測值、不看不確定度",
+  COMPLIANCE_RULE_MISAPPLIED:   "保守決策規則用錯：把區間跨過限值的灰色地帶直接判成符合或不符合",
+  UNC_MEANS_MISTAKE:            "以為不確定度大代表實驗做錯了",
+  OUTLIER_DELETE_BY_TEST_ONLY:  "以為檢定顯著就可以直接刪除數據，不必找原因與記錄",
+  OUTLIER_DELETE_FOR_PRECISION: "為了讓 SD 變小、配適變漂亮或結果變顯著而刪除數據",
+  OUTLIER_TEST_REPEAT:          "對同一組數據反覆做異常值檢定直到滿意",
+  OTHER:                        "不對應特定迷思的湊數選項"
+};
 const QUIZ = [
- { q: "y = p + q − r，u(p)=0.13、u(q)=0.05、u(r)=0.22，u_c(y) 為：",
-   opts: ["0.40", "0.26", "0.13", "0.068"], ans: 1,
-   exp: "Rule 1 平方和開根號：\\(\\sqrt{(0.0169+0.0025+0.0484)}\\)=\\(\\sqrt{0.0678}\\)=0.26（QUAM 例題1）。直接相加 0.40 是最常見錯誤——不確定度幾乎不會線性相加！" },
- { q: "乘除模型（Rule 2）合成時要使用：",
-   opts: ["絕對不確定度直接相加", "相對不確定度（u/x）的平方和開根號", "最大那項就好", "標準差的平均"], ans: 1,
-   exp: "y=op/qr → u_c(y)/y = \\(\\sqrt{(Σ(u(x_i)/x_i)²)}\\)。合成完的相對值再乘回 y 得絕對值。（QUAM 例題2：0.56×0.043=0.024）" },
- { q: "u_c 被一個 n=5 的 Type A 項主導，95% 的涵蓋因子 k 應取：",
-   opts: ["2", "1.96", "2.8（t₀.₉₇₅, df=4）", "3"], ans: 2,
-   exp: "QUAM §8.3.4：自由度太少時常態近似不可靠，k 改用該主導項的雙尾 t 值（df=n−1=4 → 2.8），U=2.8×0.081=0.23。" },
- { q: "報告擴展不確定度時，QUAM 要求：",
-   opts: ["至少 3 位有效數字", "最多 2 位有效數字，且必須註明 k 值", "只寫 ± 數字即可", "用 99.99% 信賴"], ans: 1,
-   exp: "§9.4–9.5：U 最多 2 位有效數字、結果位數與其對齊，並註明「k=2，約95%」。例：(3.52 ± 0.14) g/100g。" },
- { q: "結果 9.6、U=1.0、法規上限 10。依保守決策規則：",
-   opts: ["符合（9.6&lt;10）", "不符合（9.6+1&gt;10）", "灰色地帶：無法宣稱符合，需複驗", "直接報合格"], ans: 2,
-   exp: "result+U=10.6 &gt; L，result−U=8.6 &lt; L → 區間橫跨限值（情境 iii），無法判定。這正是「測值合格≠宣稱合格」的經典情境。" },
- { q: "果汁鉛案例：0.085 ± 0.018 mg/L（k=2），限量 0.10。判定為：",
-   opts: ["符合", "不符合", "灰色地帶（0.103 剛好超過 0.10）", "數據無效"], ans: 2,
-   exp: "0.085+0.017=0.102 &gt; 0.10，差之毫釐落入灰色地帶。實務上應複驗、提高精密度，或依約定決策規則處理。" }
-,
- { q: "要在 Excel 中快速算出三個標準不確定度 u(p)、u(q)、u(r) 的平方和開根號 (Rule 1)，下列哪一個公式寫法最有效率？",
-   opts: ["=SQRT(up^2 + uq^2 + ur^2)", "=SQRT(SUMSQ(up, uq, ur))", "=SUM(up, uq, ur)", "=SUMSQ(SQRT(up, uq, ur))"], ans: 1,
-   exp: "Excel 中的 SUMSQ 函數可直接將多個參數的平方加總，再搭配 SQRT 開根號即可快速算出合成不確定度，比逐項寫平方相加更簡潔。" },
- { q: "在 R 語言中，若自由度 df=4，必須使用 95% 信賴水準的雙尾 t 值作為涵蓋因子 k，應使用下列哪一個指令求得？",
-   opts: ["pt(0.95, 4)", "dt(0.975, 4)", "qt(0.975, 4)", "rt(4, 0.95)"], ans: 2,
-   exp: "在 R 中計算機率分布的分位數（Quantile）使用 q 開頭函數。雙尾 95% 的區間對應的累積機率為 0.975，因此應查詢 qt(0.975, 4)，得到約 2.776。" },
- { q: "在 Excel 中要根據結果 y、擴展不確定度 U 與法規上限 L 判定符合性（保守決策規則），應如何撰寫判斷式？",
-   opts: ["=IF(y+U<L, \"合格\", IF(y-U>L, \"不合格\", \"無法判定\"))", "=IF(y<L, \"合格\", \"不合格\")", "=IF(y-U<L, \"合格\", \"不合格\")", "=IF(y+U>L, \"不合格\", \"合格\")"], ans: 0,
-   exp: "保守決策規則要求：整個區間 (y+U) 皆小於上限才判定合格，整個區間 (y-U) 皆大於上限才判定不合格，介於兩者間則為無法判定的灰色地帶，因此需使用巢狀 IF 來涵蓋三種情境。" }
+ /* ---------- 前測 pre ---------- */
+ { id: "ch08-p01", v: 1, type: "concept", phase: "pre",
+   q: "一張長桌由兩塊木板接成，兩塊的長度各自有大約 ±1 mm 的隨機誤差（彼此無關）。接起來之後，總長的誤差大約是：",
+   opts: ["2 mm：兩個誤差直接相加",
+          "約 1.4 mm：兩塊不太會剛好同時偏向同一邊、又都偏到最大",
+          "0 mm：一塊偏長、一塊偏短，會互相抵消",
+          "1 mm：跟單獨一塊一樣，不會變"], ans: 1,
+   tags: ["UNC_LINEAR_ADD", null, "UNC_CANCELS_OUT", "UNC_CANCELS_OUT"],
+   exp: "與 ch08-q01 同構。獨立的隨機誤差用「平方和開根號」合成：√(1²+1²) ≈ 1.4。直接相加假設兩者永遠同向偏到最大（高估）；完全抵消或維持不變則是低估。" },
+ { id: "ch08-p02", v: 1, type: "concept", phase: "pre",
+   q: "道路速限 100 km/h，測速槍的誤差約 ±3 km/h。測速槍顯示 101 km/h。能不能「確定」這台車超速？",
+   opts: ["可以：101 大於 100 就是超速",
+          "確定沒有超速：101 − 3 = 98，小於 100",
+          "不能確定：真實車速可能在 98–104 之間，範圍跨過了 100",
+          "測速槍有誤差，所以這筆數據無效，不能用"], ans: 2,
+   tags: ["COMPLIANCE_IGNORE_U", "COMPLIANCE_RULE_MISAPPLIED", null, "UNC_MEANS_MISTAKE"],
+   exp: "與 ch08-q05 同構。結果 ± U 的區間跨過限值＝灰色地帶，既不能確定超速也不能確定沒超速。只看 101 是忽略不確定度；只看下限 98 是把灰色地帶硬判成符合；有誤差範圍是所有量測的常態，不是數據無效。" },
+ { id: "ch08-p03", v: 1, type: "concept", phase: "pre",
+   q: "計算機算出結果 = 3.52341、不確定度 = 0.14237（同單位）。哪一種報告寫法最合理？",
+   opts: ["3.52 ± 0.14", "3.52341 ± 0.14237", "3.5 ± 0.14237", "3.52（不確定度是內部資料，不必寫出來）"], ans: 0,
+   tags: [null, "UNC_TOO_MANY_DIGITS", "UNC_TOO_MANY_DIGITS", "OTHER"],
+   exp: "與 ch08-q04 同構。不確定度最多取 2 位有效數字（0.14），結果的位數與它對齊（3.52）。全抄計算機是假精確；位數不對齊也不行；不報不確定度，讀者就無法判斷結果的可信範圍。" },
+
+ /* ---------- 課後 post ---------- */
+ { id: "ch08-q01", v: 1, type: "calc", phase: "post",
+   q: "y = p + q − r，u(p) = 0.13、u(q) = 0.05、u(r) = 0.22，u<sub>c</sub>(y) 為：",
+   opts: ["0.40", "0.04", "0.068", "0.26"], ans: 3,
+   tags: ["UNC_LINEAR_ADD", "UNC_CANCELS_OUT", "UNC_SQUARE_STEP_WRONG", null],
+   exp: "Rule 1 平方和開根號：\\(\\sqrt{0.0169+0.0025+0.0484}\\) = \\(\\sqrt{0.0678}\\) = 0.26（QUAM 例題 1）。直接相加 0.40 是最常見錯誤；0.04 是照模型的正負號加減（0.13+0.05−0.22）——模型裡相減的項，不確定度照樣是「平方相加」；0.068 是忘了開根號。" },
+ { id: "ch08-q02", v: 1, type: "calc", phase: "post",
+   q: "密度 ρ = m/V：m = 25.00 g（u = 0.05 g）、V = 10.00 mL（u = 0.04 mL），ρ = 2.500 g/mL。請用 Rule 2 計算 u<sub>c</sub>(ρ)（g/mL，取 3 位小數）。",
+   num: { ans: 0.011, tol: 0.0006, unit: "g/mL" },
+   errs: [ { val: 0.064, tol: 0.001, tag: "UNC_ABS_REL_MIX" },
+           { val: 0.0045, tol: 0.0006, tag: "UNC_ABS_REL_MIX" },
+           { val: 0.015, tol: 0.0006, tag: "UNC_LINEAR_ADD" } ],
+   exp: "乘除模型用相對不確定度：u(m)/m = 0.0020、u(V)/V = 0.0040 → \\(\\sqrt{0.0020^2+0.0040^2}\\) = 0.00447，再乘回 ρ：2.500×0.00447 = 0.011 g/mL。常見錯誤：直接拿絕對值 \\(\\sqrt{0.05^2+0.04^2}\\) = 0.064（單位不同根本不能相加）；算出相對值 0.0045 就停、忘了乘回 ρ；相對值直接相加得 0.015。" },
+ { id: "ch08-q03", v: 1, type: "concept", phase: "post",
+   q: "u<sub>c</sub> 被一個只做 n = 5 次重複的 Type A 項主導。95% 的涵蓋因子 k 應取：",
+   opts: ["2：k=2 就是 95%，任何情況都一樣", "1.96：常態分布的 95% 臨界值", "2.8：t<sub>0.975</sub>，df = 4", "2.6：t<sub>0.975</sub>，df = 5"], ans: 2,
+   tags: ["K2_ALWAYS_95", "USED_Z_NOT_T", null, "DF_EQUALS_N"],
+   exp: "QUAM §8.3.4：主導項的自由度 &lt; 6 時常態近似不可靠，k 改用該項的雙尾 t 值：df = n−1 = 4 → qt(0.975, 4) = 2.776 ≈ 2.8，U = 2.8×0.081 = 0.23 mg。k=2 只有在自由度夠大時才約等於 95%；1.96 是 n→∞ 的值；2.57 是把自由度誤用成 n=5。" },
+ { id: "ch08-q04", v: 1, type: "concept", phase: "post",
+   q: "總氮測定：計算得結果 = 3.5234 g/100g、u<sub>c</sub> = 0.0712 g/100g。依 QUAM §9 的建議，哪一種報告寫法正確？",
+   opts: ["(3.52 ± 0.14) g/100g，擴展不確定度，k=2（信賴水準約 95%）",
+          "(3.5234 ± 0.1424) g/100g，k=2",
+          "3.52 ± 0.07 g/100g",
+          "(3.5 ± 0.14) g/100g，k=2"], ans: 0,
+   tags: [null, "UNC_TOO_MANY_DIGITS", "U_VS_UC", "UNC_TOO_MANY_DIGITS"],
+   exp: "U = 2×0.0712 = 0.14：U 最多取 2 位有效數字，結果位數與 U 對齊，並註明 k 值與信賴水準。0.1424 報了 4 位（假精確）；「± 0.07」是把 u<sub>c</sub> 當成 U 寫在 ± 後面又沒註明 k，讀者會誤以為是 95% 區間；3.5 與 0.14 的小數位沒對齊。" },
+ { id: "ch08-q05", v: 1, type: "concept", phase: "post",
+   q: "結果 9.6、U = 1.0（k=2），法規上限 L = 10。依保守決策規則，判定為：",
+   opts: ["符合：9.6 &lt; 10",
+          "灰色地帶：區間 8.6–10.6 跨過限值，無法宣稱符合，需複驗或依約定規則處理",
+          "不符合：9.6 + 1.0 = 10.6 &gt; 10",
+          "符合：9.6 − 1.0 = 8.6 &lt; 10"], ans: 1,
+   tags: ["COMPLIANCE_IGNORE_U", null, "COMPLIANCE_RULE_MISAPPLIED", "COMPLIANCE_RULE_MISAPPLIED"],
+   exp: "result+U = 10.6 &gt; L、result−U = 8.6 &lt; L → 區間橫跨限值（情境 iii），無法判定。只看 9.6 是忽略不確定度；保守規則下「不符合」要 result−U &gt; L、「符合」要 result+U ≤ L，兩者都不成立就是灰色地帶——這正是「測值合格 ≠ 可以宣稱合格」的經典情境。" },
+ { id: "ch08-q06", v: 1, type: "misc", phase: "post",
+   q: "果汁鉛含量 0.085 mg/L，u<sub>c</sub> = 0.009、U = 0.018 mg/L（k=2），限量 0.10 mg/L。品管員說：「<em>測值 0.085 低於限量 0.10，可以出具『符合』的報告。</em>」這個說法：",
+   opts: ["正確：測值低於限量就是符合",
+          "錯：0.085 + 0.018 = 0.103 &gt; 0.10，所以應該判「不符合」",
+          "錯：應該用 u<sub>c</sub> 來判，0.085 + 0.009 = 0.094 &lt; 0.10 → 符合",
+          "錯：0.085 + 0.018 = 0.103 &gt; 0.10，區間跨過限值，屬於灰色地帶，不能直接宣稱符合"], ans: 3,
+   tags: ["COMPLIANCE_IGNORE_U", "COMPLIANCE_RULE_MISAPPLIED", "U_VS_UC", null],
+   exp: "差之毫釐落入灰色地帶：上緣 0.103 超過 0.10，但下緣 0.067 遠低於限量，所以也不能判「不符合」。判定要用約 95% 的擴展不確定度 U，不是 u<sub>c</sub>（±u<sub>c</sub> 只涵蓋約 68%）。實務上應複驗、提高精密度，或依事先與客戶約定的決策規則處理（ISO/IEC 17025:2017）。" },
+ { id: "ch08-q07", v: 1, type: "rout", phase: "post",
+   q: "y = o·p/(q·r)。在 Excel 中計算 u<sub>c</sub>(y)，哪一個公式正確？",
+   opts: ["=y*SQRT(SUMSQ(uo/o, up/p, uq/q, ur/r))",
+          "=SQRT(SUMSQ(uo, up, uq, ur))",
+          "=y*SUM(uo/o, up/p, uq/q, ur/r)",
+          "=SQRT(SUMSQ(uo/o, up/p, uq/q, ur/r))"], ans: 0,
+   tags: [null, "UNC_ABS_REL_MIX", "UNC_LINEAR_ADD", "UNC_ABS_REL_MIX"],
+   exp: "Rule 2：先用 SUMSQ 算「相對 u」的平方和、SQRT 開根號，再乘回 y（QUAM 例題 2：0.557×0.0426 = 0.024）。直接用絕對 u 的 SUMSQ 是 Rule 1，只適用於加減模型；用 SUM 是線性相加；最後一個忘了乘回 y，得到的只是相對值 0.043。" },
+ { id: "ch08-q08", v: 1, type: "rout", phase: "post",
+   q: "主導項的自由度 df = 4，要用 95% 信賴水準的<strong>雙尾</strong> t 值當涵蓋因子 k。R 指令是：",
+   opts: ["qt(0.95, 4)", "qt(0.975, 5)", "qt(0.975, 4)", "pt(0.975, 4)"], ans: 2,
+   tags: ["ONE_TAIL_TWO_TAIL", "DF_EQUALS_N", null, "R_FUNCTION_CONFUSION"],
+   exp: "雙尾 95% → 上尾留 2.5% → 累積機率 0.975，qt(0.975, 4) = 2.776。qt(0.95, 4) = 2.132 是單尾 95%；qt(0.975, 5) = 2.571 把自由度寫成 n；pt 是「由 t 求機率」，方向相反（q 開頭才是求分位數）。" },
+ { id: "ch08-q09", v: 1, type: "rout", phase: "post",
+   q: "本章 R 腳本用兩種決策規則判定四個結果（U = 1.0、上限 L = 10），輸出如下。這張表說明了什麼？<pre>   case result U verdict_simple                verdict_consv\n1   (i)   11.5 1         不符合                       不符合\n2  (ii)   10.6 1         不符合 灰色地帶（無法判定，需複驗）\n3 (iii)    9.6 1           符合 灰色地帶（無法判定，需複驗）\n4  (iv)    8.8 1           符合                         符合</pre>",
+   opts: ["簡單法則才是對的：不確定度與合不合格無關",
+          "同一筆數據在不同決策規則下結論可能不同，所以規則必須事先與客戶約定好",
+          "(ii)、(iii) 出現灰色地帶，代表這兩次實驗做錯了，數據應該作廢重做",
+          "灰色地帶為了保險起見，一律要判成「不符合」"], ans: 1,
+   tags: ["COMPLIANCE_IGNORE_U", null, "UNC_MEANS_MISTAKE", "COMPLIANCE_RULE_MISAPPLIED"],
+   exp: "(ii)、(iii) 在簡單法則下被判死或放行，但保守規則看到的是「區間跨過限值」——結論可能相反，所以 ISO/IEC 17025:2017 要求事先約定決策規則。灰色地帶是不確定度與限值相對位置的自然結果，不是實驗失誤；也不是一律判不符合。Excel 對應寫法：=IF(y+U&lt;=L,\"合格\",IF(y-U&gt;L,\"不合格\",\"無法判定\"))。" },
+
+ /* ---------- 回溯 spaced ---------- */
+ { id: "ch08-s01", v: 1, type: "concept", phase: "spaced", from: "ch05",
+   q: "HPLC 同一樣品 5 次獨立測定，其中 1 筆偏低，Grubbs 檢定 G &gt; G<sub>crit</sub>。翻遍實驗紀錄，找不到任何操作異常。最恰當的處理是：",
+   opts: ["檢定都顯著了，直接刪除，報告不必提",
+          "刪掉之後 RSD 才能符合 &lt; 2% 的要求，所以應該刪",
+          "先刪掉這一筆，再對剩下 4 筆重做檢定，直到沒有異常值為止",
+          "不宜只憑統計就刪：保留（或加做重複）並如實記錄檢定結果與處理方式"], ans: 3,
+   tags: ["OUTLIER_DELETE_BY_TEST_ONLY", "OUTLIER_DELETE_FOR_PRECISION", "OUTLIER_TEST_REPEAT", null],
+   exp: "Ch5 的底線：可追溯的失誤紀錄＋統計檢定「兩者兼備」才可刪，且必須揭露；QUAM §2.4.13：「純粹以統計理由拒絕數值通常不明智」。為了讓 RSD 過關而刪是學術不端；反覆檢定會把正常變異也刪光。與本章呼應：硬刪數據會讓重複性被低估，u<sub>c</sub> 與 U 也跟著被低估。" }
 ];
 </script>
 <script src="assets/app.js"></script>
 <script src="assets/js/showout.js"></script>
+<script type="module" src="assets/js/assess.js"></script>
 
-<nav class="pager">
-<a href="ch07.html"><small>上一章</small>Ch7 Type A/B 與天平案例</a>
-<a href="ch09.html"><small>下一章</small>Ch9 Kragten 與 Monte Carlo</a>
-</nav>
+<nav class="pager" data-pager></nav>
 </main>
 <footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫</footer>
 </body>

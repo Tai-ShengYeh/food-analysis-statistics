@@ -1,6 +1,6 @@
 # =====================================================================
 # 延伸單元：metRology 專業工具箱
-# GUM / Kragten / Monte Carlo / 不準度貢獻比較
+# GUM / Kragten / Monte Carlo / 不確定度貢獻比較
 # =====================================================================
 
 # 本單元是選修；前 10 章仍只使用 base R。
@@ -37,10 +37,10 @@ gum <- metRology::uncert(
 
 gum                     # 完整輸出
 gum$y                   # 測量結果，約 1002.7 mg/L
-gum$u                   # 合成標準不準度 uc，約 0.864 mg/L
+gum$u                   # 合成標準不確定度 uc，約 0.864 mg/L
 metRology::contribs(gum) # 各來源的變異貢獻
 
-# GUM() 介面另外提供有效自由度、k 與擴展不準度 U。
+# GUM() 介面另外提供有效自由度、k 與擴展不確定度 U。
 gum_report <- metRology::GUM(
   var.name = c("m", "P", "V"),
   x.i = unlist(x),
@@ -87,14 +87,14 @@ print(comparison)
 # 此近線性案例三種 uc 應非常接近。
 stopifnot(max(comparison) - min(comparison) < 0.002)
 
-# ---------- 6. 不準度預算視覺化 ----------
+# ---------- 6. 不確定度預算視覺化 ----------
 variance_contributions <- metRology::contribs(gum)
 standard_contributions <- sqrt(variance_contributions)
 
 barplot(standard_contributions,
         col = c("tomato", "gold", "steelblue"),
-        main = "metRology：鎘標準液不準度貢獻",
-        ylab = "標準不準度貢獻 (mg/L)",
+        main = "metRology：鎘標準液不確定度貢獻",
+        ylab = "標準不確定度貢獻 (mg/L)",
         las = 1)
 
 # ---------- 7. 相關性示範 ----------

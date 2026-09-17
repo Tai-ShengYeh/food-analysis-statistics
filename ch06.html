@@ -10,14 +10,12 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
-  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\[', right: '\]', display: true}]});"></script>
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true}]});"></script>
 </head>
 <body>
 <header class="topbar"><div class="inner">
 <a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
-<nav class="topnav">
-<a href="index.html">首頁</a><a href="ch00.html">Ch0 入門</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a><a href="ch13.html">Ch13 FDC配方</a><a href="ch14.html">Ch14 DOE/RSM</a>
-</nav></div></header>
+<nav class="topnav" data-nav></nav></div></header>
 
 <main>
 <div class="crumbs">Part 2 量測不確定度（EURACHEM/CITAC QUAM:2012.P1）／第 6 章</div>
@@ -40,6 +38,8 @@
 <li>背出 GUM 四步驟流程</li>
 <li>會畫因果（魚骨）圖整理不確定度來源</li>
 </ul></div>
+
+<div class="quiz" data-phase="pre"></div>
 
 <h2>6.1 為什麼需要「不確定度」？</h2>
 <p>QUAM 前言開宗明義：分析結果被用來<strong>估算產值、對照規格與法定限量、估計金錢價值</strong>。
@@ -146,40 +146,135 @@ arrows(mean(results)-2*u, .08, mean(results)+2*u, .08,
 
 <div class="quiz" id="quiz"></div>
 <script>
+const CHAPTER = "ch06";
+const MISC = {
+  ERROR_EQUALS_UNCERTAINTY:    "把誤差（單一差值）與不確定度（範圍）當成同一件事",
+  UNC_MEANS_MISTAKE:           "以為不確定度大代表實驗做錯了",
+  UNC_USED_AS_CORRECTION:      "以為不確定度可以拿來修正結果（像偏倚一樣加減回去）",
+  SYSTEMATIC_FIXED_BY_REPEATS: "以為多做幾次重複就能消除系統誤差",
+  PRECISION_IS_ACCURACY:       "以為重複性好（SD/CV 小）就代表結果準確",
+  UNC_ONLY_REPEATABILITY:      "以為不確定度就只是重複量測的 SD（忽略校正、純度、體積等其他來源）",
+  GUM_STEP_ORDER:              "GUM 四步驟順序弄錯（沒先定義被測量與模型就開始找來源或計算）",
+  EMPIRICAL_METHOD_BIAS:       "不知道經驗（操作定義）方法的結果由方法定義，仍想修正方法偏倚或以為換方法結果應相同",
+  SPURIOUS_AS_RANDOM:          "把人為疏失（抄錯、儀器故障）當成一般誤差，留在數據裡做統計",
+  OUTLIER_NEVER_DELETE:        "以為任何情況刪數據都是學術不端（即使有確認的失誤紀錄）",
+  UNC_LINEAR_ADD:              "把不確定度分量直接相加而不是平方和開根號",
+  UNC_SQUARE_STEP_WRONG:       "合成時平方／開根號的步驟弄錯（忘了先平方，或忘了最後開根號）",
+  SMALL_COMPONENT_MATTERS:     "以為每個小分量都要花力氣精算（不知道平方和由最大分量主導）",
+  LOD_EQUALS_LOQ:              "分不清 LOD（偵測得到）與 LOQ（可以定量）",
+  LOD_WRONG_MULTIPLIER:        "LOD/LOQ 的 3 倍、10 倍倍數用錯",
+  OTHER:                       "不對應特定迷思的湊數選項"
+};
 const QUIZ = [
- { q: "「誤差」與「不確定度」最核心的差別：",
-   opts: ["誤差比較大", "誤差是單一數值（結果−真值）、不可確知；不確定度是可估計的區間參數", "誤差只指系統誤差", "不確定度等於標準差"], ans: 1,
-   exp: "QUAM §2.4.1–2.4.3：誤差是理想化概念（真值不可知）；不確定度以區間描述「值的離散性」，可以估計，且不可用來修正結果。" },
- { q: "關於隨機誤差與系統誤差，何者正確？",
-   opts: ["兩者都能靠增加重複次數消除", "隨機誤差可藉增加次數縮小；系統誤差不行，必須修正", "系統誤差可用統計平均消除", "兩者都無法處理"], ans: 1,
-   exp: "QUAM §2.4.6–2.4.7：隨機誤差隨 n 增大而縮小（\\(\\sqrt{n}\\) 效應）；系統誤差與 n 無關，只能靠校正/修正，且修正值的不確定度仍須計入。" },
- { q: "GUM 流程的第一步是：",
-   opts: ["列出所有誤差來源", "定義被測量並寫出量測模型方程式", "做重複實驗", "計算合成不確定度"], ans: 1,
-   exp: "Step 1 = Specify the measurand：明確定義「測什麼」並寫下 y 與輸入量的數學關係（寫進 SOP）。沒有模型，後面無從展開。" },
- { q: "「粗纖維含量」這類經驗（操作定義）方法的特點是：",
-   opts: ["結果與方法無關", "方法偏倚需校正後報告", "結果由方法定義，偏倚不修正，直接用方法表現數據估不確定度", "不能評估不確定度"], ans: 2,
-   exp: "QUAM §5.4 例 2/3：可萃取脂肪、粗纖維等由萃取/消化條件定義，改方法=改被測量。偏倚按慣例不修正，不確定度以協同試驗 sR 等為基礎（第11章案例）。" },
- { q: "實驗員把 12.5 抄成 15.2。這個數據應該：",
-   opts: ["納入統計，因為它只是誤差", "確認後整筆捨棄（spurious error 使量測無效）", "乘一個係數修正", "當作異常值做 Q 檢定"], ans: 1,
-   exp: "QUAM §2.4.11–2.4.12：疏失（人為失誤/儀器故障）使量測無效，確認後應捨棄，不可納入任何統計分析。（可修正的抄錯如首碼錯位除外）" },
- { q: "QUAM 建議的省力原則是：",
-   opts: ["每個來源都要精密實驗量化", "集中火力量化最大貢獻項，小項粗估即可", "全部用專業判斷", "只算重複性"], ans: 1,
-   exp: "合成不確定度幾乎完全由最大項控制（平方和開根號的數學性質）。QUAM 前言明言：集中努力於最大貢獻即可獲得良好估計。" },
- { q: "在本章中，R 語言與 Excel 在不確定度評估上各有擅長之處，下列敘述何者最正確？",
-   opts: ["Excel 只能畫直方圖，不能算標準差", "R 適合用 rnorm() 等函數進行模擬與視覺化，Excel 則是建立預算表的天然工具", "R 內建 SQRT(SUM()) 函數專門處理表格", "兩者都無法處理不確定度預算表"], ans: 1,
-   exp: "R 語言強項在於模擬與繪圖（如 hist, abline），而 Excel 的表格結構非常適合整理各項不確定度來源並以 SQRT(SUM()) 進行合成。" },
- { q: "在 Excel 中建立不確定度預算表時，計算「合成不確定度（uc）」最常使用的公式組合是：",
-   opts: ["=AVERAGE(D2:D10)", "=SUM(D2:D10)", "=SQRT(SUM(D2:D10))", "=STDEV(D2:D10)"], ans: 2,
-   exp: "合成標準不確定度是各成分「變異數（標準不確定度的平方）」的總和再開根號，因此在 Excel 中通常用 =SQRT(SUM(D2:D10)) 來計算。" }
+ /* ---------- 前測 pre ---------- */
+ { id: "ch06-p01", v: 1, type: "concept", phase: "pre",
+   q: "體重計顯示 60.0 kg，說明書寫「準確度 ±0.2 kg」。這個「±0.2」最合理的意思是：",
+   opts: ["你的真實體重剛好比顯示值多 0.2 或少 0.2 kg",
+          "把讀數減掉 0.2 kg 就是真實體重",
+          "真實體重合理地落在 59.8–60.2 kg 這個範圍內",
+          "這台體重計不準，該換一台了"], ans: 2,
+   tags: ["ERROR_EQUALS_UNCERTAINTY", "UNC_USED_AS_CORRECTION", null, "UNC_MEANS_MISTAKE"],
+   exp: "與 ch06-q01 同構。± 是「真值合理落點的範圍」，不是已知的差距（那是誤差），也不能拿來修正讀數；有標示 ± 反而是可信的表現，不代表儀器壞了。" },
+ { id: "ch06-p02", v: 1, type: "concept", phase: "pre",
+   q: "一把捲尺的前端磨掉了 2 mm。用它量同一張桌子 10 次再取平均，結果會：",
+   opts: ["每次都多（或少）約 2 mm，平均後仍然差 2 mm；要知道磨損量並修正才行",
+          "10 次平均之後，就會很接近真正的長度",
+          "10 次讀數彼此很接近，就代表量得很準",
+          "偏差會隨次數縮小，量 100 次就幾乎沒有偏差了"], ans: 0,
+   tags: [null, "SYSTEMATIC_FIXED_BY_REPEATS", "PRECISION_IS_ACCURACY", "SYSTEMATIC_FIXED_BY_REPEATS"],
+   exp: "與 ch06-q02 同構。固定偏一邊的系統誤差與重複次數無關，平均只能縮小隨機散布；讀數彼此接近只是精密，不等於準確。" },
+ { id: "ch06-p03", v: 1, type: "concept", phase: "pre",
+   q: "某個量測有三個誤差來源：一個很大、兩個很小。時間有限，要讓整體結果更可靠，最有效的做法是：",
+   opts: ["三個來源各改善一點，力氣平均分配",
+          "集中力氣先改善最大的那個來源",
+          "先從最容易改善的小來源下手，積少成多",
+          "來源不必管，多做幾次重複取平均就好"], ans: 1,
+   tags: ["SMALL_COMPONENT_MATTERS", null, "SMALL_COMPONENT_MATTERS", "UNC_ONLY_REPEATABILITY"],
+   exp: "與 ch06-q06 同構。合成是「平方和開根號」，幾乎完全由最大項決定；改善小項幾乎看不出效果。重複量測只能縮小隨機散布，管不到校正、純度等其他來源。" },
+
+ /* ---------- 課後 post ---------- */
+ { id: "ch06-q01", v: 1, type: "misc", phase: "post",
+   q: "同學說：「<em>我的結果是 12.3 ± 0.4%，這代表我的結果跟真值差了 0.4%。</em>」這句話的問題在哪？",
+   opts: ["沒有問題：不確定度就是結果與真值的差",
+          "問題在他應該把 12.3 減掉 0.4 做修正後再報告",
+          "問題在 ±0.4 太大，代表實驗有疏失，應該重做到 ±0 為止",
+          "±0.4 是「真值合理落點的範圍」，不是已知的差距；結果−真值是「誤差」，而真值不可知，誤差通常無法確知"], ans: 3,
+   tags: ["ERROR_EQUALS_UNCERTAINTY", "UNC_USED_AS_CORRECTION", "UNC_MEANS_MISTAKE", null],
+   exp: "QUAM §2.4.1–2.4.3：誤差是單一數值（結果−真值），是理想化概念；不確定度是可估計的區間參數。不確定度不可用來修正結果（只有已知的偏倚才能修正）；任何量測都有不確定度，它不是「做錯」的證據——知道它反而增加對結果的信心。" },
+ { id: "ch06-q02", v: 1, type: "concept", phase: "post",
+   q: "某生每次測定都忘了扣試劑空白（空白約 +0.3）。他把重複次數從 3 次增加到 12 次，結果會：",
+   opts: ["平均值會更接近真值，因為重複越多越準",
+          "平均值的隨機散布變小，但 +0.3 的偏移原封不動；必須扣空白修正",
+          "SD 變小了，所以結果更準確",
+          "偏移會縮小成 0.3/\\(\\sqrt{12}\\)，幾乎可以忽略"], ans: 1,
+   tags: ["SYSTEMATIC_FIXED_BY_REPEATS", null, "PRECISION_IS_ACCURACY", "SYSTEMATIC_FIXED_BY_REPEATS"],
+   exp: "QUAM §2.4.6–2.4.7：隨機誤差隨 n 增大而縮小（\\(\\sqrt{n}\\) 效應）；系統誤差與 n 無關，\\(\\sqrt{n}\\) 只作用在隨機部分。SD 變小只代表更精密，偏移還在就不準確。只能靠校正／修正，且修正值本身的不確定度仍須計入。" },
+ { id: "ch06-q03", v: 1, type: "concept", phase: "post",
+   q: "某生要評估「HPLC 測可樂中咖啡因」的不確定度，一開始就做 10 次重複進樣、算 SD。依 GUM 流程，他跳過了什麼？",
+   opts: ["Step 1：先定義被測量並寫出模型方程式，才能從模型的每個參數系統性地找來源",
+          "沒有跳過什麼：重複性的 SD 就是全部的不確定度",
+          "應該先算出擴展不確定度 U，再回頭找來源",
+          "沒有跳過什麼：不確定度只有在結果可疑時才需要評估"], ans: 0,
+   tags: [null, "UNC_ONLY_REPEATABILITY", "GUM_STEP_ORDER", "UNC_MEANS_MISTAKE"],
+   exp: "Step 1 = Specify the measurand：寫下 c = 內插濃度 × 稀釋倍數…（寫進 SOP）。沒有模型就不知道有哪些來源——重複進樣的 SD 只抓到「進樣重複性」，標準品純度、容量瓶、校正曲線等都沒算到。U 是 Step 4 的產物，不可能先算；不確定度是 ISO/IEC 17025 對每個結果的常規要求。" },
+ { id: "ch06-q04", v: 1, type: "concept", phase: "post",
+   q: "「粗纖維含量」這類經驗（操作定義）方法的特點是：",
+   opts: ["結果與方法無關，換另一種消化條件也應該得到相同答案",
+          "方法偏倚必須先校正到「真正的纖維含量」才能報告",
+          "結果由方法條件定義，偏倚不修正，直接用方法表現數據（如協同試驗 s<sub>R</sub>）估不確定度",
+          "因為沒有真值，所以不能評估不確定度"], ans: 2,
+   tags: ["EMPIRICAL_METHOD_BIAS", "EMPIRICAL_METHOD_BIAS", null, "OTHER"],
+   exp: "QUAM §5.4：可萃取脂肪、粗纖維等由萃取／消化條件定義，改方法＝改被測量，所以不同方法不必得到相同答案；偏倚是定義的一部分，按慣例不修正。不確定度仍然要評估，以協同試驗 s<sub>R</sub> 等方法表現數據為基礎（第 11 章案例）。" },
+ { id: "ch06-q05", v: 1, type: "concept", phase: "post",
+   q: "核對原始紀錄後，確認實驗員把 12.5 抄成了 15.2。這筆數據應該：",
+   opts: ["留在數據裡一起算平均和 SD，因為它也只是一種誤差",
+          "先做 Q 檢定，檢定沒過就要保留 15.2",
+          "保留 15.2，因為刪數據一律是學術不端",
+          "這是疏失（spurious error）：確認後不可把 15.2 納入統計，並留下紀錄"], ans: 3,
+   tags: ["SPURIOUS_AS_RANDOM", "SPURIOUS_AS_RANDOM", "OUTLIER_NEVER_DELETE", null],
+   exp: "QUAM §2.4.11–2.4.12：疏失（人為失誤／儀器故障）使量測無效，確認後應捨棄，不可納入任何統計分析（能追溯的抄錯可更正）。原因已確認就不需要靠 Q 檢定「投票」；Ch5 反對的是「沒有紀錄、只為了數據漂亮」的刪除，不是有憑有據的處理。" },
+ { id: "ch06-q06", v: 1, type: "calc", phase: "post",
+   q: "三個來源的標準不確定度為 0.2、0.3、1.0（同單位），u<sub>c</sub> = 1.06。若花大錢把 0.2 那一項<strong>完全消除</strong>，u<sub>c</sub> 會變成：",
+   opts: ["1.04（只少約 2%）", "0.86（1.06 − 0.2）", "0.71（三項少一項，約少 1/3）", "1.30（0.3 + 1.0）"], ans: 0,
+   tags: [null, "UNC_LINEAR_ADD", "SMALL_COMPONENT_MATTERS", "UNC_LINEAR_ADD"],
+   exp: "\\(\\sqrt{0.3^2+1.0^2}\\) = 1.04，幾乎沒變——平方和由最大項（1.0）主導，這就是 QUAM 的省力原則：集中火力量化／改善最大貢獻項，小項粗估即可。不確定度不是線性相加減（0.86、1.30 都錯），也不是「每項貢獻一樣多」（0.71）。" },
+ { id: "ch06-q07", v: 1, type: "calc", phase: "post",
+   q: "不確定度預算表有三個來源，標準不確定度分別為 0.3、0.4、1.2（同單位）。請計算合成標準不確定度 u<sub>c</sub>（取 2 位小數）。",
+   num: { ans: 1.30, tol: 0.01, unit: "" },
+   errs: [ { val: 1.90, tol: 0.01, tag: "UNC_LINEAR_ADD" },
+           { val: 1.69, tol: 0.01, tag: "UNC_SQUARE_STEP_WRONG" },
+           { val: 1.38, tol: 0.01, tag: "UNC_SQUARE_STEP_WRONG" } ],
+   exp: "u<sub>c</sub> = \\(\\sqrt{0.3^2+0.4^2+1.2^2}\\) = \\(\\sqrt{1.69}\\) = 1.30。直接相加得 1.90（不確定度幾乎不會線性相加）；忘了最後開根號得 1.69；沒先平方就 SQRT(SUM) 得 1.38。注意 1.30 只比最大項 1.2 多一點點。" },
+ { id: "ch06-q08", v: 1, type: "rout", phase: "post",
+   q: "Excel 預算表中，C2:C10 是各來源的標準不確定度 u，D2:D10 是 u²（<code>=C2^2</code>）。合成標準不確定度 u<sub>c</sub> 的公式是：",
+   opts: ["=SUM(C2:C10)", "=SUM(D2:D10)", "=SQRT(SUM(D2:D10))", "=SQRT(SUM(C2:C10))"], ans: 2,
+   tags: ["UNC_LINEAR_ADD", "UNC_SQUARE_STEP_WRONG", null, "UNC_SQUARE_STEP_WRONG"],
+   exp: "u<sub>c</sub> 是各成分「變異數（u²）」的總和再開根號 → =SQRT(SUM(D2:D10))。=SUM(C2:C10) 是直接相加；=SUM(D2:D10) 忘了開根號（得到的是 u<sub>c</sub>²）；=SQRT(SUM(C2:C10)) 沒先平方。最後乘涵蓋因子（=2*uc）才是擴展不確定度 U。" },
+ { id: "ch06-q09", v: 1, type: "rout", phase: "post",
+   q: "本章模擬：真值 = 100.0 mg/L，30 次量測的 <code>mean(results)</code> 與 <code>sd(results)</code> 輸出如下。下列判讀何者正確？<pre>[1] 101.8587\n[1] 2.943092</pre>",
+   opts: ["2.94 就是這個方法的「誤差」",
+          "平均與真值差約 +1.9，是偏倚（系統效應）的估計；2.94 是隨機散布的大小——兩者是不同的東西",
+          "只要把重複次數從 30 次增加到 300 次，平均值就會靠近 100",
+          "SD 高達 2.94，表示實驗做錯了，這批數據應該作廢"], ans: 1,
+   tags: ["ERROR_EQUALS_UNCERTAINTY", null, "SYSTEMATIC_FIXED_BY_REPEATS", "UNC_MEANS_MISTAKE"],
+   exp: "模擬設定是 +2 偏倚、SD=3 的隨機效應：101.86−100 ≈ +1.9 是偏倚（只有知道真值時才算得出來）；2.94 描述的是散布，屬於不確定度的成分，不是「誤差」。增加次數只會讓平均更穩定地停在 102 附近，不會回到 100；有散布是量測的常態，不是做錯。" },
+
+ /* ---------- 回溯 spaced ---------- */
+ { id: "ch06-s01", v: 1, type: "calc", phase: "spaced", from: "ch03",
+   q: "空白訊號平均 0.010、SD = 0.002；某樣品訊號為 0.022。依 Ch3 的規則（LOD = 空白 + 3SD、LOQ = 空白 + 10SD），這個結果應該怎麼報？",
+   opts: ["0.022 &gt; LOD（0.016），已經偵測到了，所以可以直接報定量數值",
+          "0.022 &lt; LOQ（0.030），所以報「未檢出（ND）」",
+          "LOQ = 0.010 + 3×0.002 = 0.016，0.022 已超過 LOQ，可以報定量數值",
+          "介於 LOD（0.016）與 LOQ（0.030）之間：可確認「有檢出」，但數值不可靠，不宜報定量值"], ans: 3,
+   tags: ["LOD_EQUALS_LOQ", "LOD_EQUALS_LOQ", "LOD_WRONG_MULTIPLIER", null],
+   exp: "LOD = 0.010+3×0.002 = 0.016；LOQ = 0.010+10×0.002 = 0.030。0.022 落在兩者之間：聽得到但數不準。超過 LOD 只代表「偵測得到」，不代表可以定量；低於 LOQ 也不等於未檢出（ND 是低於 LOD）。與本章呼應：接近偵測極限時相對不確定度極大，數字本身沒有意義。" }
 ];
 </script>
 <script src="assets/app.js"></script>
 <script src="assets/js/showout.js"></script>
+<script type="module" src="assets/js/assess.js"></script>
 
-<nav class="pager">
-<a href="ch05.html"><small>上一章</small>Ch5 有效數字與異常值檢定</a>
-<a href="ch07.html"><small>下一章</small>Ch7 Type A/B 分布轉換＋天平案例</a>
-</nav>
+<nav class="pager" data-pager></nav>
 </main>
 <footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫</footer>
 </body>

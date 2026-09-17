@@ -8,6 +8,7 @@
 # 學習路徑：
 #   Part 1  2^3 全因子 + 中心點 (base R) -> 主效應/交互作用/曲率偵測
 #   Part 2  中心複合設計 CCD (base R)    -> 二階模型/駐點/等高線
+#           + ANOVA 表與失擬檢定 (先備：Ch15 p 值、Ch16 ANOVA、Ch17 失擬)
 #   Part 3  預測區間與驗證實驗 (呼應 Ch2/Ch8)
 #   Part 4  套件選讀：rsm / FrF2 / desirability (需安裝，見 HAVE_PKGS)
 # 參考：Lenth (2009) rsm, J. Stat. Software 32:7；
@@ -52,7 +53,9 @@ t_curv <- (mean_ctr - mean_fac) / (s_pure * sqrt(1/4 + 1/8))
 round(c(mean_factorial = mean_fac, mean_center = mean_ctr,
         s_pure = s_pure, t_curv = t_curv,
         p_value = 2 * pt(-abs(t_curv), df = 3)), 4)
-#> p 值極小 -> 「反應曲面是彎的！」直線模型不夠用 -> 需要 RSM (Part 2)
+#> 43.04 vs 60.18, s_pure = 0.86, t = 32.5, p = 0.0001
+#> H0：「曲面沒有彎」(中心點平均 = 因子點平均，曲率效應 = 0)；p 值見 Ch15
+#> p 值極小 = 數據與 H0 不相容 -> 「反應曲面是彎的！」直線模型不夠用 -> 需要 RSM (Part 2)
 
 # =====================================================================
 # Part 2. 中心複合設計 (CCD)：因子點 + 軸點 + 中心點
@@ -85,7 +88,7 @@ x0 <- as.numeric(-0.5 * solve(Bmat, blin))     # 駐點 (編碼單位)
 eigen(Bmat)$values                            # 三個特徵值全負 -> 極大值
 y0 <- as.numeric(b[1] + t(x0) %*% blin + t(x0) %*% Bmat %*% x0)
 round(c(A = x0[1], B = x0[2], C = x0[3], DPPH_pred = y0), 2)
-#> 駐點約 (0.4, 0.4, 0.2)，預測 DPPH ~ 62% —— 與真實模型幾乎一致！
+#> 駐點 (0.44, 0.45, 0.13)，預測 DPPH 61.8% —— 與真實模型 (0.43, 0.41, 0.17；最大值 61.9%) 幾乎一致！
 
 # --- 2c. 換回實際單位 (這才是操作員要的答案) ---
 unc <- c(乙醇濃度 = 50 + 10 * x0[1],          # %
@@ -107,6 +110,27 @@ contour(50 + 10 * gA, 50 + 10 * gB,
 points(unc[1], unc[2], pch = 19, col = "red", cex = 1.6)
 text(unc[1], unc[2], sprintf(" 最適 (預測 %.1f%%)", y0),
      col = "red", adj = 0, font = 2)
+
+# --- 2e. 模型檢驗：ANOVA 表 + 失擬檢定（呼應 Ch16/Ch17）---
+# anova() 給「依序放入」的 SS：一階項與交互作用項彼此正交，不受順序影響；
+# 三個平方項彼此不完全正交，個別 SS 會隨順序略變，但三項合計不變 -> 整組讀
+aov2 <- anova(fit2)
+aov2                                        # 每列 H0：該項係數 = 0
+ss <- setNames(aov2[["Sum Sq"]], rownames(aov2))
+round(c(一階 = sum(ss[c("A", "B", "C")]),
+        二次 = sum(ss[c("I(A^2)", "I(B^2)", "I(C^2)")]),
+        交互 = sum(ss[c("A:B", "A:C", "B:C")]),
+        殘差 = unname(ss["Residuals"]), 總和 = sum(ss)), 2)
+#> 一階 494.40 / 二次 1318.12 / 交互 70.33 / 殘差 11.81 / 總和 1894.66
+# 失擬檢定：只有 6 個中心點有重複 -> 純誤差全靠它們 (df = 5)
+ccd$pt <- factor(paste(ccd$A, ccd$B, ccd$C))   # 每個設計點一個水準：15 個
+fit_pt <- lm(y ~ pt, data = ccd)               # 每點一個平均 -> 殘差 = 純誤差
+fit1c  <- lm(y ~ (A + B + C)^2, data = ccd)    # 對照：只有一階+交互作用
+round(sd(ccd$y[15:20]), 3)                  #> 1.054 = 中心點的 s（純誤差）
+anova(fit1c, fit_pt)   #> F = 149.05, p = 1.6e-05 -> 一階模型失擬顯著（有曲率）
+anova(fit2, fit_pt)    #> F = 1.13, p = 0.45 -> 二階模型失擬不顯著，夠用
+#> 注意方向：失擬檢定「p 大才好」；不顯著 ≠ 模型正確，只是在純誤差的尺度下看不出不足
+#> 沒有重複點就沒有純誤差，這個檢定做不出來；r² 高 (0.994) 也不能取代它 (Ch04/Ch17)
 
 # =====================================================================
 # Part 3. 預測區間與驗證實驗 (呼應 Ch2 的 CI 與 Ch8 的符合性思維)

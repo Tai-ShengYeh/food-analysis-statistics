@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ch15 假說檢定與 t／F 檢定</title>
+<link rel="stylesheet" href="assets/style.css">
+
+<!-- KaTeX -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true}]});"></script>
+</head>
+<body>
+<header class="topbar"><div class="inner">
+<a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
+<nav class="topnav" data-nav></nav>
+</div></header>
+
+<main>
+<div class="crumbs">Part 1B 比較與檢定／第 15 章</div>
+<h1>假說檢定與 t／F 檢定
+<span class="en">Hypothesis Testing, t-test &amp; F-test</span></h1>
+
+<p class="lede">實驗室新買了一台杜馬斯定氮儀，和用了二十年的凱氏法一比，粗蛋白平均高了 0.15%。主管問：「這是<strong>真的有差</strong>，還是只是<strong>隨機誤差</strong>？」你總不能回答「感覺有差」。這一章教你用一套全世界實驗室通用的判決程序來回答。</p>
+
+<div class="callout"><span class="t">🔑 課前暖身</span>
+你其實已經做過假說檢定了：<a href="ch05.html">Ch5</a> 的 Q 檢定「Q &gt; 臨界值就捨棄」、<a href="ch14.html">Ch14</a> 的「t = 32.5、p = 0.0001，所以曲面是彎的」，背後都是同一套邏輯。
+這一章把這套邏輯一次講清楚，並且學會食品分析最常用的四個檢定。<br>
+<strong>本章新詞先認識</strong>：<em>虛無假說 H<sub>0</sub></em>＝「沒有差異」的預設立場；<em>p 值</em>＝假設 H<sub>0</sub> 為真時，出現這麼極端（或更極端）數據的機率；<em>顯著水準 α</em>＝事先講好的判決門檻（通常 0.05）；<em>檢定力</em>＝真的有差時抓得到的機率。<br>
+<small>名詞卡住了？回 <a href="ch00.html">Ch0 名詞圖鑑</a> 查白話解釋與比喻；信賴區間忘了就回 <a href="ch02.html">Ch2</a>。</small></div>
+
+<div class="goals"><b>學習目標</b>
+<ul>
+<li>用自己的話說出 H<sub>0</sub>／H<sub>1</sub>、α、p 值、型一／型二錯誤的意義，並正確解讀 p 值</li>
+<li>知道「95% CI 不含假設值」和「雙尾 p &lt; 0.05」是同一件事</li>
+<li>依實驗設計選對檢定：one-sample t（對 CRM）、paired t（同樣品兩方法）、Welch t（兩組獨立）、F 檢定（比精密度）</li>
+<li>用 <code>power.t.test</code> 估計需要的重複次數，理解「不顯著 ≠ 相等」</li>
+<li>分辨「統計顯著」與「實務重要」，並知道三組以上為什麼要改用 ANOVA（Ch16）</li>
+</ul></div>
+
+<div class="quiz" data-phase="pre"></div>
+
+<h2>15.1 假說檢定的邏輯：法庭上的無罪推定</h2>
+<p>法庭的規則是<strong>無罪推定</strong>：先假設被告無罪，除非證據強到「如果他真的無罪，幾乎不可能出現這些證據」，才判有罪。
+假說檢定一模一樣，只是把「無罪」換成「沒有差異」：</p>
+<table>
+<tr><th>法庭</th><th>假說檢定</th><th>杜馬斯 vs 凱氏的例子</th></tr>
+<tr><td>預設：被告無罪</td><td><strong>虛無假說 H<sub>0</sub></strong>：沒有差異</td><td>H<sub>0</sub>：兩方法的平均差 = 0</td></tr>
+<tr><td>檢察官的主張：有罪</td><td><strong>對立假說 H<sub>1</sub></strong>：有差異</td><td>H<sub>1</sub>：平均差 ≠ 0</td></tr>
+<tr><td>把證據整理成「有多不利」</td><td><strong>檢定統計量</strong>（t、F、Q、G…）</td><td>t = 差異 ÷ 差異的標準誤（訊號 ÷ 雜訊）</td></tr>
+<tr><td>定罪門檻：排除合理懷疑</td><td><strong>顯著水準 α</strong>（做實驗<u>之前</u>就訂好）</td><td>α = 0.05</td></tr>
+<tr><td>如果他無罪，出現這種證據的機率</td><td><strong>p 值</strong></td><td>p &lt; α → 拒絕 H<sub>0</sub>；p ≥ α → 不拒絕 H<sub>0</sub></td></tr>
+<tr><td>「無罪釋放」不等於「證明清白」</td><td>「不拒絕 H<sub>0</sub>」不等於「證明沒有差異」</td><td>可能只是重複次數太少、證據不足（見 15.9）</td></tr>
+</table>
+
+<div class="callout"><span class="t">🧠 p 值到底是什麼</span>
+p 值＝<strong>假設 H<sub>0</sub> 為真</strong>時，得到「和手上數據一樣極端、或更極端」結果的機率。它是「<strong>數據</strong>在 H<sub>0</sub> 底下有多罕見」，
+<strong>不是</strong>「H<sub>0</sub> 為真的機率」，也不是「結論出錯的機率」。p 很小只說明：要嘛 H<sub>0</sub> 不對，要嘛你剛好碰上很罕見的事——我們選擇相信前者。</div>
+
+<h3>判決會錯兩種：型一錯誤與型二錯誤</h3>
+<p>以「這批奶粉的蛋白質是否符合標示」為例，H<sub>0</sub>：這批合格。</p>
+<table>
+<tr><th></th><th>真相：這批其實合格（H<sub>0</sub> 為真）</th><th>真相：這批其實不合格（H<sub>0</sub> 為假）</th></tr>
+<tr><td><strong>檢定結論：不合格</strong>（拒絕 H<sub>0</sub>）</td><td><span class="badge">型一錯誤 α</span> 把合格批誤判成不合格 → 好貨被退、重工、報廢（<strong>冤枉好人</strong>）</td><td>✅ 正確（機率 = 檢定力 1 − β）</td></tr>
+<tr><td><strong>檢定結論：沒有證據說不合格</strong>（不拒絕 H<sub>0</sub>）</td><td>✅ 正確（機率 = 1 − α）</td><td><span class="badge">型二錯誤 β</span> 放行了不合格批 → 流到市面、被稽查或客訴（<strong>放走壞人</strong>）</td></tr>
+</table>
+<p>α 是你自己訂的（通常 0.05）；β 則取決於<strong>差異有多大、數據有多吵（SD）、重複幾次（n）</strong>。
+α 訂得越嚴（例如 0.01），越不會冤枉好人，但在同樣的 n 之下就越容易放走壞人——兩種錯誤是蹺蹺板，唯一能同時壓低兩者的方法是<strong>增加 n 或降低 SD</strong>。</p>
+
+<h2>15.2 one-sample t：用 CRM 檢查方法有沒有偏倚</h2>
+<p><a href="ch06.html">Ch6</a> 談過<strong>真度（trueness）</strong>：方法的平均值離「真值」多遠。實務上的「真值」就是<strong>認證參考物質（CRM）</strong>的認證值。
+情境：奶粉 CRM 的粗蛋白認證值為 <strong>35.10 g/100 g</strong>，你用凱氏法獨立重複 6 次，平均 34.95。低了 0.15——方法有偏倚（bias）嗎？</p>
+<div class="formula">
+t = <span class="frac"><span class="num"><i>x̄</i> − μ<sub>0</sub></span><span class="den">SD / \(\sqrt{n}\)</span></span>
+，自由度 df = n − 1
+<span class="note">分子是「訊號」（平均值離認證值多遠），分母是「雜訊」（平均值的標準誤 SEM，Ch2）。H<sub>0</sub>：μ = μ<sub>0</sub>（沒有偏倚）</span>
+</div>
+
+<pre class="rcode" data-file="ch15_ex1.R"># ---------- 1. one-sample t：用 CRM 檢查方法有沒有偏倚 (ch15_ex1) ----------
+# 步驟一：建立資料。奶粉 CRM 粗蛋白認證值 35.10 g/100 g，凱氏法重複 6 次
+crm  &lt;- c(34.92, 35.12, 34.85, 35.04, 34.81, 34.98)
+cert &lt;- 35.10
+
+# 步驟二：計算。t = (平均 - 認證值) / (SD/sqrt(n))
+n    &lt;- length(crm)
+bias &lt;- mean(crm) - cert
+se   &lt;- sd(crm) / sqrt(n)
+t0   &lt;- bias / se
+round(c(mean = mean(crm), SD = sd(crm), bias = bias, SE = se, t = t0), 4)
+2 * pt(-abs(t0), df = n - 1)            # 雙尾 p 值：兩邊尾巴的面積
+qt(0.975, df = n - 1)                   # 臨界值 t(0.975, 5)
+
+# 步驟三：一行指令做完，並解讀
+t.test(crm, mu = cert)
+round(mean(crm) / cert * 100, 2)        # 回收率 %（Ch06 的真度）</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">   mean      SD    bias      SE       t 
+34.9533  0.1169 -0.1467  0.0477 -3.0731 
+[1] 0.02768619
+[1] 2.570582
+
+	One Sample t-test
+
+data:  crm
+t = -3.0731, df = 5, p-value = 0.02769
+alternative hypothesis: true mean is not equal to 35.1
+95 percent confidence interval:
+ 34.83065 35.07602
+sample estimates:
+mean of x 
+ 34.95333 
+
+[1] 99.58</pre></div>
+
+<p><strong>三步驟解讀 <code>t.test</code> 輸出</strong>：</p>
+<ul>
+<li><code>t = -3.0731</code>：平均值比認證值低了 3.07 個標準誤。|t| = 3.07 &gt; 臨界值 2.571（df = 5）→ 落在拒絕域。</li>
+<li><code>p-value = 0.02769</code>：如果方法真的沒有偏倚，抽到「偏離這麼多或更多」的機率只有 2.8% &lt; 5% → <strong>拒絕 H<sub>0</sub></strong>，方法有顯著的負偏倚。</li>
+<li><code>95 percent confidence interval: 34.83 ~ 35.08</code>：方法真正平均值的可能範圍，<strong>不包含 35.10</strong>（下一節會用到）。</li>
+</ul>
+<div class="figure">
+<img src="assets/img/fig_ch15_tdist.png" alt="t 分布、拒絕域與 p 值">
+<div class="cap">圖 15-1 H<sub>0</sub> 為真時 t 值應該長這樣分布（df = 5）。淺紅＝拒絕域（兩尾各 2.5%）；深紅＝p 值，也就是比觀察到的 |t| = 3.07 更極端的面積（兩尾合計 0.028）。深紅完全落在淺紅裡面 → p &lt; α。</div>
+</div>
+<div class="callout warn"><span class="t">⚠️ 顯著的偏倚 ≠ 方法不能用</span>
+偏倚 −0.147 g/100 g，換算回收率 99.58%。統計上顯著，但要不要修正、能不能接受，要看方法規格（例如回收率 98–102%）與量測不確定度（<a href="ch08.html">Ch8</a>）。
+另外，CRM 的認證值本身也有不確定度；嚴謹的做法是把「方法的標準誤」和「CRM 的標準不確定度」合成後再比較，這裡為了教學先把認證值當成沒有誤差的固定數。</div>
+
+<h2>15.3 信賴區間與 p 值：同一枚硬幣的兩面</h2>
+<p><a href="ch02.html">Ch2</a> 學的 95% 信賴區間用的是同一個 t 分布、同一個標準誤，所以兩者的結論永遠一致：</p>
+<div class="formula">
+95% CI <strong>不包含</strong>假設值 μ<sub>0</sub> &nbsp;⇔&nbsp; 雙尾檢定 p &lt; 0.05
+<span class="note">同理：99% CI ⇔ α = 0.01。單尾檢定則對應單邊的信賴界限。</span>
+</div>
+<p>用同一組 CRM 數據驗證：把假設值分別放在區間的<strong>邊界上</strong>、<strong>裡面</strong>、<strong>外面</strong>，看 p 值怎麼變。</p>
+
+<pre class="rcode" data-file="ch15_ex2.R"># ---------- 2. 95% CI 與雙尾 p 值是同一件事 (ch15_ex2) ----------
+ci &lt;- t.test(crm, mu = cert)$conf.int
+round(as.numeric(ci), 4)                # 35.10 不在區間內 &lt;=&gt; p &lt; 0.05
+t.test(crm, mu = ci[2])$p.value         # 把假設值放在 CI 邊界 -&gt; p 剛好 0.05
+t.test(crm, mu = 35.00)$p.value         # 假設值在 CI 裡面   -&gt; p &gt; 0.05
+t.test(crm, mu = 35.20)$p.value         # 假設值在 CI 外面   -&gt; p &lt; 0.05</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">[1] 34.8306 35.0760
+[1] 0.05
+[1] 0.3730787
+[1] 0.003559686</pre></div>
+
+<p>假設值剛好放在 CI 上限 35.076 時，p <strong>恰好等於 0.05</strong>；放在區間裡（35.00）p = 0.37；放在區間外（35.20）p = 0.0036。
+所以 95% CI 可以這樣讀：<strong>「所有不會被這組數據在 α = 0.05 下拒絕的假設值」的集合</strong>。
+報告時 CI 比 p 值更有用——p 值只回答「有沒有差」，CI 還告訴你「差多少、估得多準」。</p>
+
+<h2>15.4 雙尾還是單尾？實驗之前就要決定</h2>
+<p><strong>雙尾</strong>（H<sub>1</sub>：μ ≠ μ<sub>0</sub>）問的是「有沒有不一樣」，偏高偏低都算——方法比較、偏倚檢查幾乎都用雙尾，也是 <code>t.test</code> 的預設。<br>
+<strong>單尾</strong>（H<sub>1</sub>：μ &gt; μ<sub>0</sub> 或 μ &lt; μ<sub>0</sub>）只在「另一個方向就算發生也不會改變決策」時才合理。例如奶粉水分規格上限 4.00%，品管只在乎「有沒有<strong>超過</strong>」：</p>
+
+<pre class="rcode" data-file="ch15_ex3.R"># ---------- 3. 單尾檢定：事前就決定方向 (ch15_ex3) ----------
+# 奶粉水分規格上限 4.00%。品管只關心「有沒有超過」-&gt; 抽樣前就決定用單尾
+moist &lt;- c(4.12, 3.98, 4.21, 4.05, 4.16)
+t.test(moist, mu = 4.00, alternative = "greater")$p.value   # 單尾
+t.test(moist, mu = 4.00)$p.value                            # 雙尾 = 單尾的 2 倍</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">[1] 0.03120611
+[1] 0.06241222</pre></div>
+
+<p>同一組數據，單尾 p = 0.031（顯著）、雙尾 p = 0.062（不顯著）——方向猜對時，單尾 p 剛好是雙尾的一半。</p>
+<div class="callout danger"><span class="t">🚫 不能看了數據才選單尾</span>
+正因為單尾會讓 p 值減半，「先跑雙尾發現 p = 0.06，再改成單尾變 0.03」等於偷偷把 α 放寬成 0.10，是一種 p-hacking。
+<strong>用單尾或雙尾，必須在看到數據之前、依照決策問題決定，並寫進實驗計畫</strong>。拿不定主意就用雙尾。</div>
+
+<h2>15.5 回頭看 Ch5：Q 檢定和 Grubbs 本來就是假說檢定</h2>
+<p>你在 <a href="ch05.html">Ch5</a> 已經照著「算統計量 → 比臨界值」做過了，現在可以把它放回完整的框架：</p>
+<table>
+<tr><th>檢定</th><th>H<sub>0</sub></th><th>檢定統計量</th><th>判定</th></tr>
+<tr><td>Dixon Q</td><td>可疑值和其他值來自同一個（常態）母體</td><td>Q = gap / 全距</td><td>Q &gt; Q<sub>crit</sub> → 拒絕 H<sub>0</sub>（Ch5 用 90% 信賴，即 α = 0.10）</td></tr>
+<tr><td>Grubbs</td><td>同上</td><td>G = max|x<sub>i</sub> − x̄| / SD</td><td>G &gt; G<sub>crit</sub> → 拒絕 H<sub>0</sub>（α = 0.05）</td></tr>
+<tr><td>one-sample t</td><td>μ = μ<sub>0</sub></td><td>t = (x̄ − μ<sub>0</sub>) / (SD/\(\sqrt{n}\))</td><td>|t| &gt; t<sub>crit</sub>，即 p &lt; α</td></tr>
+</table>
+
+<pre class="rcode" data-file="ch15_ex4.R"># ---------- 4. 回扣 Ch05：Grubbs 檢定也是假說檢定 (ch15_ex4) ----------
+# H0：82.20 與其他值來自同一個母體；檢定統計量 G；臨界值 G_crit
+dry &lt;- c(88.62, 88.74, 89.20, 82.20)
+G   &lt;- max(abs(dry - mean(dry))) / sd(dry)
+nn  &lt;- length(dry)
+t2  &lt;- qt(0.05 / (2 * nn), df = nn - 2)^2
+Gcrit &lt;- ((nn - 1) / sqrt(nn)) * sqrt(t2 / (nn - 2 + t2))
+round(c(G = G, Gcrit = Gcrit), 3)
+G &gt; Gcrit                               # TRUE -&gt; 拒絕 H0（α = 0.05）</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">    G Gcrit 
+1.496 1.481 
+[1] TRUE</pre></div>
+
+<p>Ch5 的乾物質數據：G = 1.496 &gt; G<sub>crit</sub> = 1.481 → 在 α = 0.05 下拒絕 H<sub>0</sub>，82.20 被判為異常值（只是險勝）。
+「查臨界值表」和「看 p 值」是同一件事的兩種寫法：統計量超過 α 對應的臨界值 ⇔ p &lt; α。
+也因此 Ch5 的倫理底線在這裡同樣成立——<strong>「拒絕 H<sub>0</sub>」只代表這個值在統計上不合群，不代表你可以不交代原因就刪掉它</strong>；而且 n = 4 時檢定力很低，「沒被判為異常值」也不代表它一定正常。</p>
+
+<h2>15.6 paired t：同一批樣品、兩種方法</h2>
+<p>回到開場的問題。你拿了 10 種食品，<strong>每一種都用凱氏法和杜馬斯法各測一次</strong>。這叫<strong>成對設計（paired design）</strong>：兩欄數據是一對一綁在一起的。</p>
+<p>成對 t 檢定的做法簡單到不可思議：<strong>先算每個樣品的差值 d，再對 d 做 one-sample t（H<sub>0</sub>：平均差 = 0）</strong>。</p>
+<div class="formula">
+t = <span class="frac"><span class="num"><i>d̄</i></span><span class="den">SD<sub>d</sub> / \(\sqrt{n}\)</span></span>，df = n − 1（n 是<strong>對數</strong>）
+</div>
+
+<pre class="rcode" data-file="ch15_ex5.R"># ---------- 5. paired t：凱氏法 vs 杜馬斯法，同 10 個樣品 (ch15_ex5) ----------
+# 步驟一：建立資料（粗蛋白 %，每個樣品兩種方法各測一次）
+food &lt;- c("鮮乳", "優格", "豆漿", "白米", "麵粉",
+          "雞蛋", "豬里肌", "雞胸肉", "黃豆粉", "脫脂奶粉")
+kjeldahl &lt;- c(3.12, 3.85, 3.41, 6.92, 11.85, 12.48, 20.35, 23.10, 36.42, 35.18)
+dumas    &lt;- c(3.20, 4.07, 3.37, 7.11, 11.95, 12.79, 20.37, 23.36, 36.65, 35.30)
+
+# 步驟二：計算。成對 t 其實就是「對差值做 one-sample t（mu = 0）」
+d &lt;- dumas - kjeldahl
+d
+round(c(mean_d = mean(d), SD_d = sd(d)), 4)
+round(c(SD_kjeldahl = sd(kjeldahl), SD_dumas = sd(dumas)), 2)  # 樣品間差異
+
+# 步驟三：正確做法 vs 錯誤做法
+t.test(dumas, kjeldahl, paired = TRUE)  # 正確：成對
+t.test(dumas, kjeldahl)$p.value         # 錯用：當成兩組獨立樣本</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body"> [1]  0.08  0.22 -0.04  0.19  0.10  0.31  0.02  0.26  0.23  0.12
+mean_d   SD_d 
+0.1490 0.1115 
+SD_kjeldahl    SD_dumas 
+      12.64       12.66 
+
+	Paired t-test
+
+data:  dumas and kjeldahl
+t = 4.2258, df = 9, p-value = 0.00222
+alternative hypothesis: true mean difference is not equal to 0
+95 percent confidence interval:
+ 0.06923779 0.22876221
+sample estimates:
+mean difference 
+          0.149 
+
+[1] 0.9792777</pre></div>
+
+<p><strong>解讀</strong>：杜馬斯法平均高 0.149%，95% CI 為 0.069 ~ 0.229%（不含 0），t = 4.23、p = 0.0022 → 兩方法有顯著的系統差。
+（杜馬斯法測的是總氮，連硝酸鹽等凱氏法抓不完全的氮也算進去，略高是文獻上常見的現象。）</p>
+<p><strong>錯用獨立樣本 t 會怎樣？</strong>同樣的數據，p 值從 <strong>0.0022 變成 0.98</strong>——結論完全相反。原因看圖就懂：</p>
+<div class="figure">
+<img src="assets/img/fig_ch15_paired.png" alt="成對設計：原始值與差值">
+<div class="cap">圖 15-2 左：10 種食品的粗蛋白從 3% 到 36%，樣品間 SD 約 12.6%，方法間 0.15% 的差完全被淹沒（每條線幾乎是平的）。右：改看「每個樣品自己的差值」，樣品間差異被消掉，雜訊只剩 SD<sub>d</sub> = 0.11%，差異立刻浮現。</div>
+</div>
+<div class="callout"><span class="t">🧠 什麼時候用 paired？</span>
+看<strong>實驗設計</strong>，不是看數據長相：兩欄數據若能<strong>一對一配對</strong>（同一個樣品、同一天、同一位分析員的前後測），就用 paired。
+配對的好處是把「樣品之間本來就不一樣」這個巨大的變異來源整個消掉。
+<br><small>進階：成對 t 假設差值大致固定。若差值會隨濃度變大（高蛋白樣品差更多），應改看相對差或用 <a href="ch04.html">Ch4</a> 的迴歸比較兩方法。</small></div>
+
+<h2>15.7 兩組獨立樣本：Welch t 當預設</h2>
+<p>如果兩組數據<strong>沒有配對關係</strong>（兩條產線各自的批次、兩家供應商的貨），就用兩獨立樣本 t 檢定。它有兩個版本：</p>
+<table>
+<tr><th>版本</th><th>R 寫法</th><th>假設</th><th>建議</th></tr>
+<tr><td><strong>Welch t</strong></td><td><code>t.test(x, y)</code>（預設）</td><td>兩組變異數<strong>可以不同</strong>；df 用 Welch–Satterthwaite 公式估計，通常不是整數</td><td>✅ <strong>一律當預設</strong></td></tr>
+<tr><td>Student t（合併變異數）</td><td><code>t.test(x, y, var.equal = TRUE)</code></td><td>兩組變異數<strong>相等</strong>；df = n<sub>1</sub> + n<sub>2</sub> − 2</td><td>只有在事前就有充分理由相信變異數相等時（同方法、同儀器、同基質，且兩組 n 相近）</td></tr>
+</table>
+<p>情境：兩條產線醬油的總氮（g/100 mL）。A 線是老設備，只抽了 4 批而且很不穩；B 線抽了 10 批、很穩。</p>
+
+<pre class="rcode" data-file="ch15_ex6.R"># ---------- 6. 兩獨立樣本：Welch t 當預設 (ch15_ex6) ----------
+# 兩條產線醬油的總氮 (g/100 mL)。A 線 4 批、B 線 10 批，批次彼此獨立
+lineA &lt;- c(1.52, 1.38, 1.61, 1.45)
+lineB &lt;- c(1.41, 1.38, 1.43, 1.39, 1.42, 1.37, 1.40, 1.44, 1.38, 1.41)
+round(c(mean_A = mean(lineA), SD_A = sd(lineA),
+        mean_B = mean(lineB), SD_B = sd(lineB)), 4)
+
+t.test(lineA, lineB)                    # 預設就是 Welch（不假設變異數相等）
+t.test(lineA, lineB, var.equal = TRUE)$p.value   # 硬假設等變異 -&gt; 結論翻盤</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">mean_A   SD_A mean_B   SD_B 
+1.4900 0.0983 1.4030 0.0231 
+
+	Welch Two Sample t-test
+
+data:  lineA and lineB
+t = 1.7505, df = 3.1336, p-value = 0.1744
+alternative hypothesis: true difference in means is not equal to 0
+95 percent confidence interval:
+ -0.06741973  0.24141973
+sample estimates:
+mean of x mean of y 
+    1.490     1.403 
+
+[1] 0.01694717</pre></div>
+
+<p><strong>解讀</strong>：A 線的 SD（0.098）是 B 線（0.023）的 4 倍多。Welch 老實地反映「A 線只有 4 批、又很吵」：df 只剩 3.13，p = 0.17，<strong>不顯著</strong>。
+硬假設等變異時，B 線那 10 筆很穩的數據把合併 SD 拉低，p 變成 0.017「顯著」——這是<strong>假警報</strong>。
+當「樣本少的那組變異反而大」時，Student t 的型一錯誤率會遠高於 5%；反過來則會太保守。Welch 在變異數真的相等時幾乎沒有損失，所以當預設最安全。</p>
+<div class="callout"><span class="t">💡 不要「先做 F 檢定，再決定用哪種 t」</span>
+舊教科書常教兩階段做法。但 F 檢定在小樣本時檢定力很低（看不出變異數不同），又對非常態很敏感（見下一節），用它把關反而讓整體錯誤率失控。直接用 Welch 就好。</div>
+<div class="callout warn"><span class="t">⚠️ 什麼叫「獨立重複」？小心偽重複（pseudoreplication）</span>
+t 檢定的 n 必須是<strong>彼此獨立</strong>的重複。同一瓶萃取液重複注射 HPLC 6 次，6 個數字只反映<strong>儀器注射的重複性</strong>，沒有包含稱樣、萃取、淨化的變異——真正的 n 是 <strong>1</strong>，不是 6。
+把它當 n = 6 去做 t 檢定，SD 會小得不真實、t 值被灌水，幾乎什麼都「顯著」。要比較的是「方法」或「批次」，就必須從<strong>稱樣開始</strong>獨立重做。</div>
+
+<h2>15.8 F 檢定：比較兩組的精密度</h2>
+<p>t 檢定比的是<strong>平均值</strong>（準不準）；想比<strong>精密度</strong>（穩不穩），要比的是變異數，用 <strong>F 檢定</strong>：</p>
+<div class="formula">
+F = <span class="frac"><span class="num">s<sub>1</sub><sup>2</sup></span><span class="den">s<sub>2</sub><sup>2</sup></span></span>
+，df = (n<sub>1</sub> − 1, n<sub>2</sub> − 1)
+<span class="note">H<sub>0</sub>：兩個母體變異數相等（比值 = 1）。注意是<strong>變異數</strong>（SD 的平方）相除，不是 SD 相除</span>
+</div>
+<p>情境：同一罐均質火腿樣品，資深與新進分析員各自<strong>獨立</strong>稱樣、萃取 8 次測粗脂肪，想知道新人的精密度是否明顯較差。</p>
+
+<pre class="rcode" data-file="ch15_ex7.R"># ---------- 7. F 檢定：兩位分析員的精密度 (ch15_ex7) ----------
+# 同一罐均質火腿樣品，兩人各獨立稱樣、萃取 8 次，測粗脂肪 (%)
+senior &lt;- c(14.52, 14.61, 14.48, 14.57, 14.66, 14.50, 14.59, 14.55)
+junior &lt;- c(14.31, 14.82, 14.47, 14.95, 14.20, 14.68, 14.39, 14.77)
+round(c(SD_senior = sd(senior), SD_junior = sd(junior),
+        F = var(junior) / var(senior)), 4)
+var.test(junior, senior)                # F = 變異數比（不是 SD 比）
+
+# F 檢定很怕非常態：兩組其實來自「同一個」右偏母體（對數常態），
+# 理論上只該有 5% 誤判，實際上呢？
+set.seed(1505)
+p_norm &lt;- replicate(5000, var.test(rnorm(10),  rnorm(10))$p.value)
+p_skew &lt;- replicate(5000, var.test(rlnorm(10), rlnorm(10))$p.value)
+c(normal = mean(p_norm &lt; 0.05), lognormal = mean(p_skew &lt; 0.05))</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">SD_senior SD_junior         F 
+   0.0600    0.2688   20.0709 
+
+	F test to compare two variances
+
+data:  junior and senior
+F = 20.071, num df = 7, denom df = 7, p-value = 0.0007897
+alternative hypothesis: true ratio of variances is not equal to 1
+95 percent confidence interval:
+   4.018278 100.252486
+sample estimates:
+ratio of variances 
+          20.07093 
+
+   normal lognormal 
+   0.0470    0.3982 </pre></div>
+
+<p><strong>解讀</strong>：新人 SD = 0.269%、資深 SD = 0.060%，SD 差 4.5 倍，變異數比 F = 20.07（df = 7, 7），p = 0.0008 → 兩人精密度有顯著差異，新人需要再訓練。
+但看一下變異數比的 95% CI：<strong>4.0 ~ 100</strong>，寬得驚人——n = 8 時對「變異數」的估計非常粗糙，這也是 F 檢定在小樣本時檢定力低的原因。</p>
+<div class="callout warn"><span class="t">⚠️ F 檢定非常怕非常態</span>
+上面程式最後一段做了模擬：兩組數據來自<strong>同一個</strong>母體（變異數當然相等），各抽 10 個，重複 5000 次。
+母體是常態時，誤判「變異數不同」的比例是 4.7%，符合 α = 5%；母體換成右偏的對數常態（微生物菌數、污染物殘留量常見的形狀）時，誤判率飆到 <strong>39.8%</strong>。
+t 檢定對非常態還算耐操，F 檢定不是。做 F 檢定前先畫圖看分布；右偏數據先取對數，或改用較穩健的方法（如 Levene 檢定，需外掛套件）。</div>
+
+<h2>15.9 檢定力與樣本數：要重複幾次才夠？</h2>
+<p><strong>檢定力（power）= 1 − β</strong>：如果差異<strong>真的存在</strong>，你的實驗抓得到它的機率。它由四件事決定，知道其中三個就能算第四個：
+想偵測的差異 δ、數據的 SD、每組重複次數 n、顯著水準 α。</p>
+<p>問題：兩方法的重複性 SD 約 0.15%，若真實差異達 <strong>0.2%</strong> 你希望有 80% 的機率抓到，每組要重複幾次？</p>
+
+<pre class="rcode" data-file="ch15_ex8.R"># ---------- 8. 檢定力與樣本數 (ch15_ex8) ----------
+# 問題：兩方法重複性 SD 約 0.15%，想偵測 0.2% 的差異，每組要重複幾次？
+power.t.test(delta = 0.2, sd = 0.15, sig.level = 0.05, power = 0.80)
+
+# 反過來：如果每組只做 n 次，抓得到 0.2% 差異的機率（檢定力）是多少？
+ns  &lt;- c(3, 5, 8, 10, 15)
+pow &lt;- sapply(ns, function(k)
+  power.t.test(n = k, delta = 0.2, sd = 0.15)$power)
+round(setNames(pow, paste0("n=", ns)), 3)
+
+# 「不顯著 ≠ 相等」：每組只做 3 次的例子
+k3 &lt;- c(12.31, 12.52, 12.40)            # 凱氏法
+d3 &lt;- c(12.55, 12.71, 12.49)            # 杜馬斯法
+r3 &lt;- t.test(d3, k3)
+round(c(diff = mean(d3) - mean(k3), p = r3$p.value), 4)
+round(as.numeric(r3$conf.int), 3)       # CI 同時包含 0 和 0.2 以上 -&gt; 無法下結論</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">     Two-sample t test power calculation 
+
+              n = 9.889068
+          delta = 0.2
+             sd = 0.15
+      sig.level = 0.05
+          power = 0.8
+    alternative = two.sided
+
+NOTE: n is number in *each* group
+
+  n=3   n=5   n=8  n=10  n=15 
+0.243 0.458 0.699 0.805 0.941 
+  diff      p 
+0.1733 0.1253 
+[1] -0.076  0.422</pre></div>
+
+<p><strong>解讀</strong>：n = 9.89，無條件進位 → <strong>每組 10 次</strong>。反過來看，食品分析慣用的「三重複」檢定力只有 <strong>24%</strong>——
+就算兩方法真的差 0.2%，你有四分之三的機率得到「不顯著」。</p>
+<div class="figure">
+<img src="assets/img/fig_ch15_power.png" alt="重複次數與檢定力">
+<div class="cap">圖 15-3 檢定力隨重複次數上升。想偵測的差異越小（橘線：0.1%），需要的 n 就多得多——差異減半，所需 n 大約變 4 倍。</div>
+</div>
+<div class="callout danger"><span class="t">🚫 不顯著 ≠ 相等</span>
+程式最後的例子：每組只測 3 次，杜馬斯法高了 0.173%，p = 0.125「不顯著」。能不能寫「兩方法結果相同」？<strong>不能。</strong>
+看 95% CI：−0.076 ~ 0.422%——它同時包含 0（沒差）和 0.4（差很多），意思是<strong>這個實驗根本分不出來</strong>。
+「不顯著」只能寫成「本實驗（n = 3）未偵測到顯著差異」。想主張「兩者相當」，要事先訂出可接受的差異範圍，並證明整個 CI 都落在範圍內（這叫等效性檢定，屬進階內容）。</div>
+
+<h2>15.10 統計顯著 vs 實務重要</h2>
+<p>反過來的陷阱：<strong>n 夠大時，再小的差異都會「顯著」</strong>。情境：兩台線上近紅外水分儀各測 40 包同批奶粉，廠內規定兩台儀器的差異在 ±0.20% 以內即視為一致。</p>
+
+<pre class="rcode" data-file="ch15_ex9.R"># ---------- 9. 統計顯著 vs 實務重要 (ch15_ex9) ----------
+# 兩台線上水分儀各測 40 包同批奶粉；廠內容許兩台儀器差 ±0.20%
+set.seed(1509)
+nirA &lt;- round(rnorm(40, mean = 3.52, sd = 0.06), 2)
+nirB &lt;- round(rnorm(40, mean = 3.56, sd = 0.06), 2)
+r9 &lt;- t.test(nirB, nirA)
+round(c(diff = mean(nirB) - mean(nirA), p = r9$p.value), 4)
+round(as.numeric(r9$conf.int), 3)       # 整個 CI 都遠小於 0.20 -&gt; 實務上可忽略</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">  diff      p 
+0.0423 0.0021 
+[1] 0.016 0.069</pre></div>
+
+<p><strong>解讀</strong>：p = 0.0021，「非常顯著」；但差異只有 0.042%，95% CI 為 0.016 ~ 0.069%，<strong>整個區間都遠小於容許差 0.20%</strong>。
+結論應該是：「兩台儀器有統計上可偵測的微小系統差，但遠小於容許差，實務上可視為一致，不需停線校正。」</p>
+<table>
+<tr><th>p 值</th><th>差異（與 CI）相對於容許差／方法不確定度</th><th>怎麼判讀</th></tr>
+<tr><td>顯著</td><td>整個 CI 都在容許差之外或相當大</td><td>真的有差，而且重要 → 要處理</td></tr>
+<tr><td>顯著</td><td>整個 CI 都遠小於容許差</td><td>有差但不重要（本節的例子）→ 記錄即可</td></tr>
+<tr><td>不顯著</td><td>CI 很窄、整個落在容許差之內</td><td>可以說「實務上相當」</td></tr>
+<tr><td>不顯著</td><td>CI 很寬、跨過容許差</td><td>證據不足（15.9 的例子）→ 增加 n 再說</td></tr>
+</table>
+<p><strong>p 值回答「有沒有」，CI 和效果大小回答「有多少」，法規容許差或擴充不確定度 U（<a href="ch08.html">Ch8</a>）回答「要不要緊」。</strong>三個都要看。</p>
+
+<h2>15.11 預告：三組以上，為什麼不能兩兩 t 檢定？</h2>
+<p>要比較 5 位分析員，直覺是兩兩做 t 檢定，共 10 次。問題是：<strong>每做一次檢定就有 5% 的機會假警報，做越多次，至少中一次的機率越高</strong>。
+若各次檢定彼此獨立，k 次檢定「至少一次型一錯誤」的機率（整體 α）是：</p>
+<div class="formula">
+α<sub>整體</sub> = 1 − (1 − α)<sup>k</sup> = 1 − 0.95<sup>k</sup>
+</div>
+
+<pre class="rcode" data-file="ch15_ex10.R"># ---------- 10. 多重比較：為什麼三組以上不能兩兩 t 檢定 (ch15_ex10) ----------
+groups &lt;- 2:6
+pairs  &lt;- choose(groups, 2)             # k 組共有幾對
+data.frame(groups = groups, pairs = pairs,
+           alpha_family = round(1 - 0.95^pairs, 3))
+
+# 模擬驗證：5 位分析員其實「完全沒差」，兩兩 t 檢定 10 次，
+# 至少出現一次 p &lt; 0.05（誤判有人不一樣）的比例？
+set.seed(1510)
+cmb &lt;- combn(5, 2)
+any_sig &lt;- replicate(2000, {
+  x &lt;- matrix(rnorm(5 * 4, mean = 12.5, sd = 0.15), nrow = 4)  # 5 人各 4 重複
+  p &lt;- apply(cmb, 2, function(j) t.test(x[, j[1]], x[, j[2]])$p.value)
+  any(p &lt; 0.05)
+})
+mean(any_sig)</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">  groups pairs alpha_family
+1      2     1        0.050
+2      3     3        0.143
+3      4     6        0.265
+4      5    10        0.401
+5      6    15        0.537
+[1] 0.266</pre></div>
+
+<p><strong>解讀</strong>：3 組（3 對）整體 α 就變 14%，5 組（10 對）依公式高達 40%。
+模擬也證實：5 位分析員<strong>其實完全沒差</strong>，兩兩 t 檢定卻有 <strong>26.6%</strong> 的機率「發現」至少一對有顯著差異。
+（模擬值比公式的 40% 低，是因為這 10 次比較共用同一批數據、彼此並不獨立；公式是獨立假設下的近似。但不論 27% 或 40%，都遠遠超過你以為的 5%。）</p>
+<div class="callout ok"><span class="t">➡️ 解法在下一章</span>
+三組以上的正確做法是<strong>先用一個檢定一次回答「這幾組有沒有任何差異」</strong>，把整體 α 守在 0.05——這就是 <a href="ch16.html">Ch16 單因子變異數分析（one-way ANOVA）</a>。
+有趣的是，ANOVA 的檢定統計量正是本章的 <strong>F</strong>：它比的是「組間變異 ÷ 組內變異」。</div>
+
+<h2>🧭 一張表選對檢定</h2>
+<table>
+<tr><th>你想問的問題</th><th>數據長相</th><th>檢定</th><th>R</th></tr>
+<tr><td>方法有沒有偏倚？</td><td>一組重複 vs 一個已知值（CRM、標示值、規格）</td><td>one-sample t</td><td><code>t.test(x, mu = 35.10)</code></td></tr>
+<tr><td>兩方法／前後測有沒有差？</td><td>同一批樣品各測兩次，一對一配對</td><td>paired t</td><td><code>t.test(x, y, paired = TRUE)</code></td></tr>
+<tr><td>兩組平均有沒有差？</td><td>兩組互相獨立、無配對</td><td>Welch t</td><td><code>t.test(x, y)</code></td></tr>
+<tr><td>兩組精密度有沒有差？</td><td>兩組獨立重複（近似常態）</td><td>F 檢定</td><td><code>var.test(x, y)</code></td></tr>
+<tr><td>要重複幾次？</td><td>—（實驗前規劃）</td><td>檢定力分析</td><td><code>power.t.test(delta=, sd=, power=)</code></td></tr>
+<tr><td>三組以上平均有沒有差？</td><td>三組以上獨立樣本</td><td>one-way ANOVA</td><td><a href="ch16.html">Ch16</a></td></tr>
+</table>
+
+<h2>📊 Excel 也會算：t 檢定與 F 檢定</h2>
+<div class="callout ok"><span class="t">📊 沒有 R 也能動手</span>
+成對例：凱氏法放 <code>A2:A11</code>、杜馬斯法放 <code>B2:B11</code>。<code>T.TEST</code> 的第 3 個引數是尾數（1 單尾、2 雙尾），第 4 個是類型（<strong>1 成對、2 等變異、3 不等變異 Welch</strong>）。<br>
+<table>
+<tr><th>任務</th><th>Excel 公式</th><th>說明（對照 R 的結果）</th></tr>
+<tr><td>paired t 的 p 值</td><td><code>=T.TEST(A2:A11, B2:B11, 2, 1)</code></td><td>→ 0.0022</td></tr>
+<tr><td>錯用獨立樣本（Welch）的 p 值</td><td><code>=T.TEST(A2:A11, B2:B11, 2, 3)</code></td><td>→ 0.98</td></tr>
+<tr><td>Welch t 的 p 值（醬油兩產線）</td><td><code>=T.TEST(A線範圍, B線範圍, 2, 3)</code></td><td>→ 約 0.17；類型改 2（等變異）→ 0.017</td></tr>
+<tr><td>one-sample t 的 t 值（CRM 放 <code>D2:D7</code>）</td><td><code>=(AVERAGE(D2:D7)-35.10)/(STDEV.S(D2:D7)/SQRT(COUNT(D2:D7)))</code></td><td>→ −3.073（Excel 沒有單樣本 t 的現成函數，要自己算）</td></tr>
+<tr><td>由 t 值求雙尾 p 值</td><td><code>=T.DIST.2T(ABS(-3.073), 5)</code></td><td>→ 0.0277（t 要取絕對值）</td></tr>
+<tr><td>雙尾臨界值 t<sub>crit</sub></td><td><code>=T.INV.2T(0.05, 5)</code></td><td>→ 2.571</td></tr>
+<tr><td>F 檢定的雙尾 p 值</td><td><code>=F.TEST(新人範圍, 資深範圍)</code></td><td>→ 0.00079</td></tr>
+<tr><td>F 值本身</td><td><code>=VAR.S(新人範圍)/VAR.S(資深範圍)</code></td><td>→ 20.07</td></tr>
+</table>
+<strong>提醒</strong>：<code>T.TEST</code> 和 <code>F.TEST</code> 只回傳 p 值，不給 t／F、df 與信賴區間；檢定力分析 Excel 沒有內建函數。要完整報告還是 R 方便。</div>
+
+<div class="callout danger"><span class="t">🧨 五個最常見的迷思（考試和實務都會踩）</span>
+<strong>①「p 值是 H<sub>0</sub> 為真的機率」</strong>——錯。p 值是「假設 H<sub>0</sub> 為真時，數據這麼極端的機率」，方向反了。p = 0.03 不代表「沒有差異的機率是 3%」。<br>
+<strong>②「不顯著就是相等」</strong>——錯。可能只是 n 太小、檢定力不足。看 CI 有多寬（15.9）。<br>
+<strong>③「p 越小，差異越大、越重要」</strong>——錯。p 同時受差異大小、SD 和 n 影響；n 夠大時 0.04% 的差也能 p = 0.002（15.10）。差異多大要看估計值和 CI。<br>
+<strong>④「先看數據再決定用單尾」</strong>——錯。這等於把 α 偷偷放大一倍（15.4）。<br>
+<strong>⑤「重複注射 6 針就是 n = 6」</strong>——錯。那是偽重複，獨立重複要從稱樣開始（15.7）。</div>
+
+<div class="quiz" id="quiz"></div>
+<script>
+const CHAPTER = "ch15";
+const MISC = {
+  P_IS_PROB_H0:          "以為 p 值是「H0 為真（沒有差異）的機率」",
+  P_COMPLEMENT_PROB_H1:  "以為 1 − p 是「H1 為真（差異是真的）的機率」",
+  NONSIG_MEANS_EQUAL:    "以為「不顯著」就證明兩者相等、沒有差異",
+  P_SMALL_BIG_EFFECT:    "以為 p 值越小代表差異（效果）越大",
+  SIG_MEANS_IMPORTANT:   "以為統計顯著就等於實務上重要、一定要處理",
+  SIG_MEANS_CERTAIN:     "以為達到顯著（p 小於 0.05）的結論就一定不會錯",
+  REJECT_WHEN_P_LARGE:   "把判定方向弄反：以為 p 大於 α 才拒絕 H0",
+  POSTHOC_ONE_TAIL:      "看到數據方向（或 p 值）之後才決定改用單尾檢定",
+  P_HACKING:             "為了得到想要的 p 值而挑選分析方法、尾數或樣本數",
+  PSEUDOREPLICATION:     "把同一份樣品溶液的重複注射／重複讀值當成獨立重複（偽重複）",
+  PAIRED_AS_INDEPENDENT: "成對設計的數據卻用兩獨立樣本 t 檢定",
+  CI_OVERLAP_AS_TEST:    "以為看兩組各自的信賴區間有沒有重疊就能代替檢定",
+  F_FOR_MEANS:           "以為 F 檢定（var.test）是用來比較兩組平均值",
+  ASSUME_EQUAL_VAR:      "以為兩樣本 t 檢定一定要（或可以隨意）假設變異數相等",
+  DF_MUST_INTEGER:       "以為自由度一定是整數，Welch 的小數 df 代表算錯",
+  DF_EQUALS_N:           "自由度用 n 而不是 n−1",
+  ALPHA_BETA_SWAP:       "把型一錯誤（誤判有差）和型二錯誤（漏掉真差異）弄反",
+  POWER_AS_ERROR:        "把檢定力當成一種錯誤（其實是正確偵測到差異的機率）",
+  MULTI_T_NO_INFLATION:  "以為多組兩兩 t 檢定時，整體型一錯誤率仍是 0.05",
+  PAIRS_EQUALS_GROUPS:   "把兩兩比較的次數當成組數（k 組其實有 k(k−1)/2 對）",
+  ALPHA_ADDS_LINEAR:     "以為整體 α 就是直接相加 k × α",
+  FORGOT_SQRT_N:         "算標準誤時忘了除以 √n，直接用 SD",
+  SE_DIVIDE_BY_N:        "標準誤用 SD/n 而不是 SD/√n",
+  CI_TRUE_VALUE_PROB:    "以為「真值有 95% 機率落在這個區間」",
+  CI_COVERS_DATA:        "把信賴區間當成涵蓋 95% 量測數據的範圍",
+  CI_IS_PRECISION:       "把信心水準 95% 當成方法的精密度或準確度"
+};
+const QUIZ = [
+  /* ---------- 前測 pre ---------- */
+  { id:"ch15-p01", v:1, type:"concept", phase:"pre",
+    q:"比較新舊兩種水分測定法，統計軟體回報 p = 0.03。這個數字的意思是：",
+    opts:["兩方法沒有差異的機率是 3%",
+          "如果兩方法其實沒有差異，得到這麼大（或更大）差距的機率約 3%",
+          "兩方法真的有差異的機率是 97%",
+          "兩方法的結果相差 3%"],
+    ans:1,
+    tags:["P_IS_PROB_H0", null, "P_COMPLEMENT_PROB_H1", "P_SMALL_BIG_EFFECT"],
+    exp:"p 值是在「H0 為真」的前提下，數據這麼極端或更極端的機率；它不是 H0 或 H1 為真的機率，也不是差異的大小。" },
+  { id:"ch15-p02", v:1, type:"misc", phase:"pre",
+    q:"用兩種方法各測 3 次灰分，t 檢定得到 p = 0.40。下列哪個結論最恰當？",
+    opts:["已證明兩種方法的結果相同",
+          "兩種方法有 40% 的機率相同",
+          "證據不足以認定有差異；也可能只是重複次數太少而偵測不到",
+          "改用單尾檢定讓 p 值減半，再判斷一次"],
+    ans:2,
+    tags:["NONSIG_MEANS_EQUAL", "P_IS_PROB_H0", null, "POSTHOC_ONE_TAIL"],
+    exp:"「不顯著」只代表沒有足夠證據拒絕 H0，不是證明相等；n = 3 的檢定力很低。p 也不是「相同的機率」。看了結果才改單尾是 p-hacking。" },
+  { id:"ch15-p03", v:1, type:"concept", phase:"pre",
+    q:"拿 8 種不同的果汁，每一種都分別用滴定法和 HPLC 法測維生素 C。要檢定兩方法有沒有系統差，應該用：",
+    opts:["成對 t 檢定（paired t）：對每種果汁的差值做檢定",
+          "兩獨立樣本 t 檢定：把 8 個滴定值和 8 個 HPLC 值當成兩組",
+          "F 檢定（var.test）",
+          "分別算兩方法的 95% 信賴區間，看有沒有重疊"],
+    ans:0,
+    tags:[null, "PAIRED_AS_INDEPENDENT", "F_FOR_MEANS", "CI_OVERLAP_AS_TEST"],
+    exp:"同一種果汁測兩次，數據一對一配對 → paired t。當成獨立樣本會被果汁之間的巨大差異淹沒；F 檢定比的是變異數；CI 是否重疊不等於檢定，而且同樣忽略了配對。" },
+
+  /* ---------- 課後 post ---------- */
+  { id:"ch15-q01", v:1, type:"concept", phase:"post",
+    q:"用新的快速法和標準法比較同一批樣品的粗脂肪，t 檢定得到 p = 0.21（α = 0.05）。下列敘述何者正確？",
+    opts:["H0（兩方法沒有差異）為真的機率是 21%",
+          "若兩方法其實沒有差異，出現這麼極端或更極端結果的機率約 21%；證據不足以拒絕 H0",
+          "已經證明新方法和標準法的結果相等",
+          "因為 p &gt; 0.05，所以拒絕 H0，兩方法有顯著差異"],
+    ans:1,
+    tags:["P_IS_PROB_H0", null, "NONSIG_MEANS_EQUAL", "REJECT_WHEN_P_LARGE"],
+    exp:"p 值是「H0 為真時數據這麼極端的機率」，不是 H0 為真的機率。p ≥ α 時是「不拒絕 H0」，而不拒絕不等於證明相等（可能只是檢定力不足，要看 CI 多寬）。p 小於 α 才拒絕 H0。" },
+  { id:"ch15-q02", v:1, type:"concept", phase:"post",
+    q:"H0：這批奶粉蛋白質含量合格。實際上這批是合格的，但檢定結論卻判為不合格，整批被退貨。這是：",
+    opts:["型一錯誤（α）：H0 為真卻被拒絕",
+          "型二錯誤（β）：H0 為假卻沒被拒絕",
+          "檢定力（1 − β）",
+          "不算錯誤，因為 p &lt; 0.05 的結論一定是對的"],
+    ans:0,
+    tags:[null, "ALPHA_BETA_SWAP", "POWER_AS_ERROR", "SIG_MEANS_CERTAIN"],
+    exp:"H0 為真卻拒絕 = 型一錯誤（冤枉好人），機率就是你訂的 α。型二錯誤是放行了不合格批。檢定力是「真的不合格時抓得到」的機率，不是錯誤。p &lt; 0.05 仍有 5% 的機會是假警報。" },
+  { id:"ch15-q03", v:1, type:"calc", phase:"post",
+    q:"某麵粉 CRM 的粗蛋白認證值為 12.50%。你獨立重複測了 n = 5 次，平均 12.38%、SD = 0.09%。請計算 one-sample t 檢定統計量的絕對值 |t|（取 2 位小數）。",
+    num:{ ans:2.98, tol:0.02, unit:"" },
+    errs:[ { val:1.33, tol:0.02, tag:"FORGOT_SQRT_N" },
+           { val:6.67, tol:0.03, tag:"SE_DIVIDE_BY_N" } ],
+    exp:"t = (12.38 − 12.50) / (0.09/\\(\\sqrt{5}\\)) = −0.12 / 0.04025 = −2.98，|t| = 2.98。臨界值 t(0.975, df = 4) = 2.776，|t| &gt; 2.776 → 有顯著偏倚。若算成 1.33 是忘了除 \\(\\sqrt{n}\\)（分母要用平均值的標準誤，不是 SD）；算成 6.67 是把標準誤寫成 SD/n。" },
+  { id:"ch15-q04", v:1, type:"calc", phase:"post",
+    q:"要比較 4 個品牌醬油的總氮，有人打算兩兩做 t 檢定（每次 α = 0.05）。假設各次檢定獨立，「至少出現一次型一錯誤」的機率大約是：",
+    opts:["0.05", "0.185", "0.265", "0.300"],
+    ans:2,
+    tags:["MULTI_T_NO_INFLATION", "PAIRS_EQUALS_GROUPS", null, "ALPHA_ADDS_LINEAR"],
+    exp:"4 組共有 4×3/2 = 6 對，整體 α = 1 − 0.95\\(^6\\) = 0.265。0.05 是忽略了多重比較的膨脹；0.185 = 1 − 0.95\\(^4\\) 是把「組數 4」誤當成比較次數；0.300 = 6 × 0.05 是直接相加（只是上限的近似）。三組以上請用 Ch16 的 ANOVA。" },
+  { id:"ch15-q05", v:1, type:"rout", phase:"post",
+    q:"凱氏法與杜馬斯法測同 10 個樣品，R 輸出如下。下列判讀何者正確？<pre style='background:#0A1B29;color:#E6F1FA;padding:10px 14px;border-radius:8px;overflow-x:auto;font-size:.84rem;line-height:1.6;font-weight:400'>\tPaired t-test\n\ndata:  dumas and kjeldahl\nt = 4.2258, df = 9, p-value = 0.00222\n95 percent confidence interval:\n 0.06923779 0.22876221\nsample estimates:\nmean difference \n          0.149 </pre>",
+    opts:["p = 0.00222 表示兩方法結果相同的機率只有 0.22%",
+          "df = 9 表示這個實驗用了 9 個樣品",
+          "p 值這麼小，代表兩方法差異非常大，杜馬斯法不能用",
+          "杜馬斯法平均高 0.149%，95% CI（0.069 ~ 0.229）不含 0，兩方法有顯著的系統差"],
+    ans:3,
+    tags:["P_IS_PROB_H0", "DF_EQUALS_N", "P_SMALL_BIG_EFFECT", null],
+    exp:"平均差 0.149、CI 不含 0 ⇔ p &lt; 0.05，有顯著系統差。p 值不是「兩方法相同的機率」；paired t 的 df = 對數 − 1，所以是 10 個樣品；p 小只代表證據強，差異大小要看 0.149% 和它的 CI，能不能用要和容許差或不確定度比。" },
+  { id:"ch15-q06", v:1, type:"rout", phase:"post",
+    q:"兩條產線的總氮：A 線 n = 4、SD = 0.098；B 線 n = 10、SD = 0.023。同一組數據跑兩種 t 檢定：<pre style='background:#0A1B29;color:#E6F1FA;padding:10px 14px;border-radius:8px;overflow-x:auto;font-size:.84rem;line-height:1.6;font-weight:400'>t.test(lineA, lineB)                   # t = 1.7505, df = 3.1336, p-value = 0.1744\nt.test(lineA, lineB, var.equal = TRUE)  # p-value = 0.01695</pre>報告應該採用哪一個？",
+    opts:["Welch 的 p = 0.17：兩組 SD 差 4 倍且 n 不相等，不該假設變異數相等",
+          "等變異的 p = 0.017：哪個 p 值小、比較顯著就報哪個",
+          "等變異的 p = 0.017：t 檢定本來就必須假設兩組變異數相等",
+          "兩個都不能用：df = 3.13 不是整數，代表計算有誤"],
+    ans:0,
+    tags:[null, "P_HACKING", "ASSUME_EQUAL_VAR", "DF_MUST_INTEGER"],
+    exp:"R 的 t.test 預設就是 Welch，不需要等變異假設；本例樣本少的那組變異反而大，硬用合併變異數會製造假警報。挑 p 值小的來報是 p-hacking。Welch–Satterthwaite 自由度本來就常是小數，不是算錯。" },
+  { id:"ch15-q07", v:1, type:"misc", phase:"post",
+    q:"同學想比較兩種萃取溶劑對咖啡因測值的影響：每種溶劑各萃取 <strong>1 份</strong>樣品，再把每份萃取液注射 HPLC 6 次，得到兩組各 6 個數字後做 t 檢定（p &lt; 0.001）。這個做法：",
+    opts:["沒問題：每組 n = 6，重複注射就是重複",
+          "有問題：6 次注射只反映儀器重複性，每種溶劑真正的獨立重複只有 1 次；應從稱樣、萃取開始獨立重做多份",
+          "沒問題：而且 p 這麼小，表示兩種溶劑的差異非常大",
+          "有問題，但只要把每份萃取液注射到 30 次以上（n &gt; 30）就可以了"],
+    ans:1,
+    tags:["PSEUDOREPLICATION", null, "P_SMALL_BIG_EFFECT", "PSEUDOREPLICATION"],
+    exp:"這是偽重複：同一份萃取液的重複注射彼此不獨立，沒有包含稱樣與萃取的變異，SD 被嚴重低估、t 值被灌水。注射再多次也一樣，真正的 n 仍是 1。p 小也不代表差異大。正確做法是每種溶劑獨立萃取多份（例如各 5 份）。" },
+  { id:"ch15-q08", v:1, type:"misc", phase:"post",
+    q:"兩台線上水分儀各測 40 包同批奶粉：平均差 0.042%，95% CI 為 0.016 ~ 0.069%，p = 0.002。廠內規定兩台儀器差異在 ±0.20% 內即視為一致。最恰當的結論是：",
+    opts:["p &lt; 0.01，差異極顯著，必須立刻停線校正",
+          "p 值很小，表示兩台儀器的差異很大",
+          "統計上有可偵測的微小差異，但整個 CI 都遠小於容許差，實務上可視為一致",
+          "把樣本數減到每台 3 包重做，讓結果變成不顯著就沒問題了"],
+    ans:2,
+    tags:["SIG_MEANS_IMPORTANT", "P_SMALL_BIG_EFFECT", null, "P_HACKING"],
+    exp:"n 大時再小的差異也會顯著。要不要緊要拿差異與 CI 去和容許差（或不確定度）比：0.016 ~ 0.069% 全都遠小於 0.20%。p 小不等於差異大；用減少樣本數來「製造不顯著」是 p-hacking，而且不顯著也不等於相等。" },
+
+  /* ---------- 跨章回溯 spaced ---------- */
+  { id:"ch15-s01", v:1, type:"misc", phase:"spaced", from:"ch02",
+    q:"（回顧 Ch2）用凱氏法重複測 CRM 6 次，得到粗蛋白平均值的 95% 信賴區間為 34.83 ~ 35.08%。下列哪一個解讀正確？",
+    opts:["方法的真正平均值有 95% 的機率落在 34.83 ~ 35.08 之間",
+          "這 6 次量測值中約有 95% 會落在 34.83 ~ 35.08 之間",
+          "這個方法的精密度是 95%",
+          "用同樣的程序反覆做實驗、建構區間，長期而言約 95% 的區間會蓋住真正的平均值"],
+    ans:3,
+    tags:["CI_TRUE_VALUE_PROB", "CI_COVERS_DATA", "CI_IS_PRECISION", null],
+    exp:"真正的平均值是固定的數，已經算出來的這個區間要嘛蓋住它、要嘛沒有，95% 說的是「建構程序」的長期涵蓋率（Ch2 的模擬 94.4%）。涵蓋 95% 個別數據的是約 ±2 SD 的範圍，不是 CI；95% 也不是精密度。本章又多了一種讀法：CI 是所有不會被 α = 0.05 拒絕的假設值。" }
+];
+</script>
+
+<!-- pager 必須在 app.js 之前：app.js 同步執行時才找得到它 -->
+<nav class="pager" data-pager></nav>
+<script src="assets/app.js"></script><script src="assets/js/showout.js"></script><script type="module" src="assets/js/assess.js"></script>
+</main>
+<footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫</footer>
+</body>
+</html>

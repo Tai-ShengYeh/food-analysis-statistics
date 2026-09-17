@@ -45,6 +45,11 @@ round(x_pred, 1)              # -> 11.1 ug/mL（Nielsen 解答）
 new_x <- seq(1, 20, length.out = 100)
 pred_ci <- predict(fit, newdata = data.frame(x = new_x),
                    interval = "confidence", level = 0.95)
+# 重畫校正曲線散佈圖與迴歸線，讓信賴帶疊在正確的圖上（而不是疊在上面的殘差圖）
+plot(x, y, pch = 19, col = "steelblue",
+     main = "鈉標準曲線與 95% 信賴帶",
+     xlab = "濃度 (ug/mL)", ylab = "發射訊號")
+abline(fit, col = "red", lwd = 2)
 matplot(new_x, pred_ci[, c("lwr","upr")], type = "l", lty = 2,
         col = "grey40", add = TRUE)   # 虛線即 95% 信賴帶
 points(x, y, pch = 19); abline(fit, col="red")

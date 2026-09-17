@@ -10,14 +10,12 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
-  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\[', right: '\]', display: true}]});"></script>
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true}]});"></script>
 </head>
 <body>
 <header class="topbar"><div class="inner">
 <a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
-<nav class="topnav">
-<a href="index.html">首頁</a><a href="ch00.html">Ch0 入門</a><a href="ch01.html">Ch1 統計入門</a><a href="ch02.html">Ch2 常態與CI</a><a href="ch03.html">Ch3 LOD與QC</a><a href="ch04.html">Ch4 迴歸</a><a href="ch05.html">Ch5 有效數字</a><a href="ch06.html">Ch6 不準度概念</a><a href="ch07.html">Ch7 分布與天平</a><a href="ch08.html">Ch8 合成報告</a><a href="ch09.html">Ch9 模擬法</a><a href="ch10.html">Ch10 三大案例</a><a href="ch11.html">Ch11 總複習</a><a href="ch12.html">Ch12 LC-MS/MS</a><a href="ch13.html">Ch13 FDC配方</a><a href="ch14.html">Ch14 DOE/RSM</a>
-</nav></div></header>
+<nav class="topnav" data-nav></nav></div></header>
 
 <main>
 <div class="crumbs">Part 2 量測不確定度（QUAM §7, §8.1, Appendix E.1）／第 7 章</div>
@@ -38,6 +36,8 @@
 <li>會把「±a 界限」依矩形／三角形／常態分布換算成標準不確定度</li>
 <li>完成實戰案例①：把天平稱量的三種來源換算、合成，並評估對最終濃度的貢獻</li>
 </ul></div>
+
+<div class="quiz" data-phase="pre"></div>
 
 <h2>7.1 兩種評估類型</h2>
 <div class="grid2">
@@ -77,12 +77,12 @@ u_n95  &lt;- function(a) a / qnorm(.975) # 常態(95% CI)
 round(c(flask_rect = u_rect(0.2), flask_tri = u_tri(0.2),
         balance_n95 = u_n95(0.2)), 4)
 #&gt; flask_rect flask_tri balance_n95
-#&gt;     0.1155    0.0817      0.1021
+#&gt;     0.1155    0.0816      0.1020
 
 # Type A：直接用實驗標準差
 reps &lt;- c(1001.2, 1000.8, 1001.5, 1001.0, 1000.9)
-sd(reps)              #&gt; 0.268 mg  (單次量測的 u)
-sd(reps)/sqrt(5)      #&gt; 0.120 mg  (5 次平均的 u)</pre>
+sd(reps)              #&gt; 0.277 mg  (單次量測的 u)
+sd(reps)/sqrt(5)      #&gt; 0.124 mg  (5 次平均的 u)</pre>
 <div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
 <pre class="rout-body">flask_rect   flask_tri balance_n95 
      0.1155      0.0816      0.1020 
@@ -112,7 +112,7 @@ u(m) = \(\sqrt{2}\) × \(\sqrt{(0.0029² + 0.0204² + 0.032²)}\) ≈ <strong>0.
 
 <pre class="rcode" data-file="case_balance.R"># ============ 案例① 天平稱量 (完整腳本，下載後可執行) ============
 # 三成分的標準不確定度
-u_read &lt;- 0.005 / sqrt(3)          # 讓值解析度 (矩形)
+u_read &lt;- 0.005 / sqrt(3)          # 讀值解析度 (矩形)
 u_cal   &lt;- 0.05 / sqrt(6)          # 校正線性 (三角形)
 reps &lt;- c(100.03, 100.08, 100.02, 100.09, 100.04, 100.01)
 u_rep   &lt;- sd(reps)                # 重複性 (Type A)
@@ -163,44 +163,132 @@ Type A 用重複數據算（放 <code>A1:A10</code>），Type B 用規格 ±a �
 
 <div class="quiz" id="quiz"></div>
 <script>
+const CHAPTER = "ch07";
+const MISC = {
+  TOLERANCE_IS_STD_UNC:          "直接把規格容許差 ±a 當成標準不確定度",
+  RECT_WRONG_DIVISOR:            "矩形／三角／常態分布轉標準不確定度時除數用錯（√3、√6、k）",
+  TYPEB_ALWAYS_RECT:             "以為 Type B 一律除以 √3（不看有沒有分布形狀、k 或信賴水準的資訊）",
+  TYPEB_INFERIOR:                "以為 Type B（證書、規格、經驗）是次等或不可靠的估計，只有重複實驗才算數",
+  TYPEA_RANDOM_TYPEB_SYSTEMATIC: "以為 Type A＝隨機誤差、Type B＝系統誤差",
+  TYPEA_ALWAYS_DIVIDE_SQRT_N:    "不管報告的是單次值還是平均，Type A 一律用 s/√n",
+  SD_VS_SEM:                     "分不清標準差 SD 與平均數標準誤 SEM",
+  SE_DIVIDE_BY_N:                "標準誤用 SD/n 而不是 SD/√n",
+  UNC_LINEAR_ADD:                "把不確定度分量直接相加而不是平方和開根號",
+  UNC_CANCELS_OUT:               "以為輸入量相加減時，不確定度會跟著相減、互相抵消、變小或維持不變",
+  UNC_SQUARE_STEP_WRONG:         "合成時平方／開根號的步驟弄錯（忘了先平方，或忘了最後開根號）",
+  UNC_ABS_REL_MIX:               "乘除模型該用相對不確定度卻用絕對值（或相反）",
+  ONE_TAIL_TWO_TAIL:             "單尾／雙尾機率用錯（如 qt(0.95) 當雙尾 95%）",
+  R_FUNCTION_CONFUSION:          "R 函數或參數用錯（如 pnorm/qnorm、qt 的機率參數）",
+  EXCEL_FUNCTION_CONFUSION:      "Excel 函數用錯（如 T.INV vs T.INV.2T、STDEV.P vs STDEV.S）",
+  EXTRAPOLATION_SAFE:            "以為標準曲線可以外插到最高標準品以外",
+  R2_PROVES_LINEAR:              "以為 r² 很高就證明線性、不用看殘差圖",
+  SYSTEMATIC_FIXED_BY_REPEATS:   "以為多做幾次重複就能消除系統誤差",
+  OTHER:                         "不對應特定迷思的湊數選項"
+};
 const QUIZ = [
- { q: "容量瓶證書寫「100 mL ± 0.2 mL」，未註明信賴水準。標準不確定度為：",
-   opts: ["0.2 mL", "0.2/\\(\\sqrt{3}\\) = 0.115 mL", "0.2/\\(\\sqrt{6}\\) = 0.082 mL", "0.2/1.96 = 0.102 mL"], ans: 1,
-   exp: "只有 ±a 沒有信賴水準 → 矩形分布（QUAM §8.1.4），u = a/\\(\\sqrt{3}\\) = 0.115。三角形要「極端值罕見」的額外證據；1.96 要明示 95%。" },
- { q: "天平規格「±0.2 mg（95% 信賴）」，u 為：",
-   opts: ["0.2 mg", "0.115 mg", "0.102 mg", "0.082 mg"], ans: 2,
-   exp: "明確是 95% 信賴 → 常態，u = 0.2/1.96 = 0.102（QUAM §8.1.3 原例）。" },
- { q: "Type A 與 Type B 評估的差別：",
-   opts: ["A 比較準確", "A 用重複觀測的統計（標準差）；B 用證書/規格/文獻/判斷等既有資訊", "B 不需要換算", "A 用於儀器，B 用於化學"], ans: 1,
-   exp: "兩者最後都表達為標準不確定度 u，在合成時完全平等對待——Type B 不是次等品，只是資訊來源不同。" },
- { q: "淨重 = 毛重 − 皮重，每次稱重的合成 u 為 0.039 mg，則 u(淨重) 為：",
-   opts: ["0.039 mg", "0.078 mg", "0.055 mg", "0.019 mg"], ans: 2,
-   exp: "加減模型 Rule 1：\\(\\sqrt{(0.039²+0.039²)}\\) = \\(\\sqrt{2}\\)×0.039 = 0.055。是「平方和開根號」不是直接相加，也不是除以 2。" },
- { q: "案例①中稱 100 mg 時，為什麼體積的貢獻 (0.70) 大於質量 (0.55)？",
-   opts: ["量瓶比較貴", "u(V)/V = 0.07/100 = 0.0007 大於 u(m)/m = 0.055/100.28 = 0.00055", "因為 V 在分母", "計算錯誤"], ans: 1,
-   exp: "乘除模型中各項以「相對不確定度」競爭。0.0007 &gt; 0.00055，所以體積贏。改善順序：先換更準的量瓶/控溫。" },
- { q: "同樣的天平（u_m=0.055 mg），把稱樣量從 100 mg 改成 10 mg，質量項對濃度的貢獻會：",
-   opts: ["不變", "放大 10 倍成為主導項", "縮小 10 倍", "消失"], ans: 1,
-   exp: "相對不確定度 u(m)/m 從 0.00055 變 0.0055，貢獻從 0.55 → 5.5 mg/L。稱樣量太小是不確定度的經典地雷。" }
-,
- { q: "在 R 語言中，若要將 95% 信賴水準的擴充不確定度轉換為常態分布的標準不確定度，最精確的語法為何？",
-   opts: ["a / sqrt(3)", "a / qnorm(0.95)", "a / qnorm(0.975)", "a / sqrt(6)"], ans: 2,
-   exp: "常態分布下 95% 雙尾信賴區間的臨界值約為 1.96，在 R 中使用 qnorm(0.975) 取得更精確的值，因此 a / qnorm(0.975) 是最精確的作法。" },
- { q: "在 Excel 中，要將多個獨立標準不確定度分量進行合成（即各分量的平方和開根號），最簡潔的公式是：",
-   opts: ["=SUM(B2:B4)^2", "=SQRT(SUMSQ(B2:B4))", "=SQRT(SUM(B2:B4))", "=SUMSQ(SQRT(B2:B4))"], ans: 1,
-   exp: "Excel 的 SUMSQ 函數會先計算數列的平方和，外層再包覆 SQRT 開根號，即可完美對應合成標準不確定度的公式。" },
- { q: "計算 Type A 標準不確定度（平均值的標準誤）時，若有 10 次重複量測數據，在 Excel 與 R 分別應使用哪種計算方式？",
-   opts: ["Excel: =VAR(A1:A10)/10，R: var(x)/10", "Excel: =STDEV(A1:A10)/10，R: sd(x)/10", "Excel: =STDEV(A1:A10)/SQRT(10)，R: sd(x)/sqrt(10)", "Excel: =SQRT(A1:A10)，R: sqrt(x)"], ans: 2,
-   exp: "Type A 標準不確定度為單次量測標準差除以 \\(\\sqrt{n}\\)，因此 Excel 是 STDEV 除以 SQRT(10)，R 則是 sd 除以 sqrt(10)。" }
+ /* ---------- 前測 pre ---------- */
+ { id: "ch07-p01", v: 1, type: "concept", phase: "pre",
+   q: "一支溫度計的說明書只寫「誤差在 ±1 °C 以內」，沒有其他資訊。你覺得它「典型的偏差大小」大約是多少？",
+   opts: ["就是 1 °C",
+          "比 1 °C 小一些（約 0.6 °C）：±1 是最壞的情況，大多數時候沒那麼糟",
+          "約 0.5 °C：取 ±1 的一半",
+          "無法估計：一定要自己重複量很多次才會知道"], ans: 1,
+   tags: ["TOLERANCE_IS_STD_UNC", null, "RECT_WRONG_DIVISOR", "TYPEB_INFERIOR"],
+   exp: "與 ch07-q01 同構。±a 是界限（最壞情況），典型偏差（標準差）一定比它小：矩形分布 a/√3 ≈ 0.58a。直接用 1＝把界限當標準差；除以 2 只適用於證書明說 k=2；沒做重複實驗也能用既有資訊估計（Type B）。" },
+ { id: "ch07-p02", v: 1, type: "concept", phase: "pre",
+   q: "兩家廠商的容量瓶都標示 ±0.2 mL。甲廠的品管資料顯示產品大多集中在標稱值附近、極少接近界限；乙廠沒有提供任何資訊。誰的「典型偏差」應該估得比較小？",
+   opts: ["甲廠：已知極端值很少見，典型偏差可以估得小一點",
+          "乙廠：沒有資訊就代表沒有問題",
+          "一樣大：反正都是 ±0.2 mL，換算方式只有一種",
+          "無法比較：規格書的數字不能用，要各自重複量測才算數"], ans: 0,
+   tags: [null, "RECT_WRONG_DIVISOR", "TYPEB_ALWAYS_RECT", "TYPEB_INFERIOR"],
+   exp: "與 ch07-q01／q03 同構。同樣 ±a，知道「中間值較可能」→ 三角形 a/√6 = 0.082；一無所知 → 矩形 a/√3 = 0.115（最保守）。資訊越少要估得越保守，而不是越小；換算方式取決於對分布的了解，不是只有一種。" },
+ { id: "ch07-p03", v: 1, type: "concept", phase: "pre",
+   q: "同一台廚房秤，誤差大約 ±1 g。分別用它稱 1000 g 的麵粉和 10 g 的酵母，哪一個「相對」比較不準？",
+   opts: ["一樣：同一台秤，誤差都是 ±1 g",
+          "1000 g 的麵粉：東西越重，誤差越大",
+          "10 g 的酵母：1 g 就佔了 10%，麵粉只佔 0.1%",
+          "都很準：只要秤有歸零就沒有差別"], ans: 2,
+   tags: ["UNC_ABS_REL_MIX", "UNC_ABS_REL_MIX", null, "OTHER"],
+   exp: "與 ch07-q06 同構。絕對誤差相同，但相對誤差 = 誤差÷稱樣量：1/10 = 10% vs 1/1000 = 0.1%。稱樣量太小是不確定度的經典地雷。" },
+
+ /* ---------- 課後 post ---------- */
+ { id: "ch07-q01", v: 1, type: "calc", phase: "post",
+   q: "容量瓶證書寫「100 mL ± 0.2 mL」，未註明信賴水準，也沒有其他資訊。標準不確定度為：",
+   opts: ["0.2 mL", "0.2/\\(\\sqrt{6}\\) = 0.082 mL", "0.2/1.96 = 0.102 mL", "0.2/\\(\\sqrt{3}\\) = 0.115 mL"], ans: 3,
+   tags: ["TOLERANCE_IS_STD_UNC", "RECT_WRONG_DIVISOR", "RECT_WRONG_DIVISOR", null],
+   exp: "只有 ±a、沒有信賴水準 → 矩形分布（QUAM §8.1.4），u = a/\\(\\sqrt{3}\\) = 0.115。±0.2 是界限不是標準差，不能直接當 u；三角形（\\(\\sqrt{6}\\)）需要「極端值罕見」的額外證據；1.96 要證書明示 95% 信賴。" },
+ { id: "ch07-q02", v: 1, type: "calc", phase: "post",
+   q: "天平校正證書寫「±0.2 mg（95% 信賴水準）」。請計算標準不確定度 u（mg，取 3 位小數）。",
+   num: { ans: 0.102, tol: 0.0025, unit: "mg" },
+   errs: [ { val: 0.200, tol: 0.002, tag: "TOLERANCE_IS_STD_UNC" },
+           { val: 0.115, tol: 0.002, tag: "TYPEB_ALWAYS_RECT" },
+           { val: 0.082, tol: 0.002, tag: "RECT_WRONG_DIVISOR" } ],
+   exp: "明確是 95% 信賴 → 常態分布，u = 0.2/1.96 = 0.102 mg（QUAM §8.1.3 原例；用 k=2 得 0.100 也可接受）。直接填 0.2＝把界限當標準差；0.115＝不看證書資訊、一律除以 \\(\\sqrt{3}\\)；0.082＝誤用三角形的 \\(\\sqrt{6}\\)。" },
+ { id: "ch07-q03", v: 1, type: "misc", phase: "post",
+   q: "同學說：「<em>Type A 處理隨機誤差、Type B 處理系統誤差；而且 Type B 沒有實驗數據、是用估的，所以合成時應該打個折。</em>」這段話的問題在哪？",
+   opts: ["A／B 只是「資訊來源」不同（重複觀測的統計 vs 證書／規格／文獻／判斷），與隨機／系統無關；換算成 u 之後兩者平等合成",
+          "前半句是對的（A＝隨機、B＝系統），只有「打折」這部分錯",
+          "整段都對：Type B 沒有實驗數據，可靠度本來就比較低",
+          "問題在 Type B 根本不需要換算，證書的 ±a 直接當 u 用就好"], ans: 0,
+   tags: [null, "TYPEA_RANDOM_TYPEB_SYSTEMATIC", "TYPEB_INFERIOR", "TOLERANCE_IS_STD_UNC"],
+   exp: "Type A／B 是「評估方式」的分類，不是誤差種類的分類：重複性可以用 Type A（自己做重複）也可以用 Type B（引用方法確效數據）評估。兩者最後都表達為標準不確定度 u，合成時完全平等——Type B 不是次等品。而 ±a 必須依分布除以 \\(\\sqrt{3}\\)、\\(\\sqrt{6}\\) 或 k 才是 u。" },
+ { id: "ch07-q04", v: 1, type: "calc", phase: "post",
+   q: "淨重 = 毛重 − 皮重。每一次稱重的合成 u 為 0.039 mg，則 u(淨重) 為：",
+   opts: ["0.039 mg（相減之後不變）", "0.078 mg（0.039 + 0.039）", "0.055 mg（\\(\\sqrt{2}\\) × 0.039）", "0.028 mg（0.039/\\(\\sqrt{2}\\)）"], ans: 2,
+   tags: ["UNC_CANCELS_OUT", "UNC_LINEAR_ADD", null, "UNC_CANCELS_OUT"],
+   exp: "加減模型 Rule 1：\\(\\sqrt{0.039^2+0.039^2}\\) = \\(\\sqrt{2}\\)×0.039 = 0.055。模型裡是「相減」，但兩次稱重各自獨立的不確定度是「平方相加」——不會抵消、不會變小，也不是直接相加（0.078）。" },
+ { id: "ch07-q05", v: 1, type: "concept", phase: "post",
+   q: "案例①中稱 100 mg 時，為什麼體積對濃度的貢獻（0.70 mg/L）大於質量的貢獻（0.55 mg/L）？",
+   opts: ["因為 u(V) = 0.07 這個數字比 u(m) = 0.055 大",
+          "因為相對不確定度 u(V)/V = 0.07/100 = 0.0007，大於 u(m)/m = 0.055/100.28 = 0.00055",
+          "因為 V 在分母，分母的影響一定比分子大",
+          "因為質量稱了兩次（皮重＋毛重），誤差已經被平均掉了"], ans: 1,
+   tags: ["UNC_ABS_REL_MIX", null, "OTHER", "UNC_CANCELS_OUT"],
+   exp: "乘除模型中各項以「相對不確定度」競爭：0.0007 &gt; 0.00055，所以體積贏。0.07 mL 與 0.055 mg 單位不同，直接比大小沒有意義；分子分母在 Rule 2 中地位相同；稱兩次是讓 u(m) 變大（×\\(\\sqrt{2}\\)），不是被平均掉。改善順序：先換更準的量瓶／控溫。" },
+ { id: "ch07-q06", v: 1, type: "concept", phase: "post",
+   q: "同一台天平（u(m) = 0.055 mg），配製同樣濃度的標準液，但把稱樣量從 100 mg 改成 10 mg。質量項對濃度的貢獻會：",
+   opts: ["不變，因為天平的 u(m) 沒有變",
+          "縮小 10 倍，因為稱得少、誤差也跟著少",
+          "放大約 \\(\\sqrt{10}\\) ≈ 3 倍",
+          "放大 10 倍（0.55 → 5.5 mg/L），變成主導項"], ans: 3,
+   tags: ["UNC_ABS_REL_MIX", "UNC_ABS_REL_MIX", "OTHER", null],
+   exp: "乘除模型看的是相對不確定度：u(m)/m 從 0.00055 變成 0.0055，貢獻從 0.55 → 5.5 mg/L，超過體積的 0.70 成為主導。天平的絕對 u 不變，但分母 m 變小了 10 倍；\\(\\sqrt{n}\\) 是重複次數的效應，與稱樣量無關。稱樣量是方法設計的關鍵決策。" },
+ { id: "ch07-q07", v: 1, type: "rout", phase: "post",
+   q: "證書給的是「±a（95% 信賴水準，常態）」。在 R 中換算成標準不確定度，最精確的寫法是：",
+   opts: ["a / sqrt(3)", "a / qnorm(0.95)", "a / qnorm(0.975)", "a / pnorm(0.975)"], ans: 2,
+   tags: ["TYPEB_ALWAYS_RECT", "ONE_TAIL_TWO_TAIL", null, "R_FUNCTION_CONFUSION"],
+   exp: "雙尾 95% → 每邊 2.5%，臨界值是 qnorm(0.975) = 1.96。qnorm(0.95) = 1.645 是單尾 95%（雙尾 90%）；pnorm 是「由 z 求機率」，方向相反；sqrt(3) 只用在沒有信賴水準資訊的矩形分布。" },
+ { id: "ch07-q08", v: 1, type: "rout", phase: "post",
+   q: "Excel 的 B2:B4 放了三個獨立的標準不確定度分量 u。要合成（平方和開根號），正確的公式是：",
+   opts: ["=SQRT(SUMSQ(B2:B4))", "=SUM(B2:B4)", "=SQRT(SUM(B2:B4))", "=SUMSQ(SQRT(B2:B4))"], ans: 0,
+   tags: [null, "UNC_LINEAR_ADD", "UNC_SQUARE_STEP_WRONG", "EXCEL_FUNCTION_CONFUSION"],
+   exp: "SUMSQ 先算平方和，外層 SQRT 開根號 → 對應 \\(\\sqrt{\\sum u_i^2}\\)。=SUM 是直接相加（高估）；=SQRT(SUM()) 沒有先平方；=SUMSQ(SQRT()) 把順序寫反，結果等於直接相加。" },
+ { id: "ch07-q09", v: 1, type: "rout", phase: "post",
+   q: "同一樣品稱 5 次，<code>sd(reps)</code> 與 <code>sd(reps)/sqrt(5)</code> 的 R 輸出如下。Type A 標準不確定度該用哪一個？<pre>[1] 0.2774887\n[1] 0.1240967</pre>",
+   opts: ["都用 0.277：SD 就是不確定度，跟報告什麼無關",
+          "看報告的是什麼：報「單次稱量」用 0.277；報「5 次平均」用 0.124",
+          "都用 0.124：Type A 一律除以 \\(\\sqrt{n}\\)",
+          "報平均時應該用 0.277/5 = 0.055"], ans: 1,
+   tags: ["SD_VS_SEM", null, "TYPEA_ALWAYS_DIVIDE_SQRT_N", "SE_DIVIDE_BY_N"],
+   exp: "u(x) = s 描述「單次量測」的散布；若結果是 n 次平均，才用 s/\\(\\sqrt{n}\\)。日常只稱一次卻用 s/\\(\\sqrt{n}\\) 會低估不確定度；報平均卻用 s 則高估。除數是 \\(\\sqrt{n}\\) 不是 n。Excel 對應寫法：=STDEV(A1:A5) 與 =STDEV(A1:A5)/SQRT(5)。" },
+
+ /* ---------- 回溯 spaced ---------- */
+ { id: "ch07-s01", v: 1, type: "concept", phase: "spaced", from: "ch04",
+   q: "標準曲線 r² = 0.999，最高標準品為 50 mg/L。某樣品由曲線反推得 68 mg/L。最恰當的處理是：",
+   opts: ["r² 這麼高，直接報 68 mg/L",
+          "r² 高已經證明是線性，不必看殘差圖，外插也安全",
+          "多注射幾次取平均，再報 68 mg/L",
+          "把樣品稀釋到落在 0–50 mg/L 範圍內重測，再乘回稀釋倍數"], ans: 3,
+   tags: ["EXTRAPOLATION_SAFE", "R2_PROVES_LINEAR", "SYSTEMATIC_FIXED_BY_REPEATS", null],
+   exp: "Ch4：不要外插——最高標準品以外的線性沒有被驗證過（偵測器可能已飽和）。r² 高也不能保證線性，要看殘差圖；重複注射只能縮小隨機散布，修不了外插造成的偏差。與本章呼應：稀釋會多帶入移液管與容量瓶的 Type B 不確定度，要計入預算。" }
 ];
 </script>
 <script src="assets/app.js"></script>
 <script src="assets/js/showout.js"></script>
+<script type="module" src="assets/js/assess.js"></script>
 
-<nav class="pager">
-<a href="ch06.html"><small>上一章</small>Ch6 量測不確定度概念</a>
-<a href="ch08.html"><small>下一章</small>Ch8 合成、擴展與符合性判定</a>
-</nav>
+<nav class="pager" data-pager></nav>
 </main>
 <footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫</footer>
 </body>

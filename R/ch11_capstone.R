@@ -1,7 +1,7 @@
 # =====================================================================
 # Ch10 綜合案例：把所有工具串起來
-# 案例1 鎘標準液不準度預算 | 案例2 飼料粗纖維(QUAM A6)
-# 案例3 標準曲線內插的不準度(QUAM 附錄 E.4)
+# 案例1 鎘標準液不確定度預算 | 案例2 飼料粗纖維(QUAM A6)
+# 案例3 標準曲線內插的不確定度(QUAM 附錄 E.4)
 # =====================================================================
 
 # =============== 案例 2：粗纖維 (QUAM Example A6) ===============
@@ -16,7 +16,7 @@ sR_table <- data.frame(
   s_r    = c(0.198, 0.358, 0.264, 0.232, 0.391))
 print(sR_table)
 
-# 觀察：sR 約為纖維含量的線性函數 -> 相對標準不準度隨含量遞減
+# 觀察：sR 約為纖維含量的線性函數 -> 相對標準不確定度隨含量遞減
 plot(sR_table$fibre, sR_table$sR, pch = 19, col = "brown",
      main = "粗纖維：再現性標準差與含量的關係",
      xlab = "纖維含量 (% m/m)", ylab = "sR (% m/m)")
@@ -37,7 +37,7 @@ data.frame(fibre = fibre_levels,
            U  = round(U_levels, 2),
            U_percent = round(U_levels/fibre_levels*100))
 
-# =============== 案例 3：標準曲線內插的不準度 ===============
+# =============== 案例 3：標準曲線內插的不確定度 ===============
 # QUAM 附錄 E.4 Eq.E3.5：反推濃度的變異數
 # var(x_pred) = (S^2/b1^2) * ( 1/p + 1/n + (x_pred - xbar)^2 / Sxx )
 #   S  = 迴歸殘差標準差, b1 = 斜率, p = 未知樣品重複測定次數,
@@ -58,13 +58,13 @@ u_xpred <- sqrt(var_xpred)
 c(x_pred = x_pred, u = u_xpred, U_k2 = 2*u_xpred)
 # 報告：Na = 11.1 ± 0.4 ug/mL (k=2) 之類的格式
 
-# 畫出「內插濃度的不準度」隨濃度的變化 —— 兩端最寬!
+# 畫出「內插濃度的不確定度」隨濃度的變化 —— 兩端最寬!
 new_x <- seq(1, 20, length = 50)
 u_curve <- sapply(new_x, function(xp) {
   sqrt((S^2/b1^2) * (1/p_reps + 1/n + (xp - xbar)^2/Sxx))
 })
 plot(new_x, 2*u_curve, type = "l", lwd = 2, col = "purple",
-     main = "標準曲線反推濃度的 95% 不準度 (k=2)",
+     main = "標準曲線反推濃度的 95% 不確定度 (k=2)",
      xlab = "濃度 ug/mL", ylab = "±U (ug/mL)")
 abline(v = x_pred, lty = 2, col = "grey")
 

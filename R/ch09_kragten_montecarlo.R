@@ -29,7 +29,7 @@ contrib <- c(
 round(contrib, 3)              # 體積貢獻最大！
 
 barplot(contrib, col = c("tomato","gold","steelblue"),
-        main = "不準度預算 (uncertainty budget)",
+        main = "不確定度預算 (uncertainty budget)",
         ylab = "|u(y,x_i)| (mg/L)", las = 1)
 
 # ---------- 2. 方法二：Kragten 數值微分法 ----------
@@ -53,7 +53,7 @@ round(res_k$uc, 2)
 
 # ---------- 3. 方法三：Monte Carlo 模擬 (GUM Supplement 1) ----------
 # 把每個輸入量視為「分布」，隨機抽樣 N 次，算出 N 個可能的 y，
-# 直接用 y 的分布敘述不準度 —— 完全不需要偏微分！
+# 直接用 y 的分布敘述不確定度 —— 完全不需要偏微分！
 set.seed(2024)
 N <- 100000
 m_sim <- rnorm(N, m, u_m)      # Type A/常態來源用常態抽樣
@@ -70,7 +70,7 @@ abline(v = c_Cd, col = "red", lwd = 2)             # GUM 點估計
 mc_mean <- mean(y_mc)
 mc_interval <- quantile(y_mc, c(0.025, 0.975))
 round(mc_interval, 1)          # 95% 涵蓋區間
-sd(y_mc)                       # MC 的標準不準度 ~ 解析法 uc
+sd(y_mc)                       # MC 的標準不確定度 ~ 解析法 uc
 
 # 三種方法比較
 cat(sprintf("解析法   : %.3f mg/L\n", uc_analytic))

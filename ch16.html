@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ch16 單因子變異數分析與事後比較</title>
+<link rel="stylesheet" href="assets/style.css">
+
+<!-- KaTeX -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true}]});"></script>
+</head>
+<body>
+<header class="topbar"><div class="inner">
+<a class="brand" href="index.html">食品分析數據品管<small>Statistics &amp; Measurement Uncertainty</small></a>
+<nav class="topnav" data-nav></nav>
+</div></header>
+
+<main>
+<div class="crumbs">Part 1B 比較與檢定／第 16 章</div>
+<h1>單因子變異數分析與事後比較
+<span class="en">One-way ANOVA &amp; Post-hoc Comparisons</span></h1>
+
+<p class="lede">你用甲醇、乙醇、丙酮三種溶劑各萃取 5 次總多酚，老闆只問一句：「哪種溶劑比較好？」三組數據、兩兩比要比三次——直接做三次 t 檢定可以嗎？這一章告訴你為什麼不行，以及正確的做法。</p>
+
+<div class="callout"><span class="t">🔑 課前暖身</span>
+<a href="ch15.html">Ch15</a> 學過：<strong>H<sub>0</sub></strong> 是「沒有差異」的預設立場，<strong>p 值</strong>是「若 H<sub>0</sub> 為真，出現這麼極端數據的機率」；
+比兩組平均用 <strong>t 檢定</strong>，比兩組變異數用 <strong>F 檢定</strong>（<code>var.test</code>）。Ch15 最後也預告了：檢定做越多次，「至少一次假警報」的機率就越膨脹。
+本章把比較對象從兩組推廣到<strong>三組以上</strong>。<br>
+<strong>本章新詞先認識</strong>：<em>ANOVA（變異數分析）</em>＝一次檢定「所有組的平均是否全相等」；<em>組間／組內變異</em>＝「組與組差多少」對「同組內自己晃多少」；<em>事後比較（post-hoc）</em>＝ANOVA 顯著之後，再找出「到底是誰跟誰不同」；<em>字母標示</em>＝論文表格裡平均值右上角的 a、b、ab。<br>
+<small>名詞卡住了？回 <a href="ch00.html">Ch0 名詞圖鑑</a> 查白話解釋與比喻。</small></div>
+
+<div class="goals"><b>學習目標</b>
+<ul>
+<li>說明為什麼三組以上不能用多次 t 檢定，並能算出整體型一錯誤 \(1-(1-\alpha)^m\)</li>
+<li>理解 ANOVA 把總變異拆成「組間＋組內」，會手算 SS、df、MS、F，並讀懂 <code>summary(aov())</code> 的每一欄</li>
+<li>會用 <code>TukeyHSD()</code>、<code>pairwise.t.test()</code> 做事後比較，並正確寫出與解讀字母標示（a、b、ab）</li>
+<li>會檢查三個前提（獨立、殘差常態、等變異），前提不成立時改用 Welch ANOVA 或 Kruskal–Wallis</li>
+<li>會計算效果量 η²，並分辨「統計顯著」與「實務重要」；能寫出一段合格的結果敘述</li>
+</ul></div>
+
+<div class="quiz" data-phase="pre"></div>
+
+<h2>16.1 開場情境：三種溶劑，哪個萃取得多？</h2>
+<p>同一批乾燥茶葉粉末，分別用<strong>甲醇、乙醇、丙酮</strong>（皆為 70% 水溶液）萃取，每種溶劑<strong>獨立秤樣、獨立萃取 5 次</strong>，以 Folin–Ciocalteu 法測總多酚（mg GAE/g）：</p>
+<table>
+<tr><th>溶劑</th><th class="num">1</th><th class="num">2</th><th class="num">3</th><th class="num">4</th><th class="num">5</th><th class="num">平均</th><th class="num">SD</th></tr>
+<tr><td>甲醇 Methanol</td><td class="num">12.4</td><td class="num">13.1</td><td class="num">12.8</td><td class="num">11.9</td><td class="num">12.6</td><td class="num">12.56</td><td class="num">0.45</td></tr>
+<tr><td>乙醇 Ethanol</td><td class="num">13.0</td><td class="num">12.2</td><td class="num">13.5</td><td class="num">12.9</td><td class="num">13.3</td><td class="num">12.98</td><td class="num">0.50</td></tr>
+<tr><td>丙酮 Acetone</td><td class="num">14.8</td><td class="num">15.4</td><td class="num">14.5</td><td class="num">15.1</td><td class="num">15.6</td><td class="num">15.08</td><td class="num">0.44</td></tr>
+</table>
+
+<pre class="rcode" data-file="ch16_ex1.R"># --- 建立資料：一欄是「組別」(factor)，一欄是「量測值」---
+solvent &lt;- factor(rep(c("Methanol", "Ethanol", "Acetone"), each = 5),
+                  levels = c("Methanol", "Ethanol", "Acetone"))
+tpc &lt;- c(12.4, 13.1, 12.8, 11.9, 12.6,     # 甲醇
+         13.0, 12.2, 13.5, 12.9, 13.3,     # 乙醇
+         14.8, 15.4, 14.5, 15.1, 15.6)     # 丙酮
+dat &lt;- data.frame(solvent, tpc)
+
+grp_mean &lt;- tapply(tpc, solvent, mean)     # 各組平均
+grp_sd   &lt;- tapply(tpc, solvent, sd)       # 各組標準差
+round(rbind(mean = grp_mean, sd = grp_sd), 3)
+mean(tpc)                                  # 總平均 (grand mean)</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">     Methanol Ethanol Acetone
+mean   12.560  12.980  15.080
+sd      0.451   0.497   0.444
+[1] 13.54</pre></div>
+
+<div class="figure">
+<img src="assets/img/fig_ch16_boxplot.png" alt="三種溶劑總多酚的盒鬚圖、原始數據點與組平均">
+<div class="cap">圖 16-1 先畫圖再檢定：丙酮明顯較高；甲醇與乙醇的數據點大幅重疊。菱形是組平均，虛線是總平均 13.54。（a、b 字母在 16.5 節說明）</div>
+</div>
+<p>肉眼看：丙酮「應該」比較高，甲醇和乙醇「好像」差不多。但「應該」「好像」不能寫進報告——我們需要一個檢定。</p>
+
+<h2>16.2 為什麼不能做三次 t 檢定？</h2>
+<p>三組兩兩比較要做 \(\binom{3}{2}=3\) 次 t 檢定。每一次都有 α = 0.05 的機率「明明沒差卻判成有差」（型一錯誤、假警報）。
+做 <i>m</i> 次獨立檢定，<strong>至少出現一次假警報</strong>的機率是：</p>
+<div class="formula">
+整體型一錯誤（family-wise error rate）= 1 − (1 − α)<sup><i>m</i></sup>
+<span class="note">3 組 → m=3 → 1 − 0.95³ = 0.143；5 組 → m=10 → 0.401；6 組 → m=15 → 0.537</span>
+</div>
+<p>就像買樂透：一張中獎機率很低，但買越多張，「至少中一張」的機率就越高——只是這裡中的是「錯誤結論」。
+別只相信公式，用模擬親眼看：讓三組數據<strong>其實都來自同一個母體</strong>（H<sub>0</sub> 為真），重複 2000 次實驗，數一數兩種做法各喊了幾次「有差異」。</p>
+
+<pre class="rcode" data-file="ch16_ex2.R">k_pairs &lt;- choose(3, 2)                    # 3 組 -&gt; 3 對
+1 - 0.95^k_pairs                           # 若三次檢定互相獨立的理論值
+round(1 - 0.95^choose(3:6, 2), 3)          # 3,4,5,6 組時的理論值
+
+set.seed(2026)
+B &lt;- 2000                                  # 重複 2000 次「H0 為真」的實驗
+g3 &lt;- factor(rep(c("A", "B", "C"), each = 5))
+any_t   &lt;- logical(B)                      # 三次 t 檢定「任一」顯著？
+aov_sig &lt;- logical(B)                      # ANOVA 顯著？
+for (b in 1:B) {
+  y &lt;- rnorm(15, mean = 13, sd = 0.5)      # 三組其實來自同一個母體
+  p_ab &lt;- t.test(y[g3 == "A"], y[g3 == "B"])$p.value
+  p_ac &lt;- t.test(y[g3 == "A"], y[g3 == "C"])$p.value
+  p_bc &lt;- t.test(y[g3 == "B"], y[g3 == "C"])$p.value
+  any_t[b]   &lt;- min(p_ab, p_ac, p_bc) &lt; 0.05
+  aov_sig[b] &lt;- summary(aov(y ~ g3))[[1]][["Pr(&gt;F)"]][1] &lt; 0.05
+}
+c(three_t_tests = mean(any_t), anova = mean(aov_sig))</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">[1] 0.142625
+[1] 0.143 0.265 0.401 0.537
+three_t_tests         anova
+       0.1165        0.0520 </pre></div>
+
+<p>明明三組完全沒差，「三次 t 檢定」卻有 <strong>11.7%</strong> 的機率喊出至少一個「顯著」，是名目 5% 的兩倍多；<strong>ANOVA 只做一次檢定，假警報率守在 5.2%</strong>。
+（模擬值 11.7% 略低於理論值 14.3%，是因為三次 t 檢定共用同樣的組、彼此不獨立；公式是「獨立」時的近似，但膨脹的結論不變。）</p>
+<div class="callout warn"><span class="t">⚠️ 正確流程</span>
+<strong>先用 ANOVA 一次問「所有組平均是否全相等」</strong> → 若顯著，再用<strong>有校正多重比較</strong>的事後檢定（16.5 節）找出誰跟誰不同。
+多次未校正的 t 檢定<strong>不能</strong>取代這個流程。</div>
+
+<h2>16.3 ANOVA 的核心想法：把變異拆成兩份</h2>
+<p>ANOVA 的假說：</p>
+<div class="formula">
+H<sub>0</sub>：μ<sub>甲醇</sub> = μ<sub>乙醇</sub> = μ<sub>丙酮</sub>（所有組的母體平均<strong>全部相等</strong>）<br>
+H<sub>1</sub>：<strong>至少有一組</strong>的平均與其他不同
+<span class="note">注意 H1 不是「每一組都不同」——這是本章最常見的誤解</span>
+</div>
+<p>想法很直覺。15 筆數據之所以不一樣，原因只有兩種：</p>
+<div class="grid2">
+<div class="card"><h3>組內變異（within）</h3>
+同一種溶劑、重複 5 次，數值還是不一樣——這是<strong>隨機誤差</strong>（秤量、萃取、呈色、讀值…），就是方法的重複性。<br>
+量法：每一筆數據 − <strong>自己那組的平均</strong>。</div>
+<div class="card"><h3>組間變異（between）</h3>
+三種溶劑的<strong>組平均</strong>彼此不同——這裡面混了「溶劑真的有效應」＋「隨機誤差」。<br>
+量法：每組的平均 − <strong>總平均</strong>。</div>
+</div>
+<div class="figure">
+<img src="assets/img/fig_ch16_partition.png" alt="組間變異與組內變異示意圖">
+<div class="cap">圖 16-2 細線＝組內變異（每筆到自己組平均）；紅色粗箭頭＝組間變異（組平均到總平均）。丙酮的紅箭頭遠比任何一條細線長 → 組間變異遠大於隨機誤差。</div>
+</div>
+<p>如果溶劑<strong>其實沒有效應</strong>（H<sub>0</sub> 為真），組平均之間的差異就只是隨機誤差造成的，那麼「用組間估出來的變異數」和「用組內估出來的變異數」應該<strong>差不多大</strong>，兩者相除 ≈ 1。
+如果溶劑<strong>真的有效應</strong>，組間那一份會被撐大，比值遠大於 1：</p>
+<div class="formula">
+F = <span class="frac"><span class="num">MS<sub>between</sub>（組間均方）</span><span class="den">MS<sub>within</sub>（組內均方）</span></span>，
+其中 MS = <span class="frac"><span class="num">SS（平方和）</span><span class="den">df（自由度）</span></span>
+<span class="note">df<sub>between</sub> = k − 1（k = 組數）；df<sub>within</sub> = N − k（N = 總筆數）；SS<sub>total</sub> = SS<sub>between</sub> + SS<sub>within</sub></span>
+</div>
+<div class="callout"><span class="t">💡 名字叫「變異數分析」，檢定的卻是「平均數」</span>
+ANOVA 是<strong>拿變異數當工具</strong>（比較兩種變異數估計值的比），去回答一個關於<strong>平均數</strong>的問題（各組平均是否全相等）。
+它<strong>不是</strong>在檢定「各組變異數是否相等」——那是 Ch15 的 <code>var.test</code> 與本章 16.6 節 <code>bartlett.test</code> 的工作。
+另外，這個 F 和 Ch15 的 F 檢定是同一個 F 分布，只是這裡的分子分母換成「組間均方／組內均方」，而且<strong>只看右尾</strong>（F 大才是證據）。</div>
+
+<p>先一步一步手算，知道每個數字怎麼來：</p>
+<pre class="rcode" data-file="ch16_ex3.R">N &lt;- length(tpc)                           # 總樣本數 15
+k &lt;- nlevels(solvent)                      # 組數 3
+n_i &lt;- tapply(tpc, solvent, length)        # 各組 n
+grand &lt;- mean(tpc)
+
+SS_between &lt;- sum(n_i * (grp_mean - grand)^2)          # 組間：各組平均離總平均多遠
+SS_within  &lt;- sum((tpc - ave(tpc, solvent))^2)         # 組內：每筆離自己組平均多遠
+SS_total   &lt;- sum((tpc - grand)^2)                     # 總變異
+c(SS_between = SS_between, SS_within = SS_within,
+  sum = SS_between + SS_within, SS_total = SS_total)
+
+df_between &lt;- k - 1                        # 2
+df_within  &lt;- N - k                        # 12
+MS_between &lt;- SS_between / df_between
+MS_within  &lt;- SS_within  / df_within
+F_value &lt;- MS_between / MS_within
+p_value &lt;- pf(F_value, df_between, df_within, lower.tail = FALSE)
+round(c(MS_between = MS_between, MS_within = MS_within, F = F_value), 4)
+p_value
+sqrt(MS_within)                            # 合併標準差 (pooled SD)：方法的組內重複性</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">SS_between  SS_within        sum   SS_total
+    18.228      2.588     20.816     20.816
+MS_between  MS_within          F
+    9.1140     0.2157    42.2597
+[1] 3.693193e-06
+[1] 0.4643993</pre></div>
+<p>驗證了 18.228 + 2.588 = 20.816：<strong>總變異被完整拆成兩份</strong>。組間均方 9.114 是組內均方 0.2157 的 <strong>42 倍</strong>，
+若 H<sub>0</sub> 為真，出現這麼大 F 的機率只有 3.7×10<sup>−6</sup>。
+順帶一提，\(\sqrt{MS_{within}}\) = 0.46 mg GAE/g 就是三組合併的重複性標準差，和表中各組 SD（0.44–0.50）一致。</p>
+
+<h2>16.4 一行指令 <code>aov()</code>，與 ANOVA 表怎麼讀</h2>
+<pre class="rcode" data-file="ch16_ex4.R">fit &lt;- aov(tpc ~ solvent, data = dat)      # 讀作「tpc 由 solvent 解釋」
+summary(fit)
+qf(0.95, df_between, df_within)            # F 臨界值 (alpha = 0.05)</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">            Df Sum Sq Mean Sq F value   Pr(&gt;F)
+solvent      2 18.228   9.114   42.26 3.69e-06 ***
+Residuals   12  2.588   0.216
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+[1] 3.885294</pre></div>
+<p>和手算<strong>完全一致</strong>。這張表每一欄的意思：</p>
+<table>
+<tr><th>欄位</th><th>意思</th><th>本例</th></tr>
+<tr><td><code>solvent</code> 列</td><td>組間（因子造成的）</td><td>—</td></tr>
+<tr><td><code>Residuals</code> 列</td><td>組內（殘差＝隨機誤差）</td><td>—</td></tr>
+<tr><td><code>Df</code></td><td>自由度：組間 k−1；組內 N−k。<strong>不是樣本數</strong>，但可反推：組數 = 2+1 = 3，總筆數 = 2+12+1 = 15</td><td>2；12</td></tr>
+<tr><td><code>Sum Sq</code></td><td>平方和 SS：變異的「總量」</td><td>18.228；2.588</td></tr>
+<tr><td><code>Mean Sq</code></td><td>均方 MS = SS/df：變異的「平均量」，就是變異數的估計值。Residuals 的 MS 開根號＝合併 SD</td><td>9.114；0.216</td></tr>
+<tr><td><code>F value</code></td><td>MS<sub>組間</sub> / MS<sub>組內</sub>；H<sub>0</sub> 為真時應接近 1</td><td>42.26</td></tr>
+<tr><td><code>Pr(&gt;F)</code></td><td>p 值：F 分布（df = 2, 12）右尾面積。星號只是 p 的分級標記</td><td>3.69×10<sup>−6</sup></td></tr>
+</table>
+<p><strong>結論</strong>：F(2, 12) = 42.26 遠大於臨界值 3.89，p &lt; 0.001 → 拒絕 H<sub>0</sub>，<strong>三種溶劑的平均總多酚不全相等</strong>。
+但到這裡為止，我們<strong>只知道「至少有一組不同」，還不知道是誰</strong>。</p>
+
+<h2>16.5 事後比較：到底誰跟誰不同？</h2>
+<div class="callout danger"><span class="t">🚫 ANOVA 顯著 ≠ 每一組都不同</span>
+ANOVA 顯著只告訴你「不是全部相等」。三組的可能情形很多：一組特別高、其他兩組相同；或三組兩兩都不同。要分辨，必須做事後比較。</div>
+
+<h3>(1) Tukey HSD：最常用的「所有兩兩比較」</h3>
+<p>Tukey 法把「所有兩兩比較」當成<strong>一整個家族</strong>，保證整個家族的假警報率仍是 5%（<em>family-wise</em>），直接解決 16.2 節的膨脹問題。</p>
+<pre class="rcode" data-file="ch16_ex5.R">tk &lt;- TukeyHSD(fit)
+tk
+qtukey(0.95, k, df_within) * sqrt(MS_within / 5)   # HSD：兩組平均至少要差這麼多才顯著
+plot(tk)                                   # 畫出三個差值的 95% 信賴區間</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">  Tukey multiple comparisons of means
+    95% family-wise confidence level
+
+Fit: aov(formula = tpc ~ solvent, data = dat)
+
+$solvent
+                 diff        lwr      upr     p adj
+Ethanol-Methanol 0.42 -0.3635832 1.203583 0.3572998
+Acetone-Methanol 2.52  1.7364168 3.303583 0.0000051
+Acetone-Ethanol  2.10  1.3164168 2.883583 0.0000322
+
+[1] 0.7835832</pre></div>
+<p><strong>怎麼讀</strong>：<code>diff</code> = 前者平均 − 後者平均；<code>lwr</code>/<code>upr</code> = 差值的 95% 信賴區間；<code>p adj</code> = 已校正多重比較的 p 值。
+判讀口訣：<strong>區間不含 0（或 p adj &lt; 0.05）→ 這一對有顯著差異</strong>。</p>
+<ul>
+<li>丙酮 − 甲醇 = 2.52（1.74 ~ 3.30），p adj &lt; 0.001 → 顯著</li>
+<li>丙酮 − 乙醇 = 2.10（1.32 ~ 2.88），p adj &lt; 0.001 → 顯著</li>
+<li>乙醇 − 甲醇 = 0.42（−0.36 ~ 1.20），p adj = 0.36 → <strong>不顯著</strong>（區間跨過 0）</li>
+</ul>
+<p>最後一行的 HSD = 0.78 是「最小顯著差距」：各組 n 相同時，任兩組平均要差超過 0.78 mg GAE/g 才算顯著（0.42 &lt; 0.78，所以乙醇與甲醇分不出來）。</p>
+<div class="figure">
+<img src="assets/img/fig_ch16_tukey.png" alt="TukeyHSD 三個兩兩差值的 95% 信賴區間">
+<div class="cap">圖 16-3 <code>plot(TukeyHSD(fit))</code> 的重繪版：灰色區間跨過 0（虛線）＝不顯著；紅色區間完全在 0 的右邊＝顯著。</div>
+</div>
+
+<h3>(2) <code>pairwise.t.test()</code> + Holm 校正</h3>
+<p>另一條路：照樣做兩兩 t 檢定，但<strong>把 p 值調大來補償多重比較</strong>。Holm 法比傳統 Bonferroni（p × 次數）不那麼保守，是通用的好選擇。</p>
+<pre class="rcode" data-file="ch16_ex6.R">pairwise.t.test(tpc, solvent, p.adjust.method = "holm")</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">
+	Pairwise comparisons using t tests with pooled SD
+
+data:  tpc and solvent
+
+        Methanol Ethanol
+Ethanol 0.18     -
+Acetone 5.5e-06  2.3e-05
+
+P value adjustment method: holm </pre></div>
+<p>表中每格是該對比較的<strong>校正後 p 值</strong>：乙醇–甲醇 0.18（不顯著），丙酮對另兩者都 &lt; 0.001。結論與 Tukey 相同。
+兩種方法 p 值不會一模一樣（校正原理不同），<strong>事前選定一種、寫進報告</strong>即可，不要兩種都跑再挑喜歡的。</p>
+
+<h3>(3) 論文常見的字母標示：a、b、ab</h3>
+<p>食品期刊的表格常在平均值後面標小寫字母，註腳寫「同欄不同字母表示有顯著差異（Tukey, p &lt; 0.05）」。規則只有一條：</p>
+<div class="callout ok"><span class="t">🔤 字母的唯一規則</span>
+<strong>兩組只要「共用至少一個字母」＝彼此沒有顯著差異；「完全沒有共同字母」＝有顯著差異。</strong><br>
+字母<strong>不是</strong>成績等第，也不代表差多少；習慣上平均最大的組從 a 開始標，但也有人從最小開始，<strong>要看註腳</strong>。</div>
+<p><strong>手動推導三步驟</strong>（各組 n 相同時適用）：① 把平均由大到小排好；② 從最大的開始，往下找「彼此全部不顯著」的最長一串，這一串發同一個字母；③ 換下一串發下一個字母，一組若同時屬於兩串，就拿到兩個字母。</p>
+<p>主範例：丙酮 15.08 ｜ 乙醇 12.98、甲醇 12.56。丙酮和誰都顯著不同 → 自己一串「a」；乙醇和甲醇彼此不顯著 → 同一串「b」。結果：<strong>丙酮 a、乙醇 b、甲醇 b</strong>（見圖 16-1）。</p>
+<p>把三步驟寫成一個小函數（只用 base R），順便用第三組資料看看 <strong>ab</strong> 是怎麼出現的——<strong>乾燥溫度（40／50／60 °C）對維生素 C 保留率（%）</strong>：</p>
+<pre class="rcode" data-file="ch16_ex7.R">cld_simple &lt;- function(fit_aov, alpha = 0.05) {
+  fac &lt;- names(fit_aov$xlevels)[1]
+  y   &lt;- fit_aov$model[[1]]; g &lt;- fit_aov$model[[2]]
+  m   &lt;- sort(tapply(y, g, mean), decreasing = TRUE)      # (1) 由大到小
+  nm  &lt;- names(m); kk &lt;- length(nm)
+  tkp &lt;- TukeyHSD(fit_aov)[[fac]][, "p adj"]
+  ns  &lt;- matrix(TRUE, kk, kk, dimnames = list(nm, nm))   # TRUE = 不顯著
+  for (pair in names(tkp)) {
+    ab &lt;- strsplit(pair, "-")[[1]]
+    ns[ab[1], ab[2]] &lt;- ns[ab[2], ab[1]] &lt;- tkp[[pair]] &gt;= alpha
+  }
+  runs &lt;- list()
+  for (i in 1:kk) {                        # (2) 從第 i 組往下延伸，直到出現顯著差異
+    j &lt;- i
+    while (j &lt; kk &amp;&amp; all(ns[i:(j + 1), i:(j + 1)])) j &lt;- j + 1
+    runs[[length(runs) + 1]] &lt;- i:j
+  }
+  keep &lt;- sapply(seq_along(runs), function(a)             # 丟掉被別的區段完全包住的
+    !any(sapply(seq_along(runs), function(b)
+      b != a &amp;&amp; all(runs[[a]] %in% runs[[b]]) &amp;&amp;
+        length(runs[[b]]) &gt; length(runs[[a]]))))
+  runs &lt;- runs[keep]
+  lab &lt;- setNames(rep("", kk), nm)
+  for (r in seq_along(runs)) lab[runs[[r]]] &lt;- paste0(lab[runs[[r]]], letters[r])  # (3) 發字母
+  data.frame(mean = round(as.numeric(m), 2), letter = lab)
+}
+cld_simple(fit)
+
+# 第三組小資料：乾燥溫度對維生素 C 保留率 (%)，示範 "ab"
+temp &lt;- factor(rep(c("T40", "T50", "T60"), each = 5))
+vitc &lt;- c(86.9, 84.2, 87.6, 85.1, 86.3,    # 40 °C
+          85.4, 82.8, 86.0, 83.5, 84.9,    # 50 °C
+          83.6, 81.4, 84.3, 82.0, 83.1)    # 60 °C
+fit_vc &lt;- aov(vitc ~ temp)
+summary(fit_vc)
+round(TukeyHSD(fit_vc)$temp, 4)
+cld_simple(fit_vc)</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">          mean letter
+Acetone  15.08      a
+Ethanol  12.98      b
+Methanol 12.56      b
+            Df Sum Sq Mean Sq F value  Pr(&gt;F)
+temp         2  24.66   12.33   7.339 0.00828 **
+Residuals   12  20.16    1.68
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+         diff     lwr     upr  p adj
+T50-T40 -1.50 -3.6872  0.6872 0.2018
+T60-T40 -3.14 -5.3272 -0.9528 0.0063
+T60-T50 -1.64 -3.8272  0.5472 0.1545
+     mean letter
+T40 86.02      a
+T50 84.52     ab
+T60 82.88      b</pre></div>
+<p>維生素 C 的例子：ANOVA 顯著（p = 0.008），但 Tukey 只有 <strong>40 °C vs 60 °C</strong> 這一對顯著（p adj = 0.006）。
+50 °C 夾在中間，和 40 °C 分不出來（共用 a）、和 60 °C 也分不出來（共用 b），所以拿到 <strong>ab</strong>。</p>
+<div class="callout warn"><span class="t">⚠️ 「ab」不是第三種等級</span>
+ab <strong>不是</strong>「介於 a 與 b 之間的顯著不同的中間等級」，它的意思正好相反：<strong>這組和 a 組、b 組都「分不出來」</strong>。
+「T40 = T50、T50 = T60，但 T40 ≠ T60」聽起來矛盾，其實只是證據強度的問題：差 1.5 個百分點的證據不夠、差 3.1 個百分點的證據才夠。「不顯著」從來不等於「相等」。<br>
+<small>各組 n 不同或組數很多時，手動推導容易出錯，實務上可用套件（如 multcompView）自動產生；本課程先求看得懂、推得出來。</small></div>
+
+<h2>16.6 前提檢查：ANOVA 的三個假設</h2>
+<table>
+<tr><th>前提</th><th>意思</th><th>怎麼檢查</th><th>違反的嚴重度</th></tr>
+<tr><td><strong>① 獨立性</strong></td><td>每一筆數據都是獨立取得的重複</td><td><strong>無法用統計檢定</strong>，只能靠實驗設計與紀錄</td><td>最嚴重，事後無法補救</td></tr>
+<tr><td><strong>② 常態性</strong></td><td><strong>殘差</strong>（每筆 − 自己組平均）來自常態分布</td><td>殘差 QQ 圖為主，<code>shapiro.test(residuals(fit))</code> 為輔</td><td>各組 n 相近時，ANOVA 對輕微偏離相當耐受</td></tr>
+<tr><td><strong>③ 等變異</strong></td><td>各組的母體變異數相同</td><td>看各組 SD、盒鬚圖；<code>bartlett.test</code>、Brown–Forsythe</td><td>變異差很多（尤其各組 n 又不同）時影響大 → 16.7 節</td></tr>
+</table>
+
+<h3>① 獨立性與「偽重複」（pseudoreplication）</h3>
+<div class="callout danger"><span class="t">🧪 同一瓶萃取液注射 3 次，不是 n = 3</span>
+假設每種溶劑你只<strong>萃取了 1 瓶</strong>，然後把這一瓶在 HPLC 上<strong>重複注射 3 次</strong>，得到 3 個數字。這 3 個數字之間的差異只反映<strong>注射／儀器的重複性</strong>，
+完全沒有包含「秤樣、萃取、過濾、定容」的變異——而那些才是溶劑之間比較時真正的誤差來源。<br>
+把它當 n = 3 丟進 ANOVA，組內變異會<strong>被嚴重低估</strong> → F 被灌水 → p 小得不真實。這叫<strong>偽重複</strong>。<br>
+<strong>正確做法</strong>：重複的單位必須是你想推論的那個層級——每種溶劑<strong>獨立萃取</strong> 5 次才是 n = 5；同一瓶的多次注射先取平均，當成 1 筆。
+（「萃取」與「注射」兩層變異怎麼分開估計，是 <a href="ch17.html">Ch17</a> 精密度分解的主題。）</div>
+
+<h3>② 常態性：檢查「殘差」，不是原始 y</h3>
+<p>ANOVA 的模型是「量測值 = 該組平均 + 隨機誤差」，常態假設講的是<strong>隨機誤差</strong>，也就是殘差。
+如果把三組原始數據混在一起檢查，當各組平均本來就不同時，混合起來自然是「多峰」而不像一個鐘形——那不是違反假設，那正是你想證明的事！</p>
+<pre class="rcode" data-file="ch16_ex8.R">res &lt;- residuals(fit)                      # 殘差 = 每筆 - 自己那組的平均
+shapiro.test(res)                          # 正確：對殘差
+shapiro.test(tpc)                          # 錯誤示範：對原始 y（三組平均不同 -&gt; 本來就不像一個鐘形）
+qqnorm(res); qqline(res)                   # 殘差 QQ 圖：點大致沿直線 = OK
+
+# 把 n 加大到每組 20 就看得很清楚：每一組都是「完美常態」，只是平均不同
+set.seed(61)
+g_demo &lt;- factor(rep(c("G1", "G2", "G3"), each = 20))
+y_demo &lt;- rnorm(60, mean = rep(c(12.5, 13.0, 15.0), each = 20), sd = 0.45)
+c(raw_y     = shapiro.test(y_demo)$p.value,                      # 對原始 y：被判「非常態」
+  residuals = shapiro.test(residuals(aov(y_demo ~ g_demo)))$p.value)  # 對殘差：沒問題</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">
+	Shapiro-Wilk normality test
+
+data:  res
+W = 0.92945, p-value = 0.2678
+
+
+	Shapiro-Wilk normality test
+
+data:  tpc
+W = 0.90742, p-value = 0.1236
+
+       raw_y    residuals
+0.0008120148 0.3144730629 </pre></div>
+<p>主範例的殘差 Shapiro p = 0.27，沒有偏離常態的證據。對原始 y 檢查時 W 已經變差（0.929 → 0.907），只是 n = 15 太小還沒跨過 0.05；
+模擬資料（每組 n = 20、每組都是貨真價實的常態）就很清楚：<strong>對原始 y 檢查 p = 0.0008，會誤判成「非常態」；對殘差檢查 p = 0.31，才是正確答案</strong>。</p>
+<div class="figure">
+<img src="assets/img/fig_ch16_qq.png" alt="原始 y 與殘差的常態 QQ 圖比較">
+<div class="cap">圖 16-4 左：對原始 y 畫 QQ 圖，丙酮組（橘）整群跳開，呈現階梯狀——那是「組平均不同」，不是「非常態」。右：對殘差畫，三種顏色混在一起、大致沿直線。</div>
+</div>
+
+<p><strong>第二個陷阱：n 很小時，Shapiro「不顯著」幾乎沒有資訊量。</strong>下面讓資料<strong>明明來自右偏的指數分布</strong>，看 Shapiro 有多少機率抓得到：</p>
+<pre class="rcode" data-file="ch16_ex9.R">set.seed(16)
+shapiro_power &lt;- function(n, B = 2000)     # 資料明明是右偏的指數分布
+  mean(replicate(B, shapiro.test(rexp(n))$p.value &lt; 0.05))
+round(sapply(c(n3 = 3, n5 = 5, n15 = 15, n50 = 50), shapiro_power), 3)</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">   n3    n5   n15   n50
+0.078 0.158 0.679 1.000 </pre></div>
+<p>n = 3 時只有 <strong>7.8%</strong> 的機率偵測到（幾乎等於亂猜的 5%），n = 5 也只有 16%。所以「每組 n = 3，Shapiro 都不顯著，所以是常態」<strong>是無效論證</strong>——檢定力太低，什麼分布都會「不顯著」（回想 Ch15 的檢定力）。
+這也是為什麼要<strong>把所有組的殘差合起來</strong>檢查（本例 15 筆），並且<strong>以 QQ 圖和對量測原理的了解為主、檢定為輔</strong>。</p>
+
+<h3>③ 等變異：Bartlett 與手刻 Brown–Forsythe</h3>
+<p>先看各組 SD：0.45、0.50、0.44，幾乎一樣。粗略經驗法則：最大 SD／最小 SD 小於約 2，且各組 n 相同，通常可以放心。正式檢定：</p>
+<pre class="rcode" data-file="ch16_ex10.R">bartlett.test(tpc ~ solvent, data = dat)
+# Brown-Forsythe (Levene 的中位數版)：對「離組中位數的絕對距離」再做一次 ANOVA
+z &lt;- abs(tpc - ave(tpc, solvent, FUN = median))
+summary(aov(z ~ solvent))</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">
+	Bartlett test of homogeneity of variances
+
+data:  tpc by solvent
+Bartlett's K-squared = 0.055454, df = 2, p-value = 0.9727
+
+            Df Sum Sq Mean Sq F value Pr(&gt;F)
+solvent      2 0.0013 0.00067   0.009  0.991
+Residuals   12 0.9320 0.07767               </pre></div>
+<p><code>bartlett.test</code> 的 H<sub>0</sub> 是「各組變異數相等」，p = 0.97 → 沒有變異不等的證據。
+Bartlett 的缺點是<strong>對非常態很敏感</strong>（資料稍微偏態就容易誤報）。較穩健的 Levene／Brown–Forsythe 檢定 base R 沒有內建，但原理很簡單：
+算出每筆數據「離自己組<strong>中位數</strong>的絕對距離」，如果某組比較散，它的距離就普遍比較大——於是<strong>對這些距離再做一次 ANOVA</strong> 即可。本例 p = 0.99，結論相同。</p>
+
+<h2>16.7 前提不成立怎麼辦？Welch ANOVA 與 Kruskal–Wallis</h2>
+<p>第二組資料：抽驗市售 <strong>4 個品牌醬油的總氮</strong>（g/100 mL，凱氏法），每個品牌買 6 個不同批號。A、B 是大廠，批次間非常穩定；C、D 是小型釀造廠，批次差異很大。</p>
+<pre class="rcode" data-file="ch16_ex11.R">brand &lt;- factor(rep(c("A", "B", "C", "D"), each = 6))
+tn &lt;- c(1.42, 1.45, 1.43, 1.46, 1.44, 1.41,    # A 大廠，批次很穩
+        1.52, 1.50, 1.55, 1.51, 1.53, 1.49,    # B 大廠，批次很穩
+        1.38, 1.62, 1.25, 1.71, 1.49, 1.30,    # C 小廠，批次差異大
+        1.60, 1.33, 1.78, 1.41, 1.69, 1.22)    # D 小廠，批次差異大
+round(rbind(mean = tapply(tn, brand, mean), sd = tapply(tn, brand, sd)), 3)
+
+bartlett.test(tn ~ brand)                              # 等變異？
+summary(aov(abs(tn - ave(tn, brand, FUN = median)) ~ brand))   # Brown-Forsythe</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">         A     B     C     D
+mean 1.435 1.517 1.458 1.505
+sd   0.019 0.022 0.182 0.219
+
+	Bartlett test of homogeneity of variances
+
+data:  tn by brand
+Bartlett's K-squared = 30.073, df = 3, p-value = 1.332e-06
+
+            Df  Sum Sq Mean Sq F value   Pr(&gt;F)
+brand        3 0.14055 0.04685   13.05 6.02e-05 ***
+Residuals   20 0.07182 0.00359                     </pre></div>
+<p>SD 從 0.019 到 0.219，<strong>差了超過 10 倍</strong>；Bartlett 與 Brown–Forsythe 都強烈拒絕「等變異」。現在用三種方法分析同一份資料：</p>
+<pre class="rcode" data-file="ch16_ex12.R">summary(aov(tn ~ brand))                   # (1) 傳統 ANOVA（假設等變異）
+oneway.test(tn ~ brand)                    # (2) Welch ANOVA（不假設等變異）
+kruskal.test(tn ~ brand)                   # (3) Kruskal-Wallis（以等級為基礎）
+pairwise.t.test(tn, brand, p.adjust.method = "holm", pool.sd = FALSE)  # Welch 版事後比較</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">            Df Sum Sq  Mean Sq F value Pr(&gt;F)
+brand        3 0.0267 0.008915   0.436   0.73
+Residuals   20 0.4089 0.020446
+
+	One-way analysis of means (not assuming equal variances)
+
+data:  tn and brand
+F = 14.464, num df = 3, denom df = 10, p-value = 0.000573
+
+
+	Kruskal-Wallis rank sum test
+
+data:  tn by brand
+Kruskal-Wallis chi-squared = 3.1928, df = 3, p-value = 0.3628
+
+
+	Pairwise comparisons using t tests with non-pooled SD
+
+data:  tn and brand
+
+  A       B       C
+B 0.00025 -       -
+C 1.00000 1.00000 -
+D 1.00000 1.00000 1.00000
+
+P value adjustment method: holm </pre></div>
+<table>
+<tr><th>方法</th><th>結果</th><th>為什麼</th></tr>
+<tr><td>傳統 ANOVA <code>aov</code></td><td class="num">p = 0.73（不顯著）</td><td>把四組的變異「合併」成一個 MS<sub>within</sub>，C、D 的巨大變異把 A、B 之間清楚的差異<strong>淹沒</strong>了</td></tr>
+<tr class="hl"><td><strong>Welch ANOVA</strong> <code>oneway.test</code></td><td class="num">p = 0.0006（顯著）</td><td>每組用自己的變異數加權，A、B 很精密所以權重大；注意分母自由度被調成 10 而非 20</td></tr>
+<tr><td>Kruskal–Wallis <code>kruskal.test</code></td><td class="num">p = 0.36（不顯著）</td><td>只用「名次」；C、D 的數值散布在 A、B 的兩側，名次互相抵銷</td></tr>
+</table>
+<p>三種方法、<strong>兩種相反的結論</strong>。事後比較（Welch 版、Holm 校正）指出差異來自 <strong>A vs B</strong>（1.435 vs 1.517，p = 0.00025）；C、D 因為自己太不穩定，和誰都分不出來。</p>
+<div class="callout ok"><span class="t">🧭 方法選擇指南</span>
+<strong>變異明顯不等 → 用 Welch ANOVA（<code>oneway.test</code>）</strong>，事後比較用 <code>pairwise.t.test(..., pool.sd = FALSE)</code> 加 Holm 校正。它是 Ch15 Welch t 檢定的多組版本；變異其實相等時，它的結果也和傳統 ANOVA 很接近，幾乎沒有損失。<br>
+<strong>殘差嚴重偏態、有極端值，或資料本身是等級／評分（如感官評分）→ 考慮 Kruskal–Wallis。</strong>但要記得：它檢定的是「各組分布的位置是否一致」，而且<strong>並不能解決變異不等</strong>的問題（本例就是證據）。<br>
+<strong>獨立性有問題 → 任何方法都救不了</strong>，只能重新設計實驗或改用能處理階層結構的模型（Ch17）。<br>
+最重要的：<strong>方法要在看結果之前決定</strong>。三種都跑、再挑 p 最小的那個來報告，和 16.2 節的多次 t 檢定犯的是同一種錯。</div>
+<p>這個例子還有一個食品分析上的提醒：對品管來說，「C、D 的批次變異是 A、B 的 10 倍」本身可能就是比平均值更重要的發現。</p>
+
+<h2>16.8 效果量 η² 與「統計顯著 vs 實務重要」</h2>
+<p>p 值只回答「差異是不是真的」，沒有回答「差異有多大」。ANOVA 最簡單的效果量是 <strong>η²（eta squared）</strong>：</p>
+<div class="formula">
+η² = <span class="frac"><span class="num">SS<sub>between</sub></span><span class="den">SS<sub>total</sub></span></span>
+= <span class="frac"><span class="num">18.228</span><span class="den">20.816</span></span> = <strong>0.876</strong>
+<span class="note">總變異中有 87.6% 可以由「溶劑不同」來解釋；概念上和迴歸的 R²（Ch04）完全相同</span>
+</div>
+<p>再看一個反例：假設有人很勤勞，三種萃取條件<strong>各做了 100 次</strong>，而真實平均只差 0.1–0.2 mg GAE/g：</p>
+<pre class="rcode" data-file="ch16_ex13.R">eta2 &lt;- SS_between / SS_total
+round(eta2, 3)
+
+# 大樣本示範：真實差異最多只有 0.2 mg GAE/g，但每組 n = 100
+set.seed(8)
+g_big &lt;- factor(rep(c("S1", "S2", "S3"), each = 100))
+y_big &lt;- rnorm(300, mean = rep(c(12.6, 12.8, 12.7), each = 100), sd = 0.45)
+tab_big &lt;- summary(aov(y_big ~ g_big))[[1]]
+tab_big
+round(tapply(y_big, g_big, mean), 2)
+round(tab_big[["Sum Sq"]][1] / sum(tab_big[["Sum Sq"]]), 3)    # eta^2</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">[1] 0.876
+             Df Sum Sq Mean Sq F value   Pr(&gt;F)
+g_big         2  3.003 1.50142  7.4039 0.000728 ***
+Residuals   297 60.228 0.20279
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+   S1    S2    S3
+12.56 12.80 12.64
+[1] 0.047</pre></div>
+<p>p = 0.0007，三顆星，<strong>統計上非常顯著</strong>；但 η² 只有 <strong>0.047</strong>，最大的平均差也只有 12.80 − 12.56 = 0.24 mg GAE/g。
+這個差異重不重要，<strong>統計回答不了，要拿專業的尺來量</strong>：</p>
+<div class="callout"><span class="t">📏 拿量測不確定度當尺（回扣 Ch08）</span>
+假設依 <a href="ch08.html">Ch08</a> 的流程評估出此方法的擴充不確定度 U ≈ 0.5 mg GAE/g（k = 2；此為本例假設值）。<br>
+• 大樣本反例的差異 0.24 &lt; U：比「單次量測自己的不確定度」還小，換溶劑在實務上幾乎沒有意義，即使 p 很漂亮。<br>
+• 主範例丙酮比另兩種高 2.1–2.5 mg GAE/g，是 U 的 4–5 倍，相當於多萃取出約 16–20%：<strong>統計顯著而且實務重要</strong>。<br>
+• 主範例乙醇 vs 甲醇的差 0.42 不顯著，但它的 95% CI 是 −0.36 ~ 1.20——資料<strong>無法排除</strong>高達 1.2 的差異。正確說法是「目前的證據不足以分辨」，<strong>不是</strong>「已證明兩者相等」。<br>
+<strong>結論：永遠同時報告 p 值、差異大小（含信賴區間）與效果量；p 小 ≠ 差異大，p 大 ≠ 沒有差異。</strong></div>
+
+<h2>16.9 報告怎麼寫：一段可以直接模仿的範例</h2>
+<div class="card">
+<p><strong>【統計方法】</strong>各溶劑獨立萃取 5 次（n = 5）。以單因子變異數分析（one-way ANOVA）比較三種溶劑之總多酚含量，顯著水準 α = 0.05；
+以殘差之常態 QQ 圖與 Shapiro–Wilk 檢定確認常態性，以 Bartlett 檢定確認變異數同質性；ANOVA 顯著時以 Tukey HSD 進行事後比較。統計分析使用 R 4.6.1。</p>
+<p><strong>【結果】</strong>殘差未顯示偏離常態（W = 0.929，p = 0.27），各組變異數同質（Bartlett p = 0.97）。
+三種溶劑之總多酚萃取量有顯著差異（F(2, 12) = 42.26，p &lt; 0.001，η² = 0.88）。
+Tukey HSD 事後比較顯示，丙酮（15.08 ± 0.44 mg GAE/g）顯著高於乙醇（12.98 ± 0.50）與甲醇（12.56 ± 0.45）（校正後 p 皆 &lt; 0.001）；
+乙醇與甲醇之間無顯著差異（平均差 0.42，95% CI −0.36 至 1.20，校正後 p = 0.36）（表 1）。</p>
+<table>
+<tr><th>表 1　溶劑</th><th class="num">n</th><th class="num">總多酚（mg GAE/g）</th></tr>
+<tr><td>甲醇</td><td class="num">5</td><td class="num">12.56 ± 0.45 <sup>b</sup></td></tr>
+<tr><td>乙醇</td><td class="num">5</td><td class="num">12.98 ± 0.50 <sup>b</sup></td></tr>
+<tr><td>丙酮</td><td class="num">5</td><td class="num">15.08 ± 0.44 <sup>a</sup></td></tr>
+</table>
+<p><small>數值為平均 ± SD。同欄不同上標字母表示有顯著差異（Tukey HSD，p &lt; 0.05）。</small></p>
+</div>
+<p><strong>檢查清單</strong>：① F 後面<strong>兩個自由度都要寫</strong>（組間, 組內）；② p 很小時寫 p &lt; 0.001，不要寫 p = 0.000；③ 說明 ± 後面是 SD 還是 SEM、n 是多少；④ 字母一定要有註腳說明方法與 α；⑤ 不顯著的比較也要報告差值與信賴區間。</p>
+<pre class="rcode" data-file="ch16_ex14.R"># 用 R 直接排出報告用的表
+lt &lt;- cld_simple(fit)
+data.frame(solvent = levels(solvent),
+           n = as.integer(n_i),
+           mean_sd = sprintf("%.2f ± %.2f", grp_mean, grp_sd),
+           letter = lt[levels(solvent), "letter"])</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">   solvent n      mean_sd letter
+1 Methanol 5 12.56 ± 0.45      b
+2  Ethanol 5 12.98 ± 0.50      b
+3  Acetone 5 15.08 ± 0.44      a</pre></div>
+
+<h2>📊 Excel 也會算：單因子變異數分析</h2>
+<div class="callout ok"><span class="t">📊 沒有 R 也能動手</span>
+<strong>方法一：資料分析工具箱</strong>（先到「檔案 → 選項 → 增益集」啟用「分析工具箱」）<br>
+① 把三組數據排成三欄：<code>A1:C1</code> 放組名（甲醇、乙醇、丙酮），<code>A2:C6</code> 放數據。<br>
+② 「資料」→「資料分析」→「<strong>單因子變異數分析</strong>（Anova: Single Factor）」→ 輸入範圍 <code>$A$1:$C$6</code>、分組方式「逐欄」、勾選「類別軸標記是在第一列上」、α = 0.05。<br>
+③ 輸出的 ANOVA 表和 R 逐欄對應：
+<table>
+<tr><th>Excel 欄位</th><th>R 的欄位</th><th>本例</th></tr>
+<tr><td>變源：組間／組內／總和</td><td><code>solvent</code>／<code>Residuals</code>／（R 不列總和）</td><td>—</td></tr>
+<tr><td>SS</td><td><code>Sum Sq</code></td><td>18.228／2.588／20.816</td></tr>
+<tr><td>自由度</td><td><code>Df</code></td><td>2／12／14</td></tr>
+<tr><td>MS</td><td><code>Mean Sq</code></td><td>9.114／0.2157</td></tr>
+<tr><td>F</td><td><code>F value</code></td><td>42.26</td></tr>
+<tr><td>P-值</td><td><code>Pr(&gt;F)</code></td><td>3.69E-06</td></tr>
+<tr><td>臨界值</td><td><code>qf(0.95, 2, 12)</code></td><td>3.885</td></tr>
+</table>
+<strong>方法二：用函數手算</strong>（數據在 <code>A2:C6</code>）<br>
+<table>
+<tr><th>計算</th><th>Excel 函數</th><th>結果</th></tr>
+<tr><td>SS<sub>total</sub></td><td><code>=DEVSQ(A2:C6)</code></td><td>20.816</td></tr>
+<tr><td>SS<sub>within</sub></td><td><code>=DEVSQ(A2:A6)+DEVSQ(B2:B6)+DEVSQ(C2:C6)</code></td><td>2.588</td></tr>
+<tr><td>SS<sub>between</sub></td><td><code>=SS_total − SS_within</code></td><td>18.228</td></tr>
+<tr><td>F</td><td><code>=(SS_between/2)/(SS_within/12)</code></td><td>42.26</td></tr>
+<tr><td>p 值（右尾）</td><td><code>=F.DIST.RT(42.26, 2, 12)</code></td><td>3.69E-06</td></tr>
+<tr><td>F 臨界值</td><td><code>=F.INV.RT(0.05, 2, 12)</code></td><td>3.885</td></tr>
+<tr><td>η²</td><td><code>=SS_between/SS_total</code></td><td>0.876</td></tr>
+</table>
+<code>DEVSQ</code> 就是「離均差平方和」；<code>F.DIST.RT</code> 的 RT = right tail（右尾），對應 R 的 <code>pf(..., lower.tail = FALSE)</code>。<br>
+<strong>限制</strong>：Excel 工具箱<strong>沒有</strong> Tukey HSD、Welch ANOVA 與殘差診斷；ANOVA 顯著之後的事後比較請回到 R。千萬不要在 Excel 裡改做三次 <code>T.TEST</code>——那正是 16.2 節的錯誤。</div>
+<pre class="rcode" data-file="ch16_ex15.R">pf(42.26, 2, 12, lower.tail = FALSE)       # = F.DIST.RT(42.26, 2, 12)
+qf(0.05, 2, 12, lower.tail = FALSE)        # = F.INV.RT(0.05, 2, 12)</pre>
+<div class="rout"><div class="routhead"><span class="dot"></span><span class="term">R Console</span><span class="spacer"></span><span class="tag">輸出 output</span></div>
+<pre class="rout-body">[1] 3.693036e-06
+[1] 3.885294</pre></div>
+
+<h2>16.10 常見迷思總整理</h2>
+<div class="callout danger"><span class="t">🧯 九個最常見的 ANOVA 迷思</span>
+<table>
+<tr><th>迷思</th><th>正確觀念</th></tr>
+<tr><td>① ANOVA 顯著＝每一組都不同</td><td>只代表「至少一組不同」；誰跟誰不同要看事後比較（16.5）</td></tr>
+<tr><td>② ANOVA 是在比各組的變異數</td><td>它用變異數當工具，檢定的是<strong>平均數</strong>是否全相等（16.3）</td></tr>
+<tr><td>③ 對原始 y 檢查常態</td><td>要檢查的是<strong>殘差</strong>；各組平均不同時，原始 y 混在一起本來就不像常態（16.6）</td></tr>
+<tr><td>④ n = 3，Shapiro 不顯著，所以是常態</td><td>n 太小時檢定力只有 8% 左右，「不顯著」沒有資訊量；看 QQ 圖與量測原理（16.6）</td></tr>
+<tr><td>⑤ 同一瓶注射 3 次就是 n = 3</td><td>那是偽重複；獨立重複的單位必須是「獨立萃取」（16.6）</td></tr>
+<tr><td>⑥ 不顯著＝兩組相等</td><td>只是「證據不足以分辨」；看差值的信賴區間有多寬（16.8）</td></tr>
+<tr><td>⑦ 統計顯著＝實務上重要</td><td>n 很大時微小差異也會顯著；要對照 η²、差值大小與方法的量測不確定度（16.8）</td></tr>
+<tr><td>⑧ 字母 ab 是介於 a、b 之間的另一個等級</td><td>ab 表示和 a 組、b 組都<strong>分不出來</strong>；判讀只看「有沒有共同字母」（16.5）</td></tr>
+<tr><td>⑨ 多做幾次 t 檢定就能取代 ANOVA</td><td>整體假警報率會膨脹為 1 − 0.95<sup>m</sup>；要用 ANOVA ＋ 有校正的事後比較（16.2）</td></tr>
+</table></div>
+
+<h2>16.11 接下來</h2>
+<div class="grid2">
+<div class="card"><h3>→ Ch17 兩個因子與精密度分解</h3>
+本章只有<strong>一個</strong>因子（溶劑）。如果同時想知道「溶劑」和「萃取溫度」的效應、以及兩者有沒有交互作用，就需要 <strong>two-way ANOVA</strong>。
+同一套「把變異拆開」的想法，還能把實驗室的精密度拆成<strong>重複性與再現性</strong>（ISO 5725），以及檢查標準曲線的 <strong>lack-of-fit</strong>。<a href="ch17.html">前往 Ch17</a></div>
+<div class="card"><h3>→ Ch14 實驗設計 DOE/RSM</h3>
+Ch14 反應曲面法的輸出裡有一張很長的 ANOVA 表。學完本章你已經看得懂它的骨架：每一列都是「某個來源的 SS、df、MS」，除以殘差的 MS 得到 F，再查 p 值。<a href="ch14.html">前往 Ch14</a></div>
+</div>
+
+<div class="quiz" id="quiz"></div>
+<script>
+const CHAPTER = "ch16";
+const MISC = {
+  ANOVA_SIG_ALL_DIFFER:        "以為 ANOVA 顯著就代表每一組彼此都不同",
+  ANOVA_TESTS_VARIANCE:        "以為 ANOVA 是在檢定各組的變異數是否相等",
+  NORMALITY_ON_RAW_Y:          "對混在一起的原始 y（而不是殘差）檢查常態性",
+  SMALL_N_SHAPIRO_OK:          "以為 n 很小時 Shapiro 不顯著就證明了資料是常態",
+  PSEUDOREPLICATION:           "把同一份樣品的重複注射或重複讀值當成獨立重複的 n",
+  NONSIG_MEANS_EQUAL:          "把「不顯著」解讀成「已證明兩組相等」",
+  SIG_MEANS_IMPORTANT:         "以為統計顯著就等於實務上重要、差異很大",
+  TUKEY_LETTER_MISREAD:        "誤讀字母標示：以為 ab 是另一個顯著不同的等級，或忽略「共用字母＝不顯著」的規則",
+  MULTI_T_NO_INFLATION:        "以為多做幾次未校正的 t 檢定就能取代 ANOVA，整體錯誤率仍是 5%",
+  POSTHOC_CHERRY_PICK:         "看完數據才挑最大和最小的兩組做 t 檢定，以為這樣不算多重比較",
+  H0_ABOUT_SAMPLE:             "以為假說講的是樣本平均，而不是母體平均",
+  NONPARAM_FIXES_INDEPENDENCE: "以為換成無母數或 Welch 方法、或增加讀值次數，就能補救不獨立的實驗設計",
+  SS_NOT_MS:                   "算 F 時直接拿兩個 SS 相除，忘了先各自除以自由度",
+  DF_WRONG_K_N:                "自由度用 k 與 N，而不是 k−1 與 N−k",
+  DF_MISREAD_AS_N:             "把 ANOVA 表的自由度直接當成樣本數或組數",
+  ETA2_WRONG_DENOM:            "算 η² 時分母用 SS_within 而不是 SS_total",
+  ETA2_USED_WITHIN:            "算 η² 時把組內 SS 放在分子，算成「沒被解釋的比例」",
+  PAIRS_EQUALS_GROUPS:         "以為 k 組只需要做 k 次兩兩比較，而不是 k(k−1)/2 次",
+  ALPHA_ADDS_LINEAR:           "以為整體錯誤率就是 α 乘以檢定次數",
+  OUTLIER_TEST_ALONE_DELETE:   "以為只要異常值檢定顯著就可以直接刪除數據，不需要失誤紀錄與揭露",
+  DELETE_DATA_TO_LOOK_GOOD:    "為了讓 SD 變小、結果變顯著而刪除數據",
+  OUTLIER_QUOTA:               "以為每組數據都有固定可以刪除的名額"
+};
+const QUIZ = [
+  /* ---------- 前測 pre ---------- */
+  { id:"ch16-p01", v:1, type:"concept", phase:"pre",
+    q:"想比較 4 種包材對洋芋片過氧化價的影響（每種包材 6 包），最適合的第一步分析是：",
+    opts:["兩兩做 6 次 t 檢定，任何一次 p &lt; 0.05 就算有差異",
+          "做一次單因子 ANOVA，顯著後再做有校正的事後比較",
+          "用 F 檢定（var.test）比較各組的變異數",
+          "先看數據，挑平均最高和最低的兩組做 t 檢定"],
+    ans:1,
+    tags:["MULTI_T_NO_INFLATION", null, "ANOVA_TESTS_VARIANCE", "POSTHOC_CHERRY_PICK"],
+    exp:"4 組兩兩比要 6 次檢定，未校正時「至少一次假警報」的機率約 1−0.95⁶ = 26%，不能當成 5%。var.test 比的是變異數，不是平均數。看完數據才挑最大、最小兩組來檢定，等於暗中做了所有比較再挑最極端的，同樣會膨脹型一錯誤。正確流程是先 ANOVA、顯著後再用 Tukey 或 Holm 校正的事後比較。" },
+  { id:"ch16-p02", v:1, type:"calc", phase:"pre",
+    q:"3 組、總共 12 筆數據，算得 SS<sub>between</sub> = 8.0、SS<sub>within</sub> = 9.0。F 值是多少？（取 2 位小數）",
+    num:{ ans:4.00, tol:0.02, unit:"" },
+    errs:[ { val:0.89, tol:0.01, tag:"SS_NOT_MS" },
+           { val:3.56, tol:0.01, tag:"DF_WRONG_K_N" } ],
+    exp:"df 組間 = k−1 = 2，df 組內 = N−k = 9。MS 組間 = 8.0/2 = 4.0，MS 組內 = 9.0/9 = 1.0，F = 4.0/1.0 = 4.00。直接 8.0/9.0 = 0.89 是忘了除以自由度；用 (8/3)/(9/12) = 3.56 是把自由度誤用成 k 與 N。" },
+  { id:"ch16-p03", v:1, type:"misc", phase:"pre",
+    q:"5 個品牌鮮乳的鈣含量做單因子 ANOVA，得到 p = 0.01。這個結果的意思是：",
+    opts:["5 個品牌的鈣含量彼此都不相同",
+          "5 個品牌鈣含量的變異數不相等",
+          "品牌之間的差異大到具有營養上的實質意義",
+          "5 個品牌的平均鈣含量不全相等——至少有一個品牌與其他不同"],
+    ans:3,
+    tags:["ANOVA_SIG_ALL_DIFFER", "ANOVA_TESTS_VARIANCE", "SIG_MEANS_IMPORTANT", null],
+    exp:"ANOVA 的 H1 是「至少一組平均不同」，不是「每組都不同」；也許只有一個品牌特別高。ANOVA 檢定的是平均數，不是變異數。p 小只表示差異不太可能是隨機造成的，差異有沒有實質意義要看差值大小與效果量。" },
+
+  /* ---------- 課後 post ---------- */
+  { id:"ch16-q01", v:1, type:"concept", phase:"post",
+    q:"單因子 ANOVA 的 \\(F = MS_{between}/MS_{within}\\) 是用來檢定下列哪一個虛無假說？",
+    opts:["各組的母體變異數全部相等",
+          "各組的樣本平均全部相等",
+          "各組的母體平均全部相等",
+          "任兩組的母體平均都不相等"],
+    ans:2,
+    tags:["ANOVA_TESTS_VARIANCE", "H0_ABOUT_SAMPLE", null, "ANOVA_SIG_ALL_DIFFER"],
+    exp:"ANOVA 用「兩種變異數估計值的比」當工具，但檢定的是 H0：μ1 = μ2 = … = μk（母體平均全相等）。變異數是否相等是 bartlett.test 的工作。假說永遠是對母體參數說的——樣本平均 12.56、12.98、15.08 一看就不相等，不需要檢定。「任兩組都不相等」既不是 H0，也不是 H1（H1 只是「至少一組不同」）。" },
+  { id:"ch16-q02", v:1, type:"concept", phase:"post",
+    q:"小華每種溶劑只萃取 1 瓶，每瓶在 HPLC 上重複注射 5 次，把 3 × 5 = 15 個數字丟進 ANOVA 得到 p &lt; 0.001。這個分析最大的問題是：",
+    opts:["5 次注射不是獨立重複：組內變異只反映儀器注射重複性，每種溶劑真正的 n 只有 1",
+          "沒有問題，每組 n = 5 已經足夠",
+          "注射次數太少，改成每瓶注射 10 次就可以了",
+          "只要改用 Kruskal–Wallis 檢定就能解決"],
+    ans:0,
+    tags:[null, "PSEUDOREPLICATION", "NONPARAM_FIXES_INDEPENDENCE", "NONPARAM_FIXES_INDEPENDENCE"],
+    exp:"這是偽重複（pseudoreplication）。同一瓶的重複注射沒有包含秤樣、萃取、過濾、定容的變異，組內變異被嚴重低估，F 被灌水、p 小得不真實。增加注射次數只會讓問題更嚴重（n 看起來更大）；換成無母數方法也一樣假設各筆數據獨立，救不了設計上的缺陷。正確做法是每種溶劑獨立萃取多瓶，同一瓶的多次注射先取平均當作 1 筆。" },
+  { id:"ch16-q03", v:1, type:"calc", phase:"post",
+    q:"比較 4 種殺菌條件（各 5 個樣品，共 20 筆）的維生素 C 含量，算得 SS<sub>between</sub> = 5.40、SS<sub>within</sub> = 4.80。F 值是多少？（取 2 位小數）",
+    num:{ ans:6.00, tol:0.02, unit:"" },
+    errs:[ { val:1.125, tol:0.01, tag:"SS_NOT_MS" },
+           { val:5.625, tol:0.02, tag:"DF_WRONG_K_N" } ],
+    exp:"df 組間 = 4−1 = 3，df 組內 = 20−4 = 16。MS 組間 = 5.40/3 = 1.80，MS 組內 = 4.80/16 = 0.30，F = 1.80/0.30 = 6.00（對應 p = 0.006）。5.40/4.80 = 1.125 是忘了除以自由度；(5.40/4)/(4.80/20) = 5.625 是把自由度誤用成 k 與 N。" },
+  { id:"ch16-q04", v:1, type:"calc", phase:"post",
+    q:"承上題（SS<sub>between</sub> = 5.40、SS<sub>within</sub> = 4.80），效果量 η² 是多少？（取 3 位小數）",
+    num:{ ans:0.529, tol:0.002, unit:"" },
+    errs:[ { val:1.125, tol:0.005, tag:"ETA2_WRONG_DENOM" },
+           { val:0.471, tol:0.002, tag:"ETA2_USED_WITHIN" } ],
+    exp:"η² = SS_between / SS_total = 5.40 / (5.40 + 4.80) = 5.40/10.20 = 0.529，表示總變異中約 53% 可由殺菌條件解釋。分母必須是 SS_total：用 5.40/4.80 = 1.125 會得到大於 1 的「比例」，顯然不合理；4.80/10.20 = 0.471 則是「沒被解釋」的那一份。" },
+  { id:"ch16-q05", v:1, type:"calc", phase:"post",
+    q:"5 個品牌兩兩做未校正的 t 檢定（每次 α = 0.05）。需要做幾次？若各次獨立，「至少一次假警報」的機率約為多少？",
+    opts:["5 次；約 0.23",
+          "10 次；仍然是 0.05",
+          "10 次；0.50",
+          "10 次；約 0.40"],
+    ans:3,
+    tags:["PAIRS_EQUALS_GROUPS", "MULTI_T_NO_INFLATION", "ALPHA_ADDS_LINEAR", null],
+    exp:"k 組的兩兩比較數是 k(k−1)/2 = 5×4/2 = 10，不是 5。整體型一錯誤 = 1 − 0.95¹⁰ = 0.401。它不會維持在 0.05（那是單次檢定的 α），也不是 0.05×10 = 0.50 直接相加（相加只是上限的近似，檢定次數多時甚至會超過 1）。這就是為什麼要先做 ANOVA、再做有校正的事後比較。" },
+  { id:"ch16-q06", v:1, type:"rout", phase:"post",
+    q:"乾燥溫度對維生素 C 保留率的 R 輸出如下，哪一個判讀正確？<pre>            Df Sum Sq Mean Sq F value  Pr(&gt;F)\ntemp         2  24.66   12.33   7.339 0.00828 **\nResiduals   12  20.16    1.68</pre>",
+    opts:["F = 7.339 表示三個溫度的變異數顯著不相等",
+          "共 3 個溫度、15 筆數據；組內均方 1.68；p &lt; 0.05，拒絕「三個溫度的平均全相等」",
+          "p = 0.008，所以三個溫度兩兩之間都有顯著差異",
+          "Residuals 的 Df = 12，表示每個溫度各有 12 個樣品"],
+    ans:1,
+    tags:["ANOVA_TESTS_VARIANCE", null, "ANOVA_SIG_ALL_DIFFER", "DF_MISREAD_AS_N"],
+    exp:"temp 的 Df = 2 → 組數 = 3；總筆數 = 2 + 12 + 1 = 15（每組 5 筆），Df 不是樣本數。Mean Sq 的 Residuals 列 1.68 就是組內均方（合併變異數）。F 檢定的對象是平均數而非變異數。p = 0.008 只說明「不全相等」；本章的 Tukey 結果顯示其實只有 40 °C 與 60 °C 這一對顯著。" },
+  { id:"ch16-q07", v:1, type:"rout", phase:"post",
+    q:"承上，三個溫度的平均為 T40 = 86.02、T50 = 84.52、T60 = 82.88，TukeyHSD 輸出如下。正確的字母標示是：<pre>         diff     lwr     upr  p adj\nT50-T40 -1.50 -3.6872  0.6872 0.2018\nT60-T40 -3.14 -5.3272 -0.9528 0.0063\nT60-T50 -1.64 -3.8272  0.5472 0.1545</pre>",
+    opts:["T40 a、T50 b、T60 c",
+          "T40 a、T50 a、T60 b",
+          "T40 a、T50 ab、T60 b",
+          "T40 a、T50 ab、T60 b，其中 ab 表示 T50 與另外兩組都有顯著差異"],
+    ans:2,
+    tags:["ANOVA_SIG_ALL_DIFFER", "TUKEY_LETTER_MISREAD", null, "TUKEY_LETTER_MISREAD"],
+    exp:"只有 T60−T40 的區間不含 0（p adj = 0.006）。T50 與 T40 不顯著 → 要共用一個字母（a）；T50 與 T60 也不顯著 → 也要共用一個字母（b）；T40 與 T60 顯著 → 不能有共同字母。所以是 a、ab、b。標成 a、b、c 等於宣稱三對都顯著；標成 a、a、b 則宣稱 T50 與 T60 顯著不同，與 p adj = 0.15 矛盾。ab 的意思是「和兩邊都分不出來」，正好與「和兩邊都不同」相反。" },
+  { id:"ch16-q08", v:1, type:"misc", phase:"post",
+    q:"下列關於 ANOVA 結果的說法，哪一個是正確的？",
+    opts:["甲醇與乙醇的 Tukey 校正後 p = 0.36，因此已證明兩種溶劑的萃取量相等",
+          "每組 n = 100 時得到 p = 0.0007，但 η² = 0.047、最大平均差 0.24 小於方法的擴充不確定度 0.5：統計顯著，但實務上不重要",
+          "把 15 筆原始數據一起做 Shapiro 檢定得 p &lt; 0.05，就應該放棄 ANOVA 改用無母數方法",
+          "每組 n = 3，三組各自的 Shapiro 檢定都不顯著，所以常態前提已經被證實"],
+    ans:1,
+    tags:["NONSIG_MEANS_EQUAL", null, "NORMALITY_ON_RAW_Y", "SMALL_N_SHAPIRO_OK"],
+    exp:"「不顯著」只代表證據不足：乙醇−甲醇差值的 95% CI 是 −0.36 ~ 1.20，無法排除相當大的差異，不能說「已證明相等」。常態性要對殘差檢查；各組平均不同時，原始 y 混在一起本來就會偏離常態（本章模擬 p = 0.0008，但殘差 p = 0.31）。n = 3 時 Shapiro 對明顯偏態資料的檢定力只有約 8%，不顯著不具資訊量。大樣本時微小差異也會顯著，是否重要要看效果量、差值與量測不確定度。" },
+
+  /* ---------- 跨章回溯 spaced ---------- */
+  { id:"ch16-s01", v:1, type:"misc", phase:"spaced", from:"ch05",
+    q:"做 ANOVA 前，你覺得乙醇組的 12.2（其餘為 12.9、13.0、13.3、13.5）偏低，刪掉之後乙醇與甲醇的差異會「變得比較顯著」。依 Ch05 的原則，應該怎麼做？",
+    opts:["刪掉後組內 SD 變小、F 變大，結果更漂亮，所以應該刪",
+          "只要 Q 檢定或 Grubbs 檢定顯著就可以直接刪，報告中不必說明",
+          "先查實驗紀錄有無可追溯的操作失誤；沒有就保留。本例 Q = 0.54 &lt; 0.64，連統計上都不支持刪除；若真的刪除，必須在報告中揭露",
+          "每一組本來就可以刪掉一個最偏離的值"],
+    ans:2,
+    tags:["DELETE_DATA_TO_LOOK_GOOD", "OUTLIER_TEST_ALONE_DELETE", null, "OUTLIER_QUOTA"],
+    exp:"Ch05 的底線：要有可追溯的操作失誤紀錄＋統計檢定支持，兩者兼備才可刪除，而且必須揭露。本例 Dixon Q = (12.9−12.2)/(13.5−12.2) = 0.54，小於 n = 5 的臨界值 0.64，統計上也不成立。為了讓 p 值變小而刪數據，和為了讓 CV 漂亮而刪數據一樣是學術不端；也不存在「每組可刪一個」的名額。" }
+];
+</script>
+<script src="assets/app.js"></script><script src="assets/js/showout.js"></script><script type="module" src="assets/js/assess.js"></script>
+
+<nav class="pager" data-pager></nav>
+</main>
+<footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫</footer>
+</body>
+</html>
