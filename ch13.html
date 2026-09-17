@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
-  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\[', right: '\]', display: true}]});"></script>
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true}]});"></script>
 </head>
 <body>
 <header class="topbar"><div class="inner">
@@ -153,8 +153,8 @@ Processed Cheese、Blueberry Protein Drink）都有 PDF 與影片可當課堂引
 與市售香草冰淇淋幾乎一模一樣——因為市售產品就是這樣算出來的。</div>
 <div class="callout ok"><span class="t">🍦 為什麼美國每份是 66 g？</span>
 冰淇淋打入了空氣（overrun），同體積比混合原料輕很多：若產品密度 0.56 g/mL，
-overrun ≈ 95%。FDA 的每份參考量（RACC）2/3 杯換算成重量時<strong>已把空氣算進去</strong>，
-所以是 66 g 而不是 118 g。配方是「重量世界」，標籤份量是「體積世界」——橋樑就是 overrun。</div>
+overrun ≈ 95%。FDA 的每份參考量（RACC）是<strong>體積</strong>：本例沿用舊制 1/2 杯（118 mL），換算成重量時<strong>要把空氣算進去</strong>，
+118 mL × 0.56 g/mL ＝ 66 g，而不是把 118 直接當成 118 g。（2016 年起新制 RACC 為 2/3 杯＝158 mL，同密度約 88 g；把程式裡的 <code>serv</code> 改成 <code>88/100</code> 即可。）配方是「重量世界」，標籤份量是「體積世界」——橋樑就是 overrun。</div>
 
 <h2>13.6 逆向工程：從競品檢驗值反推配方</h2>
 <p>TechWizard 的招牌功能：買競品來檢驗，反推等效配方。情境：競品香草冰淇淋實驗室檢測
@@ -230,7 +230,7 @@ carb &lt;- (sum(wt*c(2.79, 4.80, 51.99)) + 14*99.98 + 3*78)/100
 sugar&lt;- 14 + sum(wt*c(2.79, 4.80, 51.99))/100 + 3*0.26
 na   &lt;- sum(wt*c(30, 43, 1010))/100
 kcal &lt;- 4*prot + 4*carb + 9*12         #&gt; Atwater 4-4-9 = 213.6 kcal
-serv &lt;- 66/100    # FDA 冰淇淋每份 2/3 杯 = 66 g (已含 overrun 的空氣)
+serv &lt;- 66/100    # 每份 1/2 杯(118 mL) x 0.56 g/mL = 66 g (已含 overrun 的空氣；新制 2/3 杯約 88 g)
 c(熱量 = floor(kcal*serv/10)*10, 蛋白質 = round(prot*serv),
   脂肪 = round(12*serv), 碳水 = round(carb*serv),
   糖   = round(sugar*serv), 鈉mg = round(na*serv/5)*5)
@@ -299,9 +299,9 @@ const MISC = {
   R_FUNCTION_CONFUSION:         "R 函數或參數用錯（如 pnorm/qnorm、qt 的機率參數）",
   EXCEL_FUNCTION_CONFUSION:     "Excel 函數用錯（如 T.INV vs T.INV.2T、STDEV.P vs STDEV.S）",
   PSEUDO_REPLICATION:           "把同一樣品溶液的重複注射／重複讀值當成獨立重複",
-  REPEATABILITY_AS_INTERMEDIATE:"以為短期重複性（同批雙重複）就能代表長期中間精密度",
+  REPEATABILITY_AS_INTERMEDIATE:"以為短期重複性（同一天、同一批的重複）就能代表長期的中間精密度",
   INSTRUMENT_DECIDES_UNC:       "以為不確定度主要由儀器等級決定（儀器好就可忽略、要改善就換儀器），忽略方法與取樣",
-  OTHER:                        "不對應特定迷思的湊數選項"
+  OTHER:                        "不對應特定迷思的湊數選項（盡量少用）",
 };
 const QUIZ = [
   /* ---------- 前測 pre ---------- */

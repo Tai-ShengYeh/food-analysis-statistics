@@ -323,7 +323,7 @@ Excel 的 SLOPE／INTERCEPT 沒有權重引數。但 1/x² 加權有個漂亮的
 <script>
 const CHAPTER = "ch04";
 const MISC = {
-  R2_PROVES_LINEAR:      "以為 r² 很高就證明線性、不用看殘差圖",
+  R2_PROVES_LINEAR:      "以為 r²（或 r）很高就證明線性、不用看殘差圖",
   R_VS_R2:               "分不清相關係數 r 與決定係數 r²",
   R2_IS_ACCURACY:        "以為 r² 是準確率（多少比例的樣品測對、誤差多少 %）",
   EXTRAPOLATION_SAFE:    "以為標準曲線可以外插到最高標準品以外",
@@ -331,7 +331,7 @@ const MISC = {
   INTERCEPT_SIGN_ERROR:  "截距的正負號處理錯（該減卻加、減負數沒有變成加）",
   FORWARD_NOT_INVERSE:   "反推濃度時把訊號直接代入 x 去算 y（方向弄反）",
   XY_AXIS_SWAP:          "標準曲線的 x（濃度）與 y（訊號）角色弄反，或以為兩軸可互換",
-  CONF_BAND_UNIFORM:     "以為標準曲線各處反推的不確定度都一樣（不知道信賴帶兩端變寬）",
+  CONF_BAND_UNIFORM:     "以為標準曲線各處反推的不確定度都一樣（不知道信賴帶中段最窄、兩端變寬）",
   WEIGHTING_UNNEEDED:    "以為跨多個數量級的校正曲線不需要加權",
   OUTLIER_DELETE_BY_EYE: "看起來怪就刪，不做檢定也不記錄",
   ERROR_TYPE_CONFUSION:  "分不清系統誤差、隨機誤差與疏失",
@@ -339,7 +339,7 @@ const MISC = {
   CI_TRUE_VALUE_PROB:    "以為「真值有 95% 機率落在這個區間」",
   CI_COVERS_DATA:        "把信賴區間當成涵蓋 95% 量測數據的範圍",
   SD_VS_SEM:             "分不清標準差 SD 與平均數標準誤 SEM",
-  OTHER:                 "不對應特定迷思的湊數選項（盡量少用）"
+  OTHER:                 "不對應特定迷思的湊數選項（盡量少用）",
 };
 const QUIZ = [
  /* ---------- 前測 ---------- */

@@ -88,7 +88,7 @@ balance_mix <- function(target_fat, target_msnf,
 
 sol <- balance_mix(tgt_fat, tgt_msnf)
 sum(sol$ok)                          #> 約 82 個網格點可行
-range(sol$smp[sol$ok])               #> 可行的 SMP 區間約 5.50 ~ 9.60 kg
+range(sol$smp[sol$ok])               #> 可行的 SMP 區間 5.50 ~ 9.55 kg
 
 # ---------- Part 3. 最低成本配方：在配方家族中找最便宜的 ----------
 best  <- sol[which.min(sol$cost), ]
@@ -130,8 +130,8 @@ round(c(protein = prot, fat = tgt_fat, carb = carb, sugar = sugar,
         Na_mg = na_mg, kcal_44_9 = kcal), 2)
 #> protein=4.09  fat=12.00  carb=22.30  sugar=20.74  Na=84.8  kcal=213.6
 
-# 台灣格式：每 100 g；美國 FDA 格式：每份 (冰淇淋 RACC = 2/3 杯 ≈ 66 g，
-# 已把 overrun 打入空氣考慮)。捨入規則此處為教學簡化版，實際以最新法規為準。
+# 台灣格式：每 100 g；美國 FDA 格式：每份。此處沿用舊制 RACC 1/2 杯 (118 mL) x 密度 0.56 g/mL = 66 g
+# (密度已含 overrun 打入的空氣)。2016 年起新制 RACC 為 2/3 杯 (158 mL)，同密度約 88 g -> 把 serv 改成 88/100 即可。捨入規則此處為教學簡化版，實際以最新法規為準。
 serv <- 66/100
 fda_g   <- function(x) ifelse(x < 0.5, 0, round(x))
 fda_cal <- function(k) ifelse(k <= 5, 0, ifelse(k <= 50, round(k/5)*5, round(k/10)*10))

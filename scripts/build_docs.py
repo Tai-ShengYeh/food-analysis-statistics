@@ -100,7 +100,7 @@ def build_readme():
         "",
         "## 給授課教師：測驗與學習成效",
         "",
-        "- 每章有「課前 3 題」與「章末複習測驗」，題目格式見 [docs/QUIZ_SCHEMA.md](docs/QUIZ_SCHEMA.md)，全站共用迷思代碼見 [docs/MISC_SEED.md](docs/MISC_SEED.md)。",
+        "- 每章有「課前 3 題」與「章末複習測驗」，題目格式見 [docs/QUIZ_SCHEMA.md](docs/QUIZ_SCHEMA.md)，全站迷思字典見 [docs/MISCONCEPTIONS.md](docs/MISCONCEPTIONS.md)。",
         "- 學生輸入學號後，首次作答、把握程度與「我還不懂的地方」會上傳 Firestore `student_events`；",
         "  以 `python scripts/quiz_dashboard.py` 產生全班成效與迷思報表，說明見 [scripts/README_dashboard.md](scripts/README_dashboard.md)。",
         "",

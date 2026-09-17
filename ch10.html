@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
-  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\[', right: '\]', display: true}]});"></script>
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true}]});"></script>
 </head>
 <body>
 <header class="topbar"><div class="inner">
@@ -241,27 +241,27 @@ V<sub>T</sub> 的 u 本身也是三個小項（校正/溫度/終點）的 <code>
 const CHAPTER = "ch10";
 const MISC = {
   BUDGET_SHARE_LINEAR:          "以為不確定度預算的占比是 u 直接相除，而不是變異數（u²）占比",
-  UNC_LINEAR_ADD:               "把不確定度分量直接相加而不是平方和開根號",
+  UNC_LINEAR_ADD:               "把不確定度（或標準差）分量直接相加而不是平方和開根號",
   UNC_ABS_REL_MIX:              "乘除模型該用相對不確定度卻用絕對值（或相反）",
   SMALL_COMPONENT_MATTERS:      "以為每個小分量都要花力氣精算（不知道平方和由最大分量主導）",
   SMALL_QUANTITY_SMALL_ERROR:   "以為取用量（體積、質量）越少誤差就越小，忽略相對誤差反而變大",
   INSTRUMENT_DECIDES_UNC:       "以為不確定度主要由儀器等級決定（儀器好就可忽略、要改善就換儀器），忽略方法與取樣",
   TOPDOWN_DISTRUSTED:           "以為只有逐項拆解才算正確，內部驗證／協同試驗等整體法是偷懶、漏算了分量",
   PSEUDO_REPLICATION:           "把同一樣品溶液的重複注射／重複讀值當成獨立重複",
-  REPEATABILITY_AS_INTERMEDIATE:"以為短期重複性（同批雙重複）就能代表長期中間精密度",
+  REPEATABILITY_AS_INTERMEDIATE:"以為短期重複性（同一天、同一批的重複）就能代表長期的中間精密度",
   SD_VS_SEM:                    "分不清標準差 SD 與平均數標準誤 SEM",
   PRECISION_IS_ACCURACY:        "以為重複性好（SD/CV 小）就代表結果準確",
   ERROR_EQUALS_UNCERTAINTY:     "把誤差（單一差值）與不確定度（範圍）當成同一件事",
   UNC_MEANS_MISTAKE:            "以為不確定度大代表實驗做錯了",
-  U_VS_UC:                      "分不清合成標準不確定度 u_c 與擴展不確定度 U",
+  U_VS_UC:                      "分不清（合成）標準不確定度 u 與擴展不確定度 U = k·u",
   COMPLIANCE_IGNORE_U:          "判定是否符合限值時只看測值、不看不確定度",
-  COMPLIANCE_RULE_REVERSED:     "把保守決策規則用反：區間只要有一端越過（或低於）限值就直接下結論，其實是灰色地帶",
+  COMPLIANCE_RULE_MISAPPLIED:     "保守決策規則用錯：區間跨過限值的灰色地帶卻直接判成符合或不符合",
   RECOVERY_CORRECTION_CONFUSION:"回收率修正的方向或次數弄錯（該除卻乘、重複修正或忘了修正）",
   TOLERANCE_IS_STD_UNC:         "直接把規格容許差 ±a 當成標準不確定度",
   RECT_WRONG_DIVISOR:           "矩形／三角／常態分布轉標準不確定度時除數用錯（√3、√6、k）",
   R_FUNCTION_CONFUSION:         "R 函數或參數用錯（如 pnorm/qnorm、qt 的機率參數）",
   EXCEL_FUNCTION_CONFUSION:     "Excel 函數用錯（如 T.INV vs T.INV.2T、STDEV.P vs STDEV.S）",
-  OTHER:                        "不對應特定迷思的湊數選項"
+  OTHER:                        "不對應特定迷思的湊數選項（盡量少用）",
 };
 const QUIZ = [
   /* ---------- 前測 pre ---------- */
@@ -290,7 +290,7 @@ const QUIZ = [
           "數據無效：不確定度這麼大，代表實驗做錯了",
           "無法明確判定：區間 1.6–2.2 跨過限量，需複驗或依事先約定的決策規則處理"],
     ans:3,
-    tags:["COMPLIANCE_IGNORE_U", "COMPLIANCE_RULE_REVERSED", "UNC_MEANS_MISTAKE", null],
+    tags:["COMPLIANCE_IGNORE_U", "COMPLIANCE_RULE_MISAPPLIED", "UNC_MEANS_MISTAKE", null],
     exp:"區間跨過限量＝灰色地帶。只看測值忽略了 U；「測值＋U 超過就不合格」把保守規則用反（要 測值−U 超過限量才能判不合格）；不確定度大不等於做錯。" },
 
   /* ---------- 課後 post ---------- */
@@ -371,7 +371,7 @@ const QUIZ = [
           "=IF(U>2.0, 「不符合」, 「符合」)",
           "=IF(測量值-U>2.0, 「不符合」, IF(測量值+U<=2.0, 「符合」, 「灰色地帶」))"],
     ans:3,
-    tags:["COMPLIANCE_IGNORE_U", "COMPLIANCE_RULE_REVERSED", "OTHER", null],
+    tags:["COMPLIANCE_IGNORE_U", "COMPLIANCE_RULE_MISAPPLIED", "OTHER", null],
     exp:"保守決策規則需要兩道門檻：測量值−U > 限量才判不符合；測量值+U ≤ 限量才判符合；其餘是灰色地帶。第一式完全沒用到 U；第二式把「上限超過」直接當不符合，灰色地帶被誤判。（實際在 Excel 輸入時，文字要用半形雙引號包起來。）" },
   { id:"ch10-q10", v:1, type:"misc", phase:"post",
     q:"看到農藥案例的相對擴展不確定度高達 68%（u<sub>c</sub> 相對 34%），同學說：「不確定度這麼大，表示這間實驗室做得很差，結果不能用。」最恰當的回應是：",

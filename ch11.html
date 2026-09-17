@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
-  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\[', right: '\]', display: true}]});"></script>
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true}]});"></script>
 </head>
 <body>
 <header class="topbar"><div class="inner">
@@ -165,7 +165,7 @@ const MISC = {
   LOD_WRONG_MULTIPLIER:      "LOD/LOQ 的 3 倍、10 倍倍數用錯",
   SHEWHART_ONLY_OUT_OF_LIMIT:"以為管制圖只要沒有點超出 ±3s 就沒問題（忽略趨勢與連串）",
   CONTROL_LIMIT_IS_SPEC:     "把管制界限（製程自己的 ±3s）當成規格／法規限值",
-  R2_PROVES_LINEAR:          "以為 r² 很高就證明線性、不用看殘差圖",
+  R2_PROVES_LINEAR:          "以為 r²（或 r）很高就證明線性、不用看殘差圖",
   R_VS_R2:                   "分不清相關係數 r 與決定係數 r²",
   EXTRAPOLATION_SAFE:        "以為標準曲線可以外插到最高標準品以外",
   OUTLIER_DELETE_BY_TEST_ONLY:"以為檢定顯著就可以直接刪除數據，不必找原因與記錄",
@@ -177,31 +177,31 @@ const MISC = {
   UNC_MEANS_MISTAKE:         "以為不確定度大代表實驗做錯了",
   TOLERANCE_IS_STD_UNC:      "直接把規格容許差 ±a 當成標準不確定度",
   RECT_WRONG_DIVISOR:        "矩形／三角／常態分布轉標準不確定度時除數用錯（√3、√6、k）",
-  UNC_LINEAR_ADD:            "把不確定度分量直接相加而不是平方和開根號",
+  UNC_LINEAR_ADD:            "把不確定度（或標準差）分量直接相加而不是平方和開根號",
   UNC_ABS_REL_MIX:           "乘除模型該用相對不確定度卻用絕對值（或相反）",
   SMALL_COMPONENT_MATTERS:   "以為每個小分量都要花力氣精算（不知道平方和由最大分量主導）",
   K2_ALWAYS_95:              "以為 k=2 永遠恰好是 95%（忽略有效自由度）",
-  U_VS_UC:                   "分不清合成標準不確定度 u_c 與擴展不確定度 U",
+  U_VS_UC:                   "分不清（合成）標準不確定度 u 與擴展不確定度 U = k·u",
   COMPLIANCE_IGNORE_U:       "判定是否符合限值時只看測值、不看不確定度",
-  COMPLIANCE_RULE_REVERSED:     "把保守決策規則用反：區間只要有一端越過（或低於）限值就直接下結論，其實是灰色地帶",
+  COMPLIANCE_RULE_MISAPPLIED:     "保守決策規則用錯：區間跨過限值的灰色地帶卻直接判成符合或不符合",
   UNC_TOO_MANY_DIGITS:       "不確定度報太多位數，或結果與不確定度位數不一致",
   MC_MORE_ACCURATE_ALWAYS:   "以為 Monte Carlo 一定比 GUM 公式法「更正確」",
   MC_TOO_FEW_TRIALS:         "以為模擬幾百次就夠、不知結果會隨次數／種子波動",
-  KRAGTEN_MC_CONFUSION:      "分不清 Kragten 法（每個輸入量加 u 重算一次）與 Monte Carlo（隨機抽樣上萬次）",
+  KRAGTEN_MC_CONFUSED:      "把 Kragten（逐項加 u 重算）與 Monte Carlo（隨機抽樣）弄混",
   INSTRUMENT_DECIDES_UNC:    "以為不確定度主要由儀器等級決定（儀器好就可忽略、要改善就換儀器），忽略方法與取樣",
   TOPDOWN_DISTRUSTED:        "以為只有逐項拆解才算正確，內部驗證／協同試驗等整體法是偷懶、漏算了分量",
   /* Ch11 */
-  EMPIRICAL_HAS_TRUE_VALUE:  "以為經驗（實證）方法的結果也有獨立於方法的真值，需要用回收率修正偏倚",
+  EMPIRICAL_METHOD_BIAS:  "不知道經驗（操作定義）方法的結果由方法本身定義，仍以為有獨立的真值要去修正偏倚",
   EMPIRICAL_NO_UNC:          "以為經驗方法沒有真值，所以不需要（或無法）評估不確定度",
   REPEATABILITY_VS_REPRODUCIBILITY:"分不清重複性 s_r（同實驗室短期）與再現性 s_R（跨實驗室）",
   SR_USED_WITHOUT_CHECK:     "以為協同試驗的 s_R 不必先確認自家實驗室表現相當，就可以直接沿用",
   REL_UNC_CONSTANT:          "以為相對不確定度在所有含量層級都一樣",
-  CAL_UNC_CONSTANT:          "以為同一條標準曲線上各濃度的反推不確定度都一樣（不知道兩端較寬）",
+  CONF_BAND_UNIFORM:          "以為標準曲線各處反推的不確定度都一樣（不知道信賴帶中段最窄、兩端變寬）",
   CAL_P_VS_N:                "分不清未知樣品的重複測定數 p 與校正點數 n 各影響公式的哪一項",
   R_FUNCTION_CONFUSION:      "R 函數或參數用錯（如 pnorm/qnorm、qt 的機率參數）",
   EXCEL_FUNCTION_CONFUSION:  "Excel 函數用錯（如 T.INV vs T.INV.2T、STDEV.P vs STDEV.S）",
   UNIT_CONVERSION:           "單位換算錯誤（mg/kg、%、ppm…）",
-  OTHER:                     "不對應特定迷思的湊數選項"
+  OTHER:                     "不對應特定迷思的湊數選項（盡量少用）",
 };
 const QUIZ = [
   { id:"ch11-q01", v:1, type:"concept", phase:"post",
@@ -235,7 +235,7 @@ const QUIZ = [
           "越小：濃度越高訊號越強，所以高濃度端最準",
           "範圍內都一樣，只有超出最高標準品（外插）時才突然變大"],
     ans:1,
-    tags:["CAL_UNC_CONSTANT", null, "EXTRAPOLATION_SAFE", "CAL_UNC_CONSTANT"],
+    tags:["CONF_BAND_UNIFORM", null, "EXTRAPOLATION_SAFE", "CONF_BAND_UNIFORM"],
     exp:"這是迴歸的槓桿效應：離中心越遠，斜率的估計誤差被放大越多（圖 11-1 兩端最寬、低濃度端也一樣）。它是連續變寬，不是到外插才突然變大；所以未知濃度應設計在校正範圍中段。" },
   { id:"ch11-q05", v:1, type:"concept", phase:"post",
     q:"把未知樣品從只測 1 次改為測 3 次取平均（校正線不變），var(x<sub>pred</sub>) 公式裡改變的是：",
@@ -271,7 +271,7 @@ const QUIZ = [
           "不對：經驗方法沒有真值，所以根本不需要評估不確定度",
           "不對：粗纖維由法定操作步驟「定義」，沒有獨立於方法的真值，偏倚不修正；不確定度以協同試驗 s_R 為主體"],
     ans:3,
-    tags:["EMPIRICAL_HAS_TRUE_VALUE", "SYSTEMATIC_FIXED_BY_REPEATS", "EMPIRICAL_NO_UNC", null],
+    tags:["EMPIRICAL_METHOD_BIAS", "SYSTEMATIC_FIXED_BY_REPEATS", "EMPIRICAL_NO_UNC", null],
     exp:"經驗（實證）方法的被測量就是「照這個方法做出來的值」，方法偏倚依定義為零，不做回收率修正（對照 Ch10 農藥案例：理性方法才修正）。但不同實驗室照同一方法做仍有散布，所以仍要報不確定度。" },
   { id:"ch11-q09", v:1, type:"rout", phase:"post",
     q:"在 Excel 計算粗纖維低含量的合成不確定度 \\(\\sqrt{0.292^2 + 0.115^2}\\)，正確的公式是：",
@@ -377,7 +377,7 @@ const FINALEXAM = [
           "灰色地帶：區間 9.6–11.6 橫跨限值，需複驗或依約定的決策規則處理",
           "數據無效：不確定度太大，應重做到 U 小於 0.1"],
     ans:2,
-    tags:["COMPLIANCE_IGNORE_U", "COMPLIANCE_RULE_REVERSED", null, "UNC_MEANS_MISTAKE"],
+    tags:["COMPLIANCE_IGNORE_U", "COMPLIANCE_RULE_MISAPPLIED", null, "UNC_MEANS_MISTAKE"],
     exp:"result − U = 9.6 < 10 且 result + U = 11.6 > 10 → 區間橫跨限值，無法判定。只看 10.6 > 10 忽略了 U；拿區間下限低於限值就判符合，是把規則用反（要 result + U ≤ 限值才算符合）。" },
   { id:"ch11-q32", v:1, type:"concept", phase:"post",
     q:"【Ch9】用 Monte Carlo 重算同一個不確定度預算。下列敘述何者正確？",
@@ -386,7 +386,7 @@ const FINALEXAM = [
           "模擬 200 次就足以穩定估計 95% 區間",
           "Monte Carlo 就是 Kragten 法：把每個輸入量各加上一個 u 重算一次"],
     ans:1,
-    tags:["MC_MORE_ACCURATE_ALWAYS", null, "MC_TOO_FEW_TRIALS", "KRAGTEN_MC_CONFUSION"],
+    tags:["MC_MORE_ACCURATE_ALWAYS", null, "MC_TOO_FEW_TRIALS", "KRAGTEN_MC_CONFUSED"],
     exp:"兩種方法吃的是同一組輸入假設，垃圾進垃圾出；Monte Carlo 不會自動「更正確」，它的優勢是不必線性近似。95% 分位數要上萬到數十萬次才穩定。Kragten 是數值微分（每個輸入加 u 重算一次），不是隨機抽樣。" },
   { id:"ch11-q33", v:1, type:"concept", phase:"post",
     q:"【Ch3】QC 管制圖上連續 7 點都落在中心線的同一側，但每一點都在 ±3s 之內。最恰當的判斷是：",
@@ -411,7 +411,7 @@ const FINALEXAM = [
           "修正粗纖維偏倚用的係數，因為經驗方法也要修正到真值",
           "直接使用即可，不需要確認自家實驗室的表現"],
     ans:0,
-    tags:[null, "REPEATABILITY_VS_REPRODUCIBILITY", "EMPIRICAL_HAS_TRUE_VALUE", "SR_USED_WITHOUT_CHECK"],
+    tags:[null, "REPEATABILITY_VS_REPRODUCIBILITY", "EMPIRICAL_METHOD_BIAS", "SR_USED_WITHOUT_CHECK"],
     exp:"s_R 涵蓋實驗室間的所有變異（QUAM §7.6），是經驗方法不確定度的現成來源；但要先證明自家 s_r 與協同試驗一致才可沿用。s_r 只是同實驗室短期變異，遠小於 s_R；經驗方法的偏倚依定義為零，不做修正。" }
 ];
 </script>

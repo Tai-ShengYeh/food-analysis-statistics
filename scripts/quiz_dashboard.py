@@ -226,7 +226,8 @@ def _run_node_extract(script_body, node_bin="node", timeout=15):
     var out = {
       CHAPTER: (typeof CHAPTER !== 'undefined') ? CHAPTER : null,
       MISC: (typeof MISC !== 'undefined') ? MISC : {},
-      QUIZ: (typeof QUIZ !== 'undefined') ? QUIZ : []
+      QUIZ: ((typeof QUIZ !== 'undefined') ? QUIZ : [])
+        .concat((typeof FINALEXAM !== 'undefined') ? FINALEXAM : [])
     };
     process.stdout.write(JSON.stringify(out));
   } catch (e) {
@@ -264,11 +265,10 @@ def _run_node_extract(script_body, node_bin="node", timeout=15):
 
 
 def _find_quiz_script(html_text):
-    for m in re.finditer(r"<script>([\s\S]*?)</script>", html_text):
-        block = m.group(1)
-        if re.search(r"\bQUIZ\s*=", block):
-            return block
-    return None
+    # 同一頁可能有第二組題目（ch11 的期末總測驗 FINALEXAM），一併取出
+    blocks = [m.group(1) for m in re.finditer(r"<script>([\s\S]*?)</script>", html_text)
+              if re.search(r"\b(QUIZ|FINALEXAM)\s*=", m.group(1))]
+    return "\n".join(blocks) if blocks else None
 
 
 def extract_quiz_metadata(repo_root=REPO_ROOT, node_bin="node"):

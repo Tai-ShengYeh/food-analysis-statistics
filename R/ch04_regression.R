@@ -92,6 +92,9 @@ area <- c(101, 99, 102,
           4930, 5070, 5005,
           9720, 10380, 10040)
 
+# 診斷：每個濃度 3 次重複的 SD，是不是隨濃度一路變大？
+round(tapply(area, conc, sd), 1)
+
 # 三個候選模型：不加權、1/x、1/x^2
 fit_ols <- lm(area ~ conc)
 fit_1x  <- lm(area ~ conc, weights = 1 / conc)
@@ -124,6 +127,10 @@ plot(fitted(fit_1x2), sqrt(1 / conc^2) * residuals(fit_1x2), pch = 19,
      xlab = "預測訊號", ylab = "加權殘差", main = "WLS: 1/x^2")
 abline(h = 0, lty = 2)
 par(mfrow = c(1, 1))
+
+# 補充：三個模型的 r^2 幾乎一樣 -> 不能用 r^2 選權重
+round(sapply(list(OLS = fit_ols, WLS_1x = fit_1x, WLS_1x2 = fit_1x2),
+             function(f) summary(f)$r.squared), 4)
 
 # 選權重時，應比較：
 # 1. 殘差是否仍有濃度相關趨勢或漏斗形。

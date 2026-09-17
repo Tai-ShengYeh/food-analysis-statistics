@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
-  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\[', right: '\]', display: true}]});"></script>
+  onload="renderMathInElement(document.body, {delimiters: [{left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true}]});"></script>
 </head>
 <body>
 <header class="topbar"><div class="inner">
@@ -446,7 +446,7 @@ DOE 的「效應」其實只是加減平均，Excel 完全算得出來：<br>
 const CHAPTER = "ch14";
 const MISC = {
   OFAT_IS_ENOUGH:             "以為一次改一個因子（OFAT）就能找到最適條件，不需要因子設計",
-  INTERACTION_IGNORED:        "交互作用顯著時仍單獨解讀主效應",
+  INTERACTION_IGNORED:        "交互作用顯著時仍單獨解讀（或只報告）主效應",
   INTERACTION_IS_CORRELATION: "把「交互作用」當成兩個因子彼此相關或互相影響對方的設定",
   CENTER_POINTS_USELESS:      "不知道中心點重複是用來估純誤差與檢查曲率",
   FIRST_ORDER_FINDS_OPTIMUM:  "以為兩水準／一階（直線、平面）模型就能決定最適點",
@@ -460,11 +460,11 @@ const MISC = {
   CI_TRUE_VALUE_PROB:         "以為「真值有 95% 機率落在這個區間」",
   PSEUDO_REPLICATION:         "把同一樣品溶液的重複注射／重複讀值當成獨立重複",
   EXTRAPOLATION_SAFE:         "以為標準曲線可以外插到最高標準品以外",
-  R2_PROVES_LINEAR:           "以為 r² 很高就證明線性、不用看殘差圖",
+  R2_PROVES_LINEAR:           "以為 r²（或 r）很高就證明線性、不用看殘差圖",
   SYSTEMATIC_FIXED_BY_REPEATS:"以為多做幾次重複就能消除系統誤差",
   R_FUNCTION_CONFUSION:       "R 函數或參數用錯（如 pnorm/qnorm、qt 的機率參數）",
   EXCEL_FUNCTION_CONFUSION:   "Excel 函數用錯（如 T.INV vs T.INV.2T、STDEV.P vs STDEV.S）",
-  OTHER:                      "不對應特定迷思的湊數選項"
+  OTHER:                      "不對應特定迷思的湊數選項（盡量少用）",
 };
 const QUIZ = [
   /* ---------- 前測 pre ---------- */

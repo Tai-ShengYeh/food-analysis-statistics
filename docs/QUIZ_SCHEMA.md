@@ -49,8 +49,9 @@ const QUIZ = [
 ## 每章配額（目標 10 分鐘內）
 
 - `pre` 3 題：與課後題同構但換數字/換情境，測先備迷思；作答後**不顯示詳解**。
-- `post` 6–9 題：concept ≥2、calc ≥2、rout ≥1、misc ≥1。
+- `post` 6–10 題：concept ≥2、calc ≥2（至少 1 題數值填空）、rout ≥1、misc ≥1。
 - `spaced` 1 題：回溯 2–3 章之前最重要的迷思（Ch0–Ch2 免）。
+- 出題前先查全站迷思字典 `docs/MISCONCEPTIONS.md`，語意相同就沿用既有 key。
 - `MISC` 的 key 用全大寫蛇形英文、全站唯一語意（同一迷思跨章請用同一個 key）；value 用一句白話中文描述學生「以為什麼」。
 
 ## 引擎行為（出題時要知道）
@@ -59,3 +60,15 @@ const QUIZ = [
 - 每題附三級信心度（猜的 / 有點把握 / 很確定）。
 - **只有第一次作答算成效**；批改後可「再練一次」，事件仍上傳但 `attempts>1`，分析時排除。
 - 章末有一格「我還不懂的地方」（≤200 字），以 `self_check` 事件上傳。
+
+## 同一頁的第二組題目
+
+`ch11.html` 除了章末測驗 `QUIZ`，還有期末總測驗 `FINALEXAM`（id 用 `ch11-q21` 起，與章末題號區隔），以
+`renderQuiz(el, FINALEXAM, { set: "final", title: "…", muddy: false })` 渲染；`set` 讓兩組題目各自計算作答次數，事件會帶 `quiz_set`。
+
+## 改完題目之後
+
+```
+node scripts/check_quiz.js           # 格式、配額、tag、數值題容許範圍；有 ✗ 就不要上線
+python scripts/merge_misc_keys.py    # 有新增迷思 key 時：統一描述、更新 docs/MISCONCEPTIONS.md
+```

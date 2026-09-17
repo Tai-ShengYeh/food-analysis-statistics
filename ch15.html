@@ -507,7 +507,7 @@ const MISC = {
   REJECT_WHEN_P_LARGE:   "把判定方向弄反：以為 p 大於 α 才拒絕 H0",
   POSTHOC_ONE_TAIL:      "看到數據方向（或 p 值）之後才決定改用單尾檢定",
   P_HACKING:             "為了得到想要的 p 值而挑選分析方法、尾數或樣本數",
-  PSEUDOREPLICATION:     "把同一份樣品溶液的重複注射／重複讀值當成獨立重複（偽重複）",
+  PSEUDO_REPLICATION:     "把同一樣品溶液的重複注射／重複讀值當成獨立重複",
   PAIRED_AS_INDEPENDENT: "成對設計的數據卻用兩獨立樣本 t 檢定",
   CI_OVERLAP_AS_TEST:    "以為看兩組各自的信賴區間有沒有重疊就能代替檢定",
   F_FOR_MEANS:           "以為 F 檢定（var.test）是用來比較兩組平均值",
@@ -519,11 +519,11 @@ const MISC = {
   MULTI_T_NO_INFLATION:  "以為多組兩兩 t 檢定時，整體型一錯誤率仍是 0.05",
   PAIRS_EQUALS_GROUPS:   "把兩兩比較的次數當成組數（k 組其實有 k(k−1)/2 對）",
   ALPHA_ADDS_LINEAR:     "以為整體 α 就是直接相加 k × α",
-  FORGOT_SQRT_N:         "算標準誤時忘了除以 √n，直接用 SD",
+  FORGOT_SQRT_N:         "算 SEM／CI 時忘了除以 √n",
   SE_DIVIDE_BY_N:        "標準誤用 SD/n 而不是 SD/√n",
   CI_TRUE_VALUE_PROB:    "以為「真值有 95% 機率落在這個區間」",
   CI_COVERS_DATA:        "把信賴區間當成涵蓋 95% 量測數據的範圍",
-  CI_IS_PRECISION:       "把信心水準 95% 當成方法的精密度或準確度"
+  CI_IS_PRECISION:       "以為 95% 指的是方法的精密度或準確率",
 };
 const QUIZ = [
   /* ---------- 前測 pre ---------- */
@@ -611,7 +611,7 @@ const QUIZ = [
           "沒問題：而且 p 這麼小，表示兩種溶劑的差異非常大",
           "有問題，但只要把每份萃取液注射到 30 次以上（n &gt; 30）就可以了"],
     ans:1,
-    tags:["PSEUDOREPLICATION", null, "P_SMALL_BIG_EFFECT", "PSEUDOREPLICATION"],
+    tags:["PSEUDO_REPLICATION", null, "P_SMALL_BIG_EFFECT", "PSEUDO_REPLICATION"],
     exp:"這是偽重複：同一份萃取液的重複注射彼此不獨立，沒有包含稱樣與萃取的變異，SD 被嚴重低估、t 值被灌水。注射再多次也一樣，真正的 n 仍是 1。p 小也不代表差異大。正確做法是每種溶劑獨立萃取多份（例如各 5 份）。" },
   { id:"ch15-q08", v:1, type:"misc", phase:"post",
     q:"兩台線上水分儀各測 40 包同批奶粉：平均差 0.042%，95% CI 為 0.016 ~ 0.069%，p = 0.002。廠內規定兩台儀器差異在 ±0.20% 內即視為一致。最恰當的結論是：",

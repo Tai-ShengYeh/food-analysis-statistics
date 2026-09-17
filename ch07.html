@@ -173,7 +173,7 @@ const MISC = {
   TYPEA_ALWAYS_DIVIDE_SQRT_N:    "不管報告的是單次值還是平均，Type A 一律用 s/√n",
   SD_VS_SEM:                     "分不清標準差 SD 與平均數標準誤 SEM",
   SE_DIVIDE_BY_N:                "標準誤用 SD/n 而不是 SD/√n",
-  UNC_LINEAR_ADD:                "把不確定度分量直接相加而不是平方和開根號",
+  UNC_LINEAR_ADD:                "把不確定度（或標準差）分量直接相加而不是平方和開根號",
   UNC_CANCELS_OUT:               "以為輸入量相加減時，不確定度會跟著相減、互相抵消、變小或維持不變",
   UNC_SQUARE_STEP_WRONG:         "合成時平方／開根號的步驟弄錯（忘了先平方，或忘了最後開根號）",
   UNC_ABS_REL_MIX:               "乘除模型該用相對不確定度卻用絕對值（或相反）",
@@ -181,9 +181,9 @@ const MISC = {
   R_FUNCTION_CONFUSION:          "R 函數或參數用錯（如 pnorm/qnorm、qt 的機率參數）",
   EXCEL_FUNCTION_CONFUSION:      "Excel 函數用錯（如 T.INV vs T.INV.2T、STDEV.P vs STDEV.S）",
   EXTRAPOLATION_SAFE:            "以為標準曲線可以外插到最高標準品以外",
-  R2_PROVES_LINEAR:              "以為 r² 很高就證明線性、不用看殘差圖",
+  R2_PROVES_LINEAR:              "以為 r²（或 r）很高就證明線性、不用看殘差圖",
   SYSTEMATIC_FIXED_BY_REPEATS:   "以為多做幾次重複就能消除系統誤差",
-  OTHER:                         "不對應特定迷思的湊數選項"
+  OTHER:                         "不對應特定迷思的湊數選項（盡量少用）",
 };
 const QUIZ = [
  /* ---------- 前測 pre ---------- */

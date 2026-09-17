@@ -114,7 +114,7 @@ true_value &lt;- 100.0
 results &lt;- rnorm(30, mean = 100 + 2, sd = 3)  # +2 偏倚, SD=3 隨機
 
 mean(results)     #&gt; 101.9  <- 測得平均，與真值差 ~+2 = 誤差(偏倚)
-sd(results)       #&gt; 2.8   <- 散布 = 隨機效應大小
+sd(results)       #&gt; 2.9   <- 散布 = 隨機效應大小
 
 hist(results, breaks = 8, col = "lightblue",
      main = "誤差(單點) vs 不確定度(區間)", xlab = "mg/L")
@@ -155,15 +155,15 @@ const MISC = {
   PRECISION_IS_ACCURACY:       "以為重複性好（SD/CV 小）就代表結果準確",
   UNC_ONLY_REPEATABILITY:      "以為不確定度就只是重複量測的 SD（忽略校正、純度、體積等其他來源）",
   GUM_STEP_ORDER:              "GUM 四步驟順序弄錯（沒先定義被測量與模型就開始找來源或計算）",
-  EMPIRICAL_METHOD_BIAS:       "不知道經驗（操作定義）方法的結果由方法定義，仍想修正方法偏倚或以為換方法結果應相同",
+  EMPIRICAL_METHOD_BIAS:       "不知道經驗（操作定義）方法的結果由方法本身定義，仍以為有獨立的真值要去修正偏倚",
   SPURIOUS_AS_RANDOM:          "把人為疏失（抄錯、儀器故障）當成一般誤差，留在數據裡做統計",
   OUTLIER_NEVER_DELETE:        "以為任何情況刪數據都是學術不端（即使有確認的失誤紀錄）",
-  UNC_LINEAR_ADD:              "把不確定度分量直接相加而不是平方和開根號",
+  UNC_LINEAR_ADD:              "把不確定度（或標準差）分量直接相加而不是平方和開根號",
   UNC_SQUARE_STEP_WRONG:       "合成時平方／開根號的步驟弄錯（忘了先平方，或忘了最後開根號）",
   SMALL_COMPONENT_MATTERS:     "以為每個小分量都要花力氣精算（不知道平方和由最大分量主導）",
   LOD_EQUALS_LOQ:              "分不清 LOD（偵測得到）與 LOQ（可以定量）",
   LOD_WRONG_MULTIPLIER:        "LOD/LOQ 的 3 倍、10 倍倍數用錯",
-  OTHER:                       "不對應特定迷思的湊數選項"
+  OTHER:                       "不對應特定迷思的湊數選項（盡量少用）",
 };
 const QUIZ = [
  /* ---------- 前測 pre ---------- */
