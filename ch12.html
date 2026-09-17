@@ -206,6 +206,7 @@ abs(ion_s - ion_std) &lt;= 0.30 * ion_std   #&gt; TRUE (定性確認成立)</pre
 
 <h2>📊 Excel 也會算：基質效應與離子比</h2>
 <div class="callout ok"><span class="t">📊 沒有 R 也能動手</span>
+<p class="xldl"><a class="xlbtn" href="downloads/excel/ch12_lcmsms_uncertainty.xlsx" download>⬇ 下載本章 Excel 活頁簿</a> 數據、公式、白話說明都排好了，打開就能算；改黃色儲存格試試看，最後一張工作表會幫你和 R 的答案對照。</p>
 LC-MS/MS 的診斷指標都是「斜率比值」，用 SLOPE 配兩欄數據即可：<br>
 <table>
 <tr><th>指標</th><th>Excel 公式</th><th>說明</th></tr>
@@ -215,7 +216,7 @@ LC-MS/MS 的診斷指標都是「斜率比值」，用 SLOPE 配兩欄數據即�
 <tr><td>回收率 RE%</td><td><code>=(C/B)*100</code></td><td>萃取損失</td></tr>
 <tr><td>離子比</td><td><code>=定性離子峰面積/定量離子峰面積</code></td><td>需落在參考值 ±30%</td></tr>
 </table>
-<strong>1/x 加權迴歸</strong> Excel 無內建，需陣列公式或加權欄輔助——痕量分析建議直接用 R（本章示範）或儀器軟體。</div>
+<strong>1/x 加權迴歸</strong> Excel 沒有內建按鈕，但用一欄權重加 <code>SUMPRODUCT</code> 就能算（本章 Excel 活頁簿的「加權迴歸」工作表有完整做法）；例行的痕量分析仍建議用 R（本章示範）或儀器軟體。</div>
 
 <div class="quiz" id="quiz"></div>
 <script>

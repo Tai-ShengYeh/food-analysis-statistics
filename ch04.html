@@ -294,6 +294,7 @@ r² 幾乎只反映高濃度那幾個點貼不貼線（而且加權後的 r² �
 <small>另外兩個限制：x = 0 的空白點無法使用 1/x 或 1/x²（會除以 0）；直接用 1/s² 當權重需要每個濃度有足夠多的重複，只做 3 次的 s² 並不穩定，所以實務上多用 1/x 或 1/x² 近似。</small></div>
 
 <div class="callout ok"><span class="t">📊 Excel 對照：1/x² 加權可以用兩個輔助欄做出來</span>
+<p class="xldl"><a class="xlbtn" href="downloads/excel/ch04_calibration_wls.xlsx" download>⬇ 下載本章 Excel 活頁簿</a> 數據、公式、白話說明都排好了，打開就能算；改黃色儲存格試試看，最後一張工作表會幫你和 R 的答案對照。</p>
 Excel 的 SLOPE／INTERCEPT 沒有權重引數。但 1/x² 加權有個漂亮的等價寫法：把 y = ax + b 兩邊同除以 x，得到 <strong>y/x = a + b·(1/x)</strong>，
 對它做普通迴歸，就等於對原式做 1/x² 加權。濃度放 <code>A1:A15</code>、面積放 <code>B1:B15</code>，C 欄輸入 <code>=1/A1</code>、D 欄輸入 <code>=B1/A1</code> 後下拉：<br>
 <table>
@@ -301,7 +302,7 @@ Excel 的 SLOPE／INTERCEPT 沒有權重引數。但 1/x² 加權有個漂亮的
 <tr><td>斜率 a</td><td><code>=INTERCEPT(D1:D15,C1:C15)</code> → 100.15</td><td rowspan="2">角色<strong>對調</strong>了：新式子的截距才是原來的斜率</td></tr>
 <tr><td>截距 b</td><td><code>=SLOPE(D1:D15,C1:C15)</code> → 0.43</td></tr>
 </table>
-結果與 R 的 <code>lm(area ~ conc, weights = 1/conc^2)</code> 相同。1/x 加權沒有這麼簡單的寫法（需要 LINEST 陣列公式加輔助欄），建議直接用 R。</div>
+結果與 R 的 <code>lm(area ~ conc, weights = 1/conc^2)</code> 相同。1/x 加權沒有這麼簡單的轉換寫法，但可以用 <code>SUMPRODUCT</code> 直接算加權最小平方（Σw、Σwx、Σwy、Σwx²、Σwxy）——本章 Excel 活頁簿的「WLS」工作表就是這樣做的，把權重欄改成 1/x 即可；資料多時仍建議用 R。</div>
 
 <div class="callout ok"><span class="t">🔗 接下來</span>
 這裡每個濃度做了 3 次重複，還能做一件事：<strong>失擬檢定（lack-of-fit）</strong>——用統計檢定而不是肉眼判斷直線夠不夠用，見 <a href="ch17.html">Ch17</a>；LC-MS/MS 的 1/x 加權實例見 <a href="ch12.html">Ch12</a>。</div>

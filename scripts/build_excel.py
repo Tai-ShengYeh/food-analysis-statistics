@@ -69,6 +69,9 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     mods = sorted(p.stem for p in (Path(__file__).parent / "excel_books").glob("ch*.py"))
     if args:
+        missing = [a for a in args if a not in mods]
+        if missing:
+            sys.exit("找不到模組：" + ", ".join(missing) + "（檔名必須是 scripts/excel_books/chNN.py）")
         mods = [m for m in mods if m in args]
     built = []
     for name in mods:

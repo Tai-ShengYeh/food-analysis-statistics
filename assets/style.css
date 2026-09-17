@@ -284,3 +284,9 @@ ol.refs a { color: var(--c-primary-2); word-break: break-all; }
 sub, sup { font-size: 0.8em; line-height: 0; position: relative; vertical-align: baseline; }
 sub { bottom: -0.25em; }
 sup { top: -0.4em; }
+
+/* Excel 活頁簿下載 */
+.xldl { margin: 8px 0 12px; }
+.xlbtn { display: inline-block; background: #1D6F42; color: #fff; text-decoration: none; font-weight: 600;
+  padding: 6px 14px; border-radius: 8px; margin-right: 8px; }
+.xlbtn:hover { background: #155232; }

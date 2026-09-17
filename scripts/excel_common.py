@@ -113,6 +113,7 @@ class Book:
             t.font = Font(name="Consolas", size=10, color="1565C0")
         if note:
             n = ws.cell(row=row, column=label_col + 3, value=note)
+            n.data_type = "s"          # 說明文字若以「=」開頭，openpyxl 會誤當成公式
             n.font = NOTE_FONT
             n.alignment = Alignment(wrap_text=True, vertical="top")
         return f"{get_column_letter(label_col + 1)}{row}"
@@ -123,6 +124,8 @@ class Book:
 
     def text(self, ws, row, col, value, bold=False, size=11, color=None):
         c = ws.cell(row=row, column=col, value=value)
+        if isinstance(value, str):
+            c.data_type = "s"
         c.font = Font(name=FONT, bold=bold, size=size, color=color)
         c.alignment = Alignment(wrap_text=True, vertical="top")
         return c
