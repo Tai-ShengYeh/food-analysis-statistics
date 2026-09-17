@@ -48,7 +48,7 @@ function toDoc(ev) {
     confidence: nz(ev.confidence), misconception: nz(ev.misconception),
     user_agent: (navigator.userAgent || '').slice(0, 200),
     // 本站新增
-    site: 'fas', quiz_set: nz(ev.quiz_set), phase: nz(ev.phase), item_version: nz(ev.item_version), from_chapter: nz(ev.from),
+    site: 'fas', schema_v: 2, quiz_set: nz(ev.quiz_set), phase: nz(ev.phase), item_version: nz(ev.item_version), from_chapter: nz(ev.from),
     choice_idx: nz(ev.choice_idx), choice_value: nz(ev.choice_value), skipped: nz(ev.skipped),
     latency_ms: nz(ev.latency_ms), duration_ms: nz(ev.duration_ms), answered: nz(ev.answered),
     free_text: ev.free_text ? String(ev.free_text).slice(0, 200) : null,
@@ -76,7 +76,10 @@ async function flush() {
         // 規則拒絕或格式錯誤重試也不會成功 → 移到 fas_dead 留底；網路類錯誤則保留、下次再送
         if (e.code === 'permission-denied' || e.code === 'invalid-argument') {
           console.error('[FAS] 事件被拒：', e.code, ev);
-          const dead = read(DEAD_KEY); dead.push({ ev, code: e.code }); write(DEAD_KEY, dead.slice(-200));
+          const dead = read(DEAD_KEY);
+          dead.push({ ev, code: e.code, tries: (ev._tries || 0) + 1 });
+          write(DEAD_KEY, dead.slice(-500));
+          status('⚠ 作答紀錄暫時無法上傳，已保留在這台裝置上；請告訴老師，並可用下方按鈕匯出 CSV。');
         } else {
           drop = false;
         }
@@ -91,6 +94,16 @@ async function flush() {
     flushing = false;
   }
 }
+
+// 被拒的事件不一定是事件本身有錯（例如 API key 的網域限制或規則暫時設錯，回傳的也是 permission-denied），
+// 所以每次開頁把 fas_dead 裡重試未滿 5 次的事件放回佇列再試一次，設定修好後資料會自動補送。
+(function revive() {
+  const dead = read(DEAD_KEY);
+  const retry = dead.filter((d) => (d.tries || 1) < 5);
+  if (!retry.length) return;
+  write(DEAD_KEY, dead.filter((d) => (d.tries || 1) >= 5));
+  write(QUEUE_KEY, retry.map((d) => Object.assign({}, d.ev, { _tries: d.tries || 1 })).concat(read(QUEUE_KEY)));
+})();
 
 window.addEventListener('fas-queue', flush);
 window.addEventListener('online', flush);

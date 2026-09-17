@@ -60,7 +60,11 @@ var FAS = (function () {
     if (c) { c = c.replace(/[^A-Za-z0-9_\-]/g, "").slice(0, 10); try { localStorage.setItem(CLASS_KEY, c); } catch (e) {} }
     return c || rawGet(CLASS_KEY) || "A";
   }
-  function sid() { return rawGet(SID_KEY); }
+  // 學號一律正規化成大寫；SID_KEY 與其他課程站共用，別站存入的值未必驗證過，格式不符就當作沒輸入
+  function sid() {
+    var v = (rawGet(SID_KEY) || "").trim().toUpperCase();
+    return /^[A-Z0-9_\-]{1,20}$/.test(v) ? v : null;
+  }
   function isGuest() { try { return sessionStorage.getItem("fas_guest") === "1"; } catch (e) { return false; } }
 
   function emit(ev) {
@@ -122,8 +126,9 @@ function renderGate(box, body) {
   function draw() {
     var s = FAS.sid(), guest = FAS.isGuest();
     if (s || guest) {
-      gate.innerHTML = '<span class="qwho">' + (s && !guest ? "🎓 " + s.toUpperCase() : "👤 訪客練習（不記錄）") +
-        '</span> <button type="button" class="qlink act-change">' + (s && !guest ? "更換學號" : "改用學號作答") + "</button>";
+      gate.innerHTML = '<span class="qwho"></span> <button type="button" class="qlink act-change">' +
+        (s && !guest ? "更換學號" : "改用學號作答") + "</button>";
+      gate.querySelector(".qwho").textContent = s && !guest ? "🎓 " + s : "👤 訪客練習（不記錄）";
       gate.querySelector(".act-change").addEventListener("click", function () {
         try { localStorage.removeItem(FAS.SID_KEY); sessionStorage.removeItem("fas_guest"); } catch (e) {}
         refreshGates();
@@ -140,7 +145,7 @@ function renderGate(box, body) {
       function go() {
         var v = inp.value.trim();
         if (!/^[A-Za-z0-9_\-]{1,20}$/.test(v)) { err.textContent = "學號只能是英文、數字、底線或連字號，1–20 字。"; return; }
-        try { localStorage.setItem(FAS.SID_KEY, v); } catch (e) {}
+        try { localStorage.setItem(FAS.SID_KEY, v.toUpperCase()); } catch (e) {}
         refreshGates();
       }
       gate.querySelector(".act-go").addEventListener("click", go);
@@ -258,10 +263,19 @@ function renderQuiz(container, allQuestions, opts) {
   function grade() {
     var divs = body.querySelectorAll(".qitem");
     var results = questions.map(function (item, qi) { return readItem(divs[qi], item); });
+    var nAns = results.filter(function (r) { return r.answered; }).length, nSkip = results.length - nAns;
     var noConf = results.filter(function (r) { return r.answered && r.confidence === null; }).length;
-    if (noConf && !warned) {
+    // 空白送出會白白用掉「第一次作答」並直接看到詳解，這筆資料事後救不回來，所以擋下
+    if (!nAns) { note.textContent = "還沒有作答喔。請先選答案再按按鈕。"; return; }
+    if (phase === "pre" && nSkip) {
+      note.textContent = "前測請每題都選一個答案——不會也沒關係，憑直覺選，把握程度點「猜的」就好。還有 " + nSkip + " 題未作答。";
+      return;
+    }
+    if ((nSkip || noConf) && !warned) {
       warned = true;
-      note.textContent = "還有 " + noConf + " 題沒選「把握程度」。選一下能幫老師知道大家哪裡不確定；不想選的話，再按一次按鈕即可。";
+      note.textContent = (nSkip ? "還有 " + nSkip + " 題未作答（只有第一次作答會列入學習成效）。" : "") +
+        (noConf ? "還有 " + noConf + " 題沒選「把握程度」，選一下能幫老師知道大家哪裡不確定。" : "") +
+        "確定要送出的話，再按一次按鈕即可。";
       return;
     }
     note.textContent = "";
@@ -319,7 +333,7 @@ function renderQuiz(container, allQuestions, opts) {
     btn.textContent = "再練一次（不列入成效）";
   }
 
-  function reset() {
+  function reset(quiet) {
     body.querySelectorAll(".qitem").forEach(function (div) {
       div.classList.remove("answered", "correct", "wrong");
       delete div.dataset.last;
@@ -331,10 +345,18 @@ function renderQuiz(container, allQuestions, opts) {
       var k = div.querySelector(".qkey"); if (k) k.remove();
     });
     graded = false; warned = false; t0 = null;
-    score.textContent = ""; score.className = "qscore";
-    btn.textContent = "批改答案";
-    box.scrollIntoView({ behavior: "smooth", block: "start" });
+    score.textContent = ""; score.className = "qscore"; note.textContent = "";
+    btn.hidden = false;
+    btn.textContent = phase === "pre" ? "送出前測" : "批改答案";
+    if (!quiet) box.scrollIntoView({ behavior: "smooth", block: "start" });
   }
+
+  // 共用電腦：換學號（或切換訪客）時清掉上一位的作答與批改結果
+  var who = (FAS.sid() || "") + "|" + FAS.isGuest();
+  fasGates.push(function () {
+    var now = (FAS.sid() || "") + "|" + FAS.isGuest();
+    if (now !== who) { who = now; reset(true); }
+  });
 
   btn.addEventListener("click", function () { if (graded) reset(); else grade(); });
   body.appendChild(note);

@@ -290,7 +290,7 @@ const QUIZ = [
 <div id="finalexam"></div>
 <script>
 /* 期末總測驗 15 題：id 用 ch11-q21..q35（與章末測驗 q01..q09 區隔），迷思 key 共用上方的 MISC。
-   這個陣列不經 normalizeQuiz，所以 id / v / type / phase 每題都要寫齊。 */
+   id / v / type / phase 每題都寫齊（引擎的 normalizeQuiz 只替漏寫的欄位補預設值）。 */
 const FINALEXAM = [
   { id:"ch11-q21", v:1, type:"calc", phase:"post",
     q:"【Ch1】水分重複測定 64.53、64.45、65.10、64.78（%）。變異係數 CV 是多少 %？（取 2 位小數）",

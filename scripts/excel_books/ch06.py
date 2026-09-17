@@ -1,0 +1,137 @@
+"""Ch06 量測不確定度的概念：誤差 vs 不確定度。
+
+R 的答案來源：Rscript R/ch06_uncertainty_concept.R（set.seed(123) 模擬 30 筆結果）。
+"""
+from openpyxl.styles import Font
+
+from excel_common import BOX, FONT, INPUT_FILL, NOTE_FONT, Book
+
+# set.seed(123); rnorm(30, mean = 102, sd = 3) —— 用 Rscript 印到 6 位小數後貼入
+DATA_30 = [
+    100.318573, 101.309468, 106.676125, 102.211525, 102.387863, 107.145195,
+    103.382749, 98.204816, 99.939441, 100.663014, 105.672245, 103.079441,
+    103.202314, 102.332048, 100.332477, 107.360739, 103.493551, 96.100149,
+    104.104068, 100.581626, 98.796529, 101.346075, 98.921987, 99.813326,
+    100.124882, 96.939920, 104.513361, 102.460119, 98.585589, 105.761445,
+]
+
+
+def _row(ws, r, label, value, fmt=None, fill=None, bold=False, formula=False):
+    """寫魚骨圖表格裡一格（不是 book.calc 的四欄版式，欄位由呼叫端決定）。"""
+    c = ws.cell(row=r, column=1, value=None)  # 佔位，避免誤用
+    return c
+
+
+def _cell(ws, r, col, value, fmt=None, fill=None, bold=False, note=False):
+    cell = ws.cell(row=r, column=col, value=value)
+    cell.font = NOTE_FONT if note else Font(name=FONT, bold=bold)
+    cell.border = BOX
+    if fmt:
+        cell.number_format = fmt
+    if fill:
+        cell.fill = fill
+    return cell
+
+
+def build():
+    book = Book(
+        "ch06_error_vs_uncertainty.xlsx",
+        "Ch6 量測不確定度的概念：誤差 vs 不確定度",
+        "ch06.html",
+    )
+    book.readme([
+        "# 這本活頁簿在做什麼",
+        "情境：某方法的真值是 100.0 mg/L，但方法本身有 +2 的系統偏倚(bias)，隨機效應的標準差約 3。"
+        "「誤差vs不確定度」工作表用 30 次模擬量測（與 R 的 set.seed(123) 完全相同的 30 個數字）示範："
+        "「誤差」是單一個看不到的數（觀測值 − 真值），「不確定度」是我們能估計、描述「真值大概落在哪個範圍」的區間。",
+        "「魚骨圖來源→合成」工作表示範 GUM 流程的 Step2→Step4：先把每個不確定度來源（校正曲線、稀釋玻璃器皿、"
+        "基質效應…）各自換算成標準不確定度 u，再用平方和開根號合成——這就是魚骨圖「支流匯入主流」的數學版本。",
+        "# 怎麼用",
+        "1.「誤差vs不確定度」裡黃色的 30 個數字是模擬量測值，可以改成你自己的重複測定數據（例如改成 5~10 筆），"
+        "看平均、SD 怎麼變。",
+        "2. B37 的「真值」是黃色可改——正常實務中你不會知道真值，這裡刻意示範「有真值可對」的模擬情境。",
+        "3.「魚骨圖來源→合成」裡每個來源的數值(B欄)都是黃色，改動後 u、u²、占比、合成 uc 會自動重算。",
+        "4.「對照R答案」核對 Excel 算出來的與 R 算出來的是否一致。",
+        "# 這章最重要的兩個觀念",
+        "誤差 = 觀測值 − 真值，是一個「有正負號、實務上不可知」的單一數字；隨機誤差可以靠增加重複次數縮小，"
+        "但系統誤差不會。不確定度是「描述真值可能落在哪個範圍」的參數，永遠是正值、永遠是一段區間；就算不知道真值，"
+        "也能靠重複量測或既有資訊（證書、規格）估計出來。",
+        "另一個重點：抄錄數字打錯這類「粗大誤差 spurious error」一旦確認，應整筆刪除，不能納入任何統計計算——"
+        "不確定度處理的是隨機與系統效應，不是處理人為疏失。",
+        "# Excel 資料分析工具箱：敘述統計 (Descriptive Statistics)",
+        "「誤差vs不確定度」的平均與 SD 也可以用工具箱驗證，不必自己打 AVERAGE/STDEV.S：",
+        "① 檔案→選項→增益集→管理「Excel 增益集」→勾選「分析工具箱」→確定，"
+        "資料頁籤最右邊會出現「資料分析」。",
+        "② 資料分析→選「敘述統計」→輸入範圍框選 A2:A31→勾選「摘要統計」→輸出範圍指到空白處→確定。",
+        "③ 輸出表的「平均」對應本活頁簿 B35（=AVERAGE）；「標準差」對應 B36（=STDEV.S）。",
+        "④ 注意：工具箱輸出的是「當時那次」算出來的固定數字表格，改動 A2:A31 的數據它不會跟著變；"
+        "本活頁簿的公式版（B35、B36…）改了數據會立刻重算，這是兩者最大的差別。",
+    ])
+
+    ws = book.sheet("誤差vs不確定度", [26, 16, 46, 60])
+    book.header(ws, 1, ["模擬量測值 (mg/L)"])
+    rng = book.data(ws, 2, 1, DATA_30, fmt="0.000000")
+
+    book.header(ws, 33, ["項目", "結果", "公式", "白話說明"])
+    n = book.calc(ws, 34, "n（量測次數）", f"=COUNT({rng})", "數一數有幾筆模擬結果", fmt="0")
+    mean = book.calc(ws, 35, "觀測平均", f"=AVERAGE({rng})", "30 次模擬結果的平均", key=True)
+    sd = book.calc(ws, 36, "SD（不確定度的估計）", f"=STDEV.S({rng})", "散布程度；把它當成這批結果的標準不確定度 u", key=True)
+    true_val = book.calc(ws, 37, "真值（模擬情境才知道）", 100.0, "正常實務中不知道真值；這裡是模擬才能拿來對答案", fmt="0.0")
+    book.mark_input(ws, true_val)
+    err = book.calc(ws, 38, "誤差 = 平均 − 真值", f"={mean}-{true_val}", "單一個數，有正負號，實務上不可知（本例因為是模擬才能算出來）", key=True)
+    u = book.calc(ws, 39, "u（標準不確定度）", f"={sd}", "把 SD 直接當成這批結果的標準不確定度", key=False)
+    lo = book.calc(ws, 40, "真值可能落在的下限 ≈ 平均 − 2u", f"={mean}-2*{u}", "不確定度描述的是「一段區間」，不是單一點", key=True)
+    hi = book.calc(ws, 41, "真值可能落在的上限 ≈ 平均 + 2u", f"={mean}+2*{u}", "±2u 只是示範用的粗略涵蓋區間（嚴謹作法在 ch02/ch08）", key=True)
+    book.text(ws, 43, 1,
+              "重點對照：誤差(38列)是本例才能算出的單一個數，說明「量測結果偏離真值多少」；"
+              "不確定度(39~41列)是不管知不知道真值都能估計出的區間，說明「真值大概落在哪裡」。"
+              "隨機誤差（SD）可靠增加重複次數縮小平均值的不確定度（見 ch02 的 SEM=SD/√n）；"
+              "系統誤差（bias=2.0）不會因為多做幾次就消失，必須靠校正或加回收修正處理。",
+              bold=True)
+
+    ws2 = book.sheet("魚骨圖來源→合成", [34, 14, 16, 10, 14, 12, 12, 46])
+    book.header(ws2, 1, ["不確定度來源", "數值 (s 或 ±a)", "分布", "除數", "標準不確定度 u", "u²", "u² 占比", "白話說明"])
+
+    rows = [
+        (2, "校正曲線內插濃度重複性（3 次進樣，Type A）", 0.12, "Type A（直接用 s）", "1",
+         "=B2", "校正曲線每次內插出來的濃度本身就會抖動，直接用重複進樣的 s 當 u"),
+        (3, "稀釋用 10 mL 量瓶（證書 ±0.02 mL，極端值罕見）", 0.02, "三角形", "√6",
+         "=B3/SQRT(6)", "有內部查核資料顯示中間值最常見 → 用三角形，除以 √6"),
+        (4, "稀釋用 5 mL 移液管（只知道 ±0.03 mL）", 0.03, "矩形", "√3",
+         "=B4/SQRT(3)", "沒有額外資訊，界限內同樣可能出現 → 用矩形，除以 √3（最保守）"),
+        (5, "基質效應（經驗估計 ±0.05 mg/L，95% 信賴）", 0.05, "常態 (95%)", "NORM.S.INV(0.975)",
+         "=B5/NORM.S.INV(0.975)", "明確寫成常態分布的中央 95% 區間 → 除以 1.96"),
+        (6, "進樣管路殘留（只知道 ±0.02 mg/L）", 0.02, "矩形", "√3",
+         "=B6/SQRT(3)", "同樣沒有額外資訊 → 矩形分布"),
+    ]
+    for r, label, val, dist, div, u_formula, note in rows:
+        _cell(ws2, r, 1, label)
+        vcell = _cell(ws2, r, 2, val, fmt="0.0000", fill=INPUT_FILL)
+        _cell(ws2, r, 3, dist)
+        _cell(ws2, r, 4, div)
+        ucell = _cell(ws2, r, 5, book_fx(u_formula), fmt="0.000000")
+        _cell(ws2, r, 6, f"=E{r}^2", fmt="0.000000")
+        _cell(ws2, r, 7, "=F{0}/$F$8".format(r), fmt="0.0%")
+        _cell(ws2, r, 8, note, note=True)
+
+    _cell(ws2, 8, 1, "合成（平方和開根號） uc = √Σu²", bold=True)
+    _cell(ws2, 8, 5, "=SQRT(F8)", fmt="0.000000", bold=True, fill=None)
+    ws2.cell(row=8, column=5).fill = book.RESULT_FILL if hasattr(book, "RESULT_FILL") else ws2.cell(row=8, column=5).fill
+    _cell(ws2, 8, 6, "=SUM(F2:F6)", fmt="0.000000")
+    _cell(ws2, 8, 8, "F8 是各分量 u² 的總和（Σu²）；E8 開根號後就是合成標準不確定度——"
+                       "這就是「魚骨圖每條支流匯合成一條主流」的算法。", note=True)
+
+    book.check("觀測平均", "誤差vs不確定度", mean, 101.8586887)
+    book.check("SD（u）", "誤差vs不確定度", sd, 2.943092117)
+    book.check("誤差 = 平均−真值", "誤差vs不確定度", err, 1.858688732)
+    book.check("下限 平均−2u", "誤差vs不確定度", lo, 95.97250447)
+    book.check("上限 平均+2u", "誤差vs不確定度", hi, 107.7448729)
+    book.check("魚骨圖合成 uc", "魚骨圖來源→合成", "E8", 0.1247028245)
+    book.check("量瓶三角形 u", "魚骨圖來源→合成", "E3", 0.008164965809)
+    book.check("基質效應常態95% u", "魚骨圖來源→合成", "E5", 0.02551067285)
+    return book
+
+
+def book_fx(formula):
+    from excel_common import fx
+    return fx(formula)

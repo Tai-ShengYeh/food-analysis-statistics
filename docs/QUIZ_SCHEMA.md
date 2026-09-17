@@ -61,6 +61,15 @@ const QUIZ = [
 - **只有第一次作答算成效**；批改後可「再練一次」，事件仍上傳但 `attempts>1`，分析時排除。
 - 章末有一格「我還不懂的地方」（≤200 字），以 `self_check` 事件上傳。
 
+## 上傳的事件欄位（Firestore `student_events`，`site == "fas"`、`schema_v: 2`）
+
+- `answer`：`question_id`、`item_version`、`qtype`、`phase`、`quiz_set`、`is_correct`、`skipped`、`choice_idx`（選擇題，原始選項索引）、`choice_value`（數值題）、`misconception`、`confidence`（1–3）、`attempts`、`latency_ms`、`from_chapter`。
+- `attempt_complete`：`final_score`、`total`、`answered`、`attempts`、`duration_ms`。
+- `self_check`：`question_id = chNN-muddy`、`free_text`。
+- `latency_ms` 的定義是「該題最後一次互動時間 − 整份測驗第一次互動時間」，是**累積**時間，不是單題作答時間；要估單題時間請把同一次作答的各題依 `latency_ms` 排序後取差。
+- `attempts` 只存在學生的瀏覽器，換裝置或清快取會重新從 1 起算；分析時以「同一學生同一題 `attempts` 最小、`client_ts` 最早」為首次作答（`scripts/quiz_dashboard.py` 已這樣做）。
+- 學號一律轉大寫後上傳；與其他課程站的紀錄比對時，對方的學號也要先轉大寫。
+
 ## 同一頁的第二組題目
 
 `ch11.html` 除了章末測驗 `QUIZ`，還有期末總測驗 `FINALEXAM`（id 用 `ch11-q21` 起，與章末題號區隔），以
