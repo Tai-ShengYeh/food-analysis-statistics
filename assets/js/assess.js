@@ -52,7 +52,9 @@ function toDoc(ev) {
     choice_idx: nz(ev.choice_idx), choice_value: nz(ev.choice_value), skipped: nz(ev.skipped),
     latency_ms: nz(ev.latency_ms), duration_ms: nz(ev.duration_ms), answered: nz(ev.answered),
     free_text: ev.free_text ? String(ev.free_text).slice(0, 200) : null,
-    session_id: nz(ev.session_id), client_ts: nz(ev.client_ts)
+    session_id: nz(ev.session_id), client_ts: nz(ev.client_ts),
+    // 線上規則（2026-09-01 版）另外要求 session 字串；與 session_id 同值，讓兩套規則都能通過
+    session: String(ev.session_id || '').slice(0, 40)
   };
 }
 
