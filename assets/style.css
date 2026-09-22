@@ -337,3 +337,9 @@ sup { top: -0.4em; }
 .qkeybox { margin-top: 8px; }
 .qkeybox table { margin: 0 0 8px; }
 .qkeybox th { width: 9em; background: #EEF2F7; color: var(--c-ink); text-align: left; font-weight: 600; }
+.ggrid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 8px 0; }
+@media (max-width: 700px) { .ggrid2 { grid-template-columns: 1fr; } }
+.gslider { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 10px 0 4px; font-weight: 600; }
+.gslider input[type=range] { flex: 1 1 200px; max-width: 420px; accent-color: var(--c-primary-2); }
+.gslider output { font-variant-numeric: tabular-nums; color: var(--c-primary); min-width: 6.5em; }
+.gcardinfo { display: block; font-weight: 400; color: var(--c-ink); margin-top: 4px; }

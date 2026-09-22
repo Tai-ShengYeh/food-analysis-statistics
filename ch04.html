@@ -115,6 +115,8 @@ cor(x, y)                       # 輸出 r (0.9995)
 <div class="callout ok"><span class="t">✅ 重點比較</span>
 兩種工具的斜率、截距、r² <strong>完全相同</strong>（0.0504 / −0.0029 / 0.9990），因為底層都是同一個最小平方法公式（Nielsen 式 4.20–4.21）。Excel 適合快速求一條線；R 適合後續接信賴帶、殘差診斷與批次處理（本章後面與 Ch11 會用到）。</div>
 
+<div class="game" data-game="ch04-regress"></div>
+
 <h2>4.3 r 與 r²：直線有多「直」？</h2>
 <ul>
 <li><strong>相關係數 r</strong>（−1 ~ +1）：r=+1 完美正相關。分析化學經驗法則：<strong>r ≥ 0.997</strong> 才算理想標準曲線（生物數據除外）</li>
@@ -473,7 +475,7 @@ const QUIZ = [
 ];
 </script>
 <script src="assets/app.js"></script>
-<script src="assets/js/showout.js"></script>
+<script src="assets/js/showout.js"></script><script src="assets/js/games.js"></script>
 <script type="module" src="assets/js/assess.js"></script>
 
 <nav class="pager" data-pager></nav>

@@ -736,6 +736,254 @@
     });
   };
 
+  /* ---------------- 共用：藥丸式單選（卡片型題目用） ---------------- */
+  function pillMount(opts, ans, tags, keyHtml) {
+    return function (div) {
+      var sel = null, locked = false, row = el("div", "gchips"), key = null;
+      function draw() {
+        row.innerHTML = "";
+        opts.forEach(function (o, i) {
+          var b = el("button", "gchip" + (sel === i ? " sel" : "") + (locked && i === ans ? " key" : ""), o);
+          b.type = "button"; b.disabled = locked;
+          b.addEventListener("click", function () { sel = sel === i ? null : i; draw(); });
+          row.appendChild(b);
+        });
+      }
+      div.appendChild(row); draw();
+      return {
+        read: function () {
+          if (sel === null) return { answered: false, correct: false, idx: null, value: null, tag: null };
+          return { answered: true, correct: sel === ans, idx: sel, value: null, tag: sel === ans ? null : (tags[sel] || null) };
+        },
+        showKey: function () { locked = true; draw(); key = el("div", "qkey", keyHtml); div.insertBefore(key, div.querySelector(".exp")); },
+        reset: function () { locked = false; sel = null; if (key) { key.remove(); key = null; } draw(); }
+      };
+    };
+  }
+
+  /* ==================================================================
+     Ch4：標準曲線偵探 — 先猜彎曲資料硬配直線的 r²，再反推濃度、處理外插
+     資料組 A = 4.2 節的鈉標準曲線；資料組 B 為模擬的飽和型曲線（y = 0.062x − 0.0008x² + 小雜訊），
+     OLS：截距 0.0499、斜率 0.04465、r² = 0.9910、r = 0.9955（R 實算）。
+     ================================================================== */
+  GAMES["ch04-regress"] = function (box) {
+    var X = [1, 3, 5, 10, 20];
+    var YA = [0.050, 0.140, 0.242, 0.521, 0.998];
+    var YB = [0.063, 0.176, 0.291, 0.543, 0.918];
+    function ols(x, y) {
+      var n = x.length, mx = 0, my = 0; for (var i = 0; i < n; i++) { mx += x[i]; my += y[i]; } mx /= n; my /= n;
+      var sxy = 0, sxx = 0, syy = 0;
+      for (i = 0; i < n; i++) { sxy += (x[i] - mx) * (y[i] - my); sxx += (x[i] - mx) * (x[i] - mx); syy += (y[i] - my) * (y[i] - my); }
+      var b = sxy / sxx, a = my - b * mx, r2 = sxy * sxy / (sxx * syy);
+      return { a: a, b: b, r2: r2, r: Math.sqrt(r2), res: y.map(function (v, i) { return v - (a + b * x[i]); }) };
+    }
+    var FA = ols(X, YA), FB = ols(X, YB);
+
+    // 散布圖（可選是否畫 OLS 線）
+    function scatter(y, fit, title, color, W, H) {
+      W = W || 320; H = H || 240;
+      var L = 44, R = 12, T = 26, B = 34, xLo = 0, xHi = 21, yLo = 0, yHi = 1.05;
+      function px(v) { return L + (v - xLo) / (xHi - xLo) * (W - L - R); }
+      function py(v) { return T + (yHi - v) / (yHi - yLo) * (H - T - B); }
+      var s = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "gsvg", role: "img", "aria-label": title });
+      s.appendChild(svg("text", { x: W / 2, y: 16, "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: "#1F2937" }, title));
+      s.appendChild(svg("line", { x1: L, y1: py(0), x2: W - R, y2: py(0), stroke: "#64748B" }));
+      s.appendChild(svg("line", { x1: L, y1: T, x2: L, y2: py(0), stroke: "#64748B" }));
+      [0, 5, 10, 15, 20].forEach(function (v) { s.appendChild(svg("text", { x: px(v), y: py(0) + 16, "text-anchor": "middle", "font-size": 10, fill: "#64748B" }, String(v))); });
+      [0, 0.5, 1.0].forEach(function (v) { s.appendChild(svg("text", { x: L - 5, y: py(v) + 4, "text-anchor": "end", "font-size": 10, fill: "#64748B" }, fmt(v, 1))); });
+      s.appendChild(svg("text", { x: (L + W - R) / 2, y: H - 4, "text-anchor": "middle", "font-size": 10, fill: "#64748B" }, "濃度 μg/mL"));
+      if (fit) s.appendChild(svg("line", { x1: px(0), y1: py(fit.a), x2: px(21), y2: py(fit.a + fit.b * 21), stroke: "#C62828", "stroke-width": 1.6 }));
+      y.forEach(function (v, i) { s.appendChild(svg("circle", { cx: px(X[i]), cy: py(v), r: 5, fill: color })); });
+      return s;
+    }
+    function residPlot(W, H) {
+      var L = 44, R = 12, T = 26, B = 34, xLo = 0, xHi = 21, yLo = -0.05, yHi = 0.06;
+      function px(v) { return L + (v - xLo) / (xHi - xLo) * (W - L - R); }
+      function py(v) { return T + (yHi - v) / (yHi - yLo) * (H - T - B); }
+      var s = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "gsvg", role: "img", "aria-label": "殘差圖：資料組 A 隨機散布，資料組 B 呈彎曲趨勢" });
+      s.appendChild(svg("text", { x: W / 2, y: 16, "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: "#1F2937" }, "殘差圖：觀測值 − 直線預測值"));
+      s.appendChild(svg("line", { x1: L, y1: py(0), x2: W - R, y2: py(0), stroke: "#1F2937", "stroke-dasharray": "5 3" }));
+      [-0.04, 0, 0.04].forEach(function (v) { s.appendChild(svg("text", { x: L - 5, y: py(v) + 4, "text-anchor": "end", "font-size": 10, fill: "#64748B" }, fmt(v, 2))); });
+      [0, 5, 10, 15, 20].forEach(function (v) { s.appendChild(svg("text", { x: px(v), y: H - B + 16, "text-anchor": "middle", "font-size": 10, fill: "#64748B" }, String(v))); });
+      s.appendChild(svg("polyline", { points: FB.res.map(function (v, i) { return px(X[i]) + "," + py(v); }).join(" "), fill: "none", stroke: "#6A3FA0", "stroke-width": 1.2, "stroke-dasharray": "3 3" }));
+      FB.res.forEach(function (v, i) { var x = px(X[i]), y = py(v); s.appendChild(svg("polygon", { points: x + "," + (y - 6) + " " + (x - 6) + "," + (y + 5) + " " + (x + 6) + "," + (y + 5), fill: "#6A3FA0" })); });
+      FA.res.forEach(function (v, i) { s.appendChild(svg("circle", { cx: px(X[i]), cy: py(v), r: 5, fill: "#F6A21D" })); });
+      s.appendChild(svg("circle", { cx: W - 150, cy: 30, r: 5, fill: "#F6A21D" })); s.appendChild(svg("text", { x: W - 142, y: 34, "font-size": 11, fill: "#1F2937" }, "A 鈉（隨機）"));
+      s.appendChild(svg("polygon", { points: (W - 70) + ",25 " + (W - 76) + ",35 " + (W - 64) + ",35", fill: "#6A3FA0" })); s.appendChild(svg("text", { x: W - 60, y: 34, "font-size": 11, fill: "#1F2937" }, "B（彎曲）"));
+      return s;
+    }
+
+    predictGame(box, {
+      gid: "ch04-regress",
+      badge: "標準曲線偵探",
+      stepWord: "線索", scoreWord: "答對",
+      title: "r² 很高，就是一條好直線嗎？",
+      intro: "左邊是 4.2 節的鈉標準曲線（資料組 A，r² = 0.9990）。右邊是另一台儀器測同樣五個標準品的結果（資料組 B）。" +
+             "兩組都還沒畫迴歸線——先用眼睛看，再回答五個線索。",
+      questions: [
+        { id: "ch04-g01-1", v: 1,
+          q: "把資料組 B 硬配一條直線，r² 會是多少？拖動滑桿猜一個值。",
+          mount: function (div) {
+            var grid = el("div", "ggrid2");
+            grid.appendChild(scatter(YA, null, "資料組 A：鈉（r² = 0.9990）", "#F6A21D"));
+            grid.appendChild(scatter(YB, null, "資料組 B：r² = ？", "#6A3FA0"));
+            div.appendChild(grid);
+            var lab = el("label", "gslider");
+            var rng = document.createElement("input"); rng.type = "range"; rng.min = "0.80"; rng.max = "1.00"; rng.step = "0.001"; rng.value = "0.90";
+            var out = el("output", null, "r² ≈ 0.900"); var touched = false;
+            rng.addEventListener("input", function () { touched = true; out.textContent = "r² ≈ " + fmt(rng.value, 3); });
+            lab.appendChild(document.createTextNode("我猜 ")); lab.appendChild(rng); lab.appendChild(out);
+            div.appendChild(lab);
+            var key = null;
+            return {
+              read: function () {
+                if (!touched) return { answered: false, correct: false, idx: null, value: null, tag: null };
+                var v = parseFloat(rng.value);
+                return { answered: true, correct: Math.abs(v - FB.r2) <= 0.006, idx: null, value: v, tag: null };
+              },
+              showKey: function () {
+                rng.disabled = true;
+                key = el("div", "qkey", "實際 r² = " + fmt(FB.r2, 4) + "（r = " + fmt(FB.r, 4) + "）；±0.006 內算猜中。");
+                div.insertBefore(key, div.querySelector(".exp"));
+              },
+              reset: function () { rng.disabled = false; rng.value = "0.90"; touched = false; out.textContent = "r² ≈ 0.900"; if (key) { key.remove(); key = null; } }
+            };
+          },
+          exp: "彎成這樣的資料，直線 r² 還有 0.991——r² 只回答「假設是直線時配得多好」，高到 0.99 也不保證直線。判斷線性要看殘差（揭曉區的殘差圖）。順帶一提，r = 0.9955 沒有達到 0.997 的經驗門檻，但很多人只看 r² 就放行。" },
+        { id: "ch04-g01-2", v: 1,
+          q: "資料組 B 可以直接當成直線標準曲線來用嗎？",
+          opts: ["可以，r² 有 0.99 就是直線", "不可以：殘差呈「負負正正負」的系統性彎曲，高濃度端已進入飽和；要縮小線性範圍或改用非線性模型", "可以，只要 r ≥ 0.997 就行，r² 和 r 反正是同一件事"],
+          ans: 1, tags: ["R2_PROVES_LINEAR", null, "R_VS_R2"],
+          exp: "殘差圖是判斷線性的第一步（Nielsen 4.4.2）：A 的殘差隨機散布在 0 附近；B 的殘差先負、再正、末端又負——典型的曲線硬配直線。r 與 r² 是不同的量（r = √r²），而且 B 的 r = 0.9955 也沒過 0.997。" },
+        { id: "ch04-g01-3", v: 1,
+          q: "資料組 A 的迴歸式 y = 0.0504x − 0.0029。未知樣品訊號 y = 0.555，濃度是多少 μg/mL？（取 2 位小數）",
+          num: { lo: 0, hi: 100, okLo: 11.0, okHi: 11.15, unit: "μg/mL", placeholder: "例如 12.34", step: 0.01, keyText: "11.07 μg/mL：x = (0.555 + 0.0029) ÷ 0.0504" },
+          tagFn: function (v) {
+            if (Math.abs(v - 0.025) <= 0.01) return "FORWARD_NOT_INVERSE";
+            if (Math.abs(v - 10.95) <= 0.03) return "INTERCEPT_SIGN_ERROR";
+            if (Math.abs(v - 11.01) <= 0.03) return "SLOPE_INTERCEPT_SWAP";
+            return null;
+          },
+          exp: "反推是 x = (y − b) ÷ a。截距是 −0.0029，減負數等於加：(0.555 + 0.0029) ÷ 0.0504 = 11.07。算成 10.95 是把截距的正負號弄反；算成 11.01 是忘了截距；算成 0.025 是把 y 代進去正著算（方向反了）。" },
+        { id: "ch04-g01-4", v: 1,
+          q: "另一個未知樣品訊號 y = 1.35，比最高標準品（20 μg/mL，y = 0.998）還高。怎麼辦？",
+          opts: ["直接代公式：(1.35 + 0.0029) ÷ 0.0504 ≈ 26.8 μg/mL，r² 這麼高外插一點沒關係", "把樣品稀釋後重測，讓訊號落在標準曲線範圍內（最好在中段）", "多加一個 30 μg/mL 的標準品就好，不必看它是否還在直線上"],
+          ans: 1, tags: ["EXTRAPOLATION_SAFE", null, "R2_PROVES_LINEAR"],
+          exp: "曲線外的區域你一無所知——高濃度端很可能已像資料組 B 那樣進入飽和，外插會嚴重低估。正確做法是稀釋（太淡則濃縮或增加進樣量）。加標準品可以，但加了之後要重新檢查線性，不能假設它還在直線上。" },
+        { id: "ch04-g01-5", v: 1,
+          q: "同一條標準曲線，反推濃度的不確定度在哪裡最小？",
+          opts: ["到處一樣，因為用的是同一條線", "曲線中段（接近 x̄ 的地方）", "最低濃度端，因為訊號最小、雜訊最小", "最高濃度端，因為訊號最強"],
+          ans: 1, tags: ["CONF_BAND_UNIFORM", null, null, null],
+          exp: "圖 4-1 的 95% 信賴帶中段最窄、兩端張開，因為斜率的不確定度以 x̄ 為支點放大到兩端。所以未知樣品最好稀釋到曲線中段。完整公式（QUAM E.4）在第 11 章用 R 實作。" }
+      ],
+      revealLabel: "送出答案並揭曉",
+      reveal: function (panel) {
+        panel.appendChild(el("h4", null, "揭曉：畫線、看殘差"));
+        var grid = el("div", "ggrid2");
+        grid.appendChild(scatter(YB, FB, "資料組 B 硬配直線（r² = " + fmt(FB.r2, 4) + "）", "#6A3FA0"));
+        grid.appendChild(residPlot(320, 240));
+        panel.appendChild(grid);
+        panel.appendChild(el("p", "qnote", "資料組 B 的最小平方直線：y = " + fmt(FB.b, 4) + "x + " + fmt(FB.a, 4) + "，r² = " + fmt(FB.r2, 4) + "、r = " + fmt(FB.r, 4) + "；資料組 A：y = 0.0504x − 0.0029，r² = 0.9990。"));
+        panel.appendChild(el("div", "gtablewrap",
+          '<table class="gtable"><thead><tr><th>x</th>' + X.map(function (v) { return '<th class="num">' + v + "</th>"; }).join("") + "</tr></thead><tbody>" +
+          '<tr><td>A 殘差</td>' + FA.res.map(function (v) { return '<td class="num">' + (v >= 0 ? "+" : "") + fmt(v, 4) + "</td>"; }).join("") + "</tr>" +
+          '<tr class="hl"><td>B 殘差</td>' + FB.res.map(function (v) { return '<td class="num">' + (v >= 0 ? "+" : "") + fmt(v, 4) + "</td>"; }).join("") + "</tr></tbody></table>"));
+        panel.appendChild(el("div", "callout warn", '<span class="t">🔍 偵探守則</span>先畫圖，再看殘差，最後才看 r。B 的殘差符號是 − − + + −，這種「有形狀」的殘差就是非線性的證據；A 的殘差沒有規律。反推濃度時：減截距、除斜率、不外插、盡量落在中段。'));
+      }
+    });
+  };
+
+  /* ==================================================================
+     Ch7：不確定度預算拼圖 — 六張來源卡各自判定 Type A/B 與分布，再找出主導分量
+     情境沿用 7.3 節：c(Cd) = 1000·m·P/V。數字以 R 核算（見 scratchpad gamedata2.R）：
+     u = 讀值 0.00289 mg、校正 0.02041 mg、重複性 0.033/√3 = 0.01905 mg、瓶校正 0.05 mL、充填 0.02 mL、純度 5.8e-5；
+     相對貢獻 % ≈ 瓶校正 55.5、校正線性 18.4、重複性 16.0、充填 8.9、純度 0.7、讀值 0.4；uc(c) ≈ 0.67 mg/L，U(k=2) ≈ 1.3 mg/L。
+     ================================================================== */
+  GAMES["ch07-budget"] = function (box) {
+    var OPTS = ["Type A：直接用 SD（單次結果）", "Type A：SD ÷ √n（結果是 n 次平均）", "Type B：矩形，÷ √3", "Type B：三角形，÷ √6", "Type B：常態，÷ 1.96 或 ÷ k"];
+    var m = 100.28, P = 0.9999, V = 100.0, cc = 1000 * m * P / V;
+    var CARDS = [
+      { id: "ch07-g01-1", name: "天平讀值解析度", info: "數位顯示末位 0.01 mg → 取 ±0.005 mg；除此之外沒有任何分布資訊。", ans: 2, a: 0.005, unit: "mg", u: 0.005 / Math.sqrt(3), calc: "0.005 ÷ √3", w: Math.sqrt(2) / m, group: "m",
+        tags: [null, null, null, "RECT_WRONG_DIVISOR", "RECT_WRONG_DIVISOR"] },
+      { id: "ch07-g01-2", name: "天平校正線性", info: "校正證書：±0.05 mg；實驗室內部查核顯示極端偏差很罕見、多數集中在中間。", ans: 3, a: 0.05, unit: "mg", u: 0.05 / Math.sqrt(6), calc: "0.05 ÷ √6", w: Math.sqrt(2) / m, group: "m",
+        tags: [null, null, "TYPEB_ALWAYS_RECT", null, "RECT_WRONG_DIVISOR"] },
+      { id: "ch07-g01-3", name: "稱重重複性", info: "同一砝碼重複稱 6 次，SD = 0.033 mg；本次淨重是 3 次稱重的平均。", ans: 1, a: 0.033, unit: "mg", u: 0.033 / Math.sqrt(3), calc: "0.033 ÷ √3（n = 3 次平均）", w: Math.sqrt(2) / m, group: "m",
+        tags: ["SD_VS_SEM", null, null, null, null] },
+      { id: "ch07-g01-4", name: "容量瓶校正", info: "100 mL A 級容量瓶，校正證書寫明：±0.10 mL（k = 2，約 95% 信賴）。", ans: 4, a: 0.10, unit: "mL", u: 0.10 / 2, calc: "0.10 ÷ 2（k = 2）", w: 1 / V, group: "V",
+        tags: [null, null, "TYPEB_ALWAYS_RECT", "RECT_WRONG_DIVISOR", null] },
+      { id: "ch07-g01-5", name: "充填至刻度的重複性", info: "重複充填並稱重 10 次，SD = 0.02 mL；本次配製只充填一次。", ans: 0, a: 0.02, unit: "mL", u: 0.02, calc: "直接用 SD = 0.02", w: 1 / V, group: "V",
+        tags: [null, "TYPEA_ALWAYS_DIVIDE_SQRT_N", null, null, null] },
+      { id: "ch07-g01-6", name: "金屬鎘純度", info: "證書：0.9999 ± 0.0001（質量分數），未說明分布或信賴水準。", ans: 2, a: 0.0001, unit: "", u: 0.0001 / Math.sqrt(3), calc: "0.0001 ÷ √3", w: 1 / P, group: "P",
+        tags: [null, null, null, "RECT_WRONG_DIVISOR", "RECT_WRONG_DIVISOR"] }
+    ];
+    CARDS.forEach(function (c) { c.rel = c.u * c.w; });
+    var sumSq = 0; CARDS.forEach(function (c) { sumSq += c.rel * c.rel; });
+    CARDS.forEach(function (c) { c.share = c.rel * c.rel / sumSq * 100; });
+    var uc = cc * Math.sqrt(sumSq);
+    var byShare = CARDS.slice().sort(function (a, b) { return b.share - a.share; });
+
+    var questions = CARDS.map(function (c) {
+      return { id: c.id, v: 1, q: "🃏 " + c.name + "　<span class=\"gcardinfo\">" + c.info + "</span>",
+        mount: pillMount(OPTS, c.ans, c.tags, "u = " + c.calc + " = <strong>" + (c.unit ? fmt(c.u, 4) + " " + c.unit : c.u.toExponential(2)) + "</strong>"),
+        exp: c.exp || "" };
+    });
+    questions[0].exp = "只知道 ±a、沒有任何分布資訊 → 矩形，÷√3。這是 QUAM §8.1 的預設：極端值可能出現、且沒有理由認為中間更常見。";
+    questions[1].exp = "同樣是證書 ±a，但「極端罕見、集中在中間」是三角分布的定義 → ÷√6。Type B 不是一律 ÷√3，選分布是工程判斷，要在預算表寫明理由。";
+    questions[2].exp = "重複量測的 SD 是 Type A；但報告的淨重是 3 次平均，所以 u = s/√3。s 是單次量測的散布，s/√n 才是平均值的標準不確定度——Ch2 的 SD 與 SEM 之別在這裡回來了。";
+    questions[3].exp = "證書明說「k = 2、約 95%」→ 這是常態分布的擴展不確定度，u = 0.10 ÷ 2 = 0.05 mL。看到 ±a 先問「有沒有 k 或信賴水準」，有就除以 k，沒有才假設矩形。";
+    questions[4].exp = "Type A，但本次只充填一次，用的就是單次的 SD，不能再 ÷√10。÷√n 的 n 是「這次結果由幾次平均而來」，不是「當初做了幾次重複實驗」。";
+    questions[5].exp = "證書只給 ±0.0001、沒有分布資訊 → 矩形 ÷√3 = 5.8 × 10⁻⁵。這一項相對不確定度只有 0.006%，等一下你會看到它幾乎不影響結果。";
+    questions.push(
+      { id: "ch07-g01-7", v: 1,
+        q: "六張卡都換算成標準不確定度後，對最終濃度 c(Cd) 的<strong>相對</strong>貢獻最大的是哪一張？（提示：乘除模型看相對 u，質量項因為毛重減皮重要乘 √2）",
+        opts: ["天平校正線性", "稱重重複性", "容量瓶校正", "金屬鎘純度"],
+        ans: 2, tags: [null, null, null, null],
+        exp: "容量瓶校正的相對 u = 0.05 ÷ 100 = 5.0 × 10⁻⁴，占平方和的 55%；天平三項合計（含 √2）才約 35%。7.3 節的結論在這裡再次出現：先改善量瓶，不是換更貴的天平。" },
+      { id: "ch07-g01-8", v: 1,
+        q: "把六個分量合成 uc(c) 時，正確的做法是？",
+        opts: ["六個相對 u 直接相加", "六個相對 u 平方和開根號，再乘上 c", "取最大的那一個就好，其他忽略", "六個相對 u 相加後除以 √6"],
+        ans: 1, tags: ["UNC_LINEAR_ADD", null, null, "UNC_SQUARE_STEP_WRONG"],
+        exp: "c = 1000·m·P/V 是乘除模型 → Rule 2：相對 u 平方和開根號，再乘回 c。直接相加會高估（本例約 1.4 倍）。「取最大」方向對但不是規則：平方和的確由最大分量主導，這是下一題。" },
+      { id: "ch07-g01-9", v: 1,
+        q: "讀值解析度、充填重複性、純度這三張小卡，如果全部精算到第 4 位有效數字，uc(c) 會改變多少？",
+        opts: ["幾乎不變：平方和由最大的兩三個分量主導，小分量再精算也沒差", "會明顯改變：不確定度預算每一項都同樣重要", "會變小：精算得越細，不確定度就越小"],
+        ans: 0, tags: [null, "SMALL_COMPONENT_MATTERS", "UNC_MEANS_MISTAKE"],
+        exp: "三張小卡合計不到 10%；即使把它們全部設成 0，uc 只從 0.67 掉到 0.64 mg/L。把力氣花在最大的分量（本例：換一支校正更好的容量瓶）才會改善結果。精算不會讓不確定度變小，只會讓它更可信。" }
+    );
+
+    predictGame(box, {
+      gid: "ch07-budget",
+      badge: "不確定度預算拼圖",
+      stepWord: "卡片", scoreWord: "答對",
+      title: "六張來源卡，拼出一份 c(Cd) 的不確定度預算",
+      intro: "沿用 7.3 節的情境：稱約 100 mg 高純度鎘，溶於 100 mL 容量瓶，c = 1000·m·P/V。" +
+             "每張卡描述一個不確定度來源的「資訊」，請判斷它是 Type A 還是 Type B、該用哪種分布換算成標準不確定度 u；最後三張問合成與主導分量。",
+      questions: questions,
+      revealLabel: "送出並揭曉整份預算",
+      reveal: function (panel) {
+        panel.appendChild(el("h4", null, "完整預算表"));
+        var rows = CARDS.map(function (c) {
+          return "<tr" + (c === byShare[0] ? ' class="hl"' : "") + "><td>" + c.name + "</td><td>" + OPTS[c.ans] + "</td><td>" + c.calc + "</td><td class=\"num\">" + (c.unit ? fmt(c.u, 4) + " " + c.unit : c.u.toExponential(2)) +
+                 "</td><td class=\"num\">" + (c.rel * 1e4).toFixed(2) + "</td><td class=\"num\">" + fmt(c.share, 1) + "%</td></tr>";
+        }).join("");
+        panel.appendChild(el("div", "gtablewrap",
+          '<table class="gtable"><thead><tr><th>來源</th><th>類型／分布</th><th>換算</th><th class="num">u</th><th class="num">相對 u (×10⁻⁴)</th><th class="num">貢獻</th></tr></thead><tbody>' + rows + "</tbody></table>"));
+        // 貢獻長條圖
+        var W = 640, H = 30 + CARDS.length * 26, L = 150;
+        var s = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "gsvg", role: "img", "aria-label": "各分量對 uc 的貢獻百分比" });
+        byShare.forEach(function (c, i) {
+          var y = 12 + i * 26, w = c.share / 100 * (W - L - 70);
+          s.appendChild(svg("text", { x: L - 8, y: y + 14, "text-anchor": "end", "font-size": 12, fill: "#1F2937" }, c.name));
+          s.appendChild(svg("rect", { x: L, y: y, width: Math.max(w, 2), height: 18, rx: 4, fill: i === 0 ? "#C62828" : "#5B8DB8" }));
+          s.appendChild(svg("text", { x: L + Math.max(w, 2) + 6, y: y + 14, "font-size": 12, fill: "#1F2937" }, fmt(c.share, 1) + "%"));
+        });
+        var wrap = el("div", "gsvgwrap"); wrap.appendChild(s); panel.appendChild(wrap);
+        panel.appendChild(el("p", "gverdict", "合成（Rule 2）：uc(c) = " + fmt(cc, 1) + " × √Σ(相對 u)² = <strong>" + fmt(uc, 2) + " mg/L</strong>；擴展 U = 2 × uc ≈ <strong>" + fmt(2 * uc, 1) + " mg/L</strong>（k = 2）。報告：c(Cd) = (" + fmt(cc, 1) + " ± " + fmt(2 * uc, 1) + ") mg/L。"));
+        panel.appendChild(el("div", "callout ok", '<span class="t">🧩 拼圖的三個規律</span>① 先問資訊來源：重複量測 → Type A；證書、規格、經驗 → Type B。② Type B 再問分布：有 k 或信賴水準 → ÷k；極端罕見 → ÷√6；什麼都不知道 → ÷√3。③ 合成後看貢獻：最大的一兩項決定一切，改善要從它們下手（第 8、9 章會把這份預算算到底）。'));
+      }
+    });
+  };
+
   /* ---------------- 啟動 ---------------- */
   document.querySelectorAll(".game").forEach(function (box) {
     var id = box.dataset.game, g = GAMES[id];
