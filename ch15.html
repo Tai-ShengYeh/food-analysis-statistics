@@ -69,6 +69,8 @@ p 值＝<strong>假設 H<sub>0</sub> 為真</strong>時，得到「和手上數�
 <p>α 是你自己訂的（通常 0.05）；β 則取決於<strong>差異有多大、數據有多吵（SD）、重複幾次（n）</strong>。
 α 訂得越嚴（例如 0.01），越不會冤枉好人，但在同樣的 n 之下就越容易放走壞人——兩種錯誤是蹺蹺板，唯一能同時壓低兩者的方法是<strong>增加 n 或降低 SD</strong>。</p>
 
+<div class="game" data-game="ch15-errors"></div>
+
 <h2>15.2 one-sample t：用 CRM 檢查方法有沒有偏倚</h2>
 <p><a href="ch06.html">Ch6</a> 談過<strong>真度（trueness）</strong>：方法的平均值離「真值」多遠。實務上的「真值」就是<strong>認證參考物質（CRM）</strong>的認證值。
 情境：奶粉 CRM 的粗蛋白認證值為 <strong>35.10 g/100 g</strong>，你用凱氏法獨立重複 6 次，平均 34.95。低了 0.15——方法有偏倚（bias）嗎？</p>
@@ -639,7 +641,7 @@ const QUIZ = [
 
 <!-- pager 必須在 app.js 之前：app.js 同步執行時才找得到它 -->
 <nav class="pager" data-pager></nav>
-<script src="assets/app.js"></script><script src="assets/js/showout.js"></script><script type="module" src="assets/js/assess.js"></script>
+<script src="assets/app.js"></script><script src="assets/js/showout.js"></script><script src="assets/js/games.js"></script><script type="module" src="assets/js/assess.js"></script>
 </main>
 <footer>食品分析數據品管與量測不確定度教學 · 依 Nielsen's Food Analysis Ch.4 與 EURACHEM/CITAC QUAM:2012.P1 編寫</footer>
 </body>

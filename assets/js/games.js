@@ -984,6 +984,220 @@
     });
   };
 
+  /* ==================================================================
+     Ch8：放行官 — 五批樣品的結果 ± U 對照限值，用保守決策規則判定
+     判定以 R 核算（scratchpad gamedata3.R）：鉛 灰色、水分 不符合、總氮（下限）灰色、SO₂ 符合、農藥 灰色。
+     ================================================================== */
+  GAMES["ch08-compliance"] = function (box) {
+    var VERD = ["符合", "灰色地帶（無法判定）", "不符合"];
+    var CASES = [
+      { id: "ch08-g01-1", name: "果汁中鉛", r: 0.085, U: 0.018, L: 0.10, unit: "mg/L", d: 3, lower: false, ans: 1,
+        tags: ["COMPLIANCE_IGNORE_U", null, null],
+        exp: "測值 0.085 低於限值，但 0.085 + 0.018 = 0.103 > 0.10，區間跨過限值 → 灰色地帶。這就是 8.5 節 R 程式最後那個例子：只看測值會直接放行，看了 U 才知道還不能下結論。" },
+      { id: "ch08-g01-2", name: "奶粉水分", r: 4.22, U: 0.10, L: 4.00, unit: "%", d: 2, lower: false, ans: 2,
+        tags: [null, "COMPLIANCE_RULE_MISAPPLIED", null],
+        exp: "4.22 − 0.10 = 4.12 > 4.00，整個區間都在限值之上 → 不符合（情境 i）。不是所有超標都是灰色地帶：區間完全越線就能判。" },
+      { id: "ch08-g01-3", name: "總氮（標示值下限）", r: 3.52, U: 0.14, L: 3.40, unit: "g/100 g", d: 2, lower: true, ans: 1,
+        tags: ["COMPLIANCE_IGNORE_U", null, null],
+        exp: "這題限值是<strong>下限</strong>（含量不得低於標示的 3.40）。3.52 − 0.14 = 3.38 < 3.40，區間下緣跌破下限 → 灰色地帶。方向反過來時規則一樣：看整個區間是否落在合格側。" },
+      { id: "ch08-g01-4", name: "亞硫酸鹽", r: 28, U: 6, L: 50, unit: "mg/kg", d: 0, lower: false, ans: 0,
+        tags: [null, "COMPLIANCE_RULE_MISAPPLIED", null],
+        exp: "28 + 6 = 34 ≤ 50，整個區間都在限值之下 → 符合（情境 iv）。U 大不代表就是灰色地帶，要看區間有沒有碰到限值。" },
+      { id: "ch08-g01-5", name: "農藥殘留", r: 0.012, U: 0.004, L: 0.01, unit: "mg/kg", d: 3, lower: false, ans: 1,
+        tags: [null, null, "COMPLIANCE_IGNORE_U"],
+        exp: "測值 0.012 超過限值 0.01，但 0.012 − 0.004 = 0.008 < 0.01，區間下緣仍在合格側 → 灰色地帶（情境 ii）。保守規則下「測值超限」不等於「不符合」——除非事先約定的是另一種規則（下一題）。" }
+    ];
+    function line(c, locked) {
+      var lo = c.r - c.U, hi = c.r + c.U;
+      var mn = Math.min(lo, c.L), mx = Math.max(hi, c.L), pad = (mx - mn) * 0.35 || 1;
+      var W = 640, H = 84, Lm = 30, Rm = 30, AX = 50;
+      function X(v) { return Lm + (v - mn + pad) / (mx - mn + 2 * pad) * (W - Lm - Rm); }
+      var s = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "gsvg", role: "img", "aria-label": c.name + "：結果 ± U 與限值" });
+      // 合格側淡綠、不合格側淡紅
+      var xl = X(c.L);
+      s.appendChild(svg("rect", { x: c.lower ? xl : Lm, y: 20, width: c.lower ? W - Rm - xl : xl - Lm, height: 44, fill: "#EDF7EE" }));
+      s.appendChild(svg("rect", { x: c.lower ? Lm : xl, y: 20, width: c.lower ? xl - Lm : W - Rm - xl, height: 44, fill: "#FDECEC" }));
+      s.appendChild(svg("line", { x1: Lm, y1: AX, x2: W - Rm, y2: AX, stroke: "#94A3B8" }));
+      s.appendChild(svg("line", { x1: xl, y1: 14, x2: xl, y2: 70, stroke: "#C62828", "stroke-width": 2.5 }));
+      s.appendChild(svg("text", { x: xl, y: 12, "text-anchor": "middle", "font-size": 12, "font-weight": 700, fill: "#C62828" }, (c.lower ? "下限 " : "上限 ") + "L = " + fmt(c.L, c.d) + " " + c.unit));
+      s.appendChild(svg("line", { x1: X(lo), y1: AX, x2: X(hi), y2: AX, stroke: "#0F4C81", "stroke-width": 5, "stroke-linecap": "round" }));
+      s.appendChild(svg("circle", { cx: X(c.r), cy: AX, r: 6, fill: "#F6A21D", stroke: "#0F4C81", "stroke-width": 2 }));
+      s.appendChild(svg("text", { x: X(c.r), y: AX + 26, "text-anchor": "middle", "font-size": 12, fill: "#1F2937" }, "結果 " + fmt(c.r, c.d) + " ± " + fmt(c.U, c.d) + "（k = 2）"));
+      if (locked) {
+        s.appendChild(svg("text", { x: X(lo), y: AX - 12, "text-anchor": "middle", "font-size": 11, fill: "#0F4C81" }, fmt(lo, c.d)));
+        s.appendChild(svg("text", { x: X(hi), y: AX - 12, "text-anchor": "middle", "font-size": 11, fill: "#0F4C81" }, fmt(hi, c.d)));
+      }
+      return s;
+    }
+    var questions = CASES.map(function (c) {
+      return { id: c.id, v: 1, q: "📦 " + c.name + "　結果 " + fmt(c.r, c.d) + " ± " + fmt(c.U, c.d) + " " + c.unit + "（U，k = 2），法規" + (c.lower ? "下限" : "上限") + " " + fmt(c.L, c.d) + " " + c.unit + "。保守決策規則下判定？",
+        mount: function (div) {
+          var holder = el("div", "gsvgwrap"); holder.appendChild(line(c, false)); div.appendChild(holder);
+          var ctrl = pillMount(VERD, c.ans, c.tags, "結果 − U = " + fmt(c.r - c.U, c.d) + "，結果 + U = " + fmt(c.r + c.U, c.d) + "，限值 " + fmt(c.L, c.d) + " → <strong>" + VERD[c.ans] + "</strong>")(div);
+          var showKey = ctrl.showKey, reset = ctrl.reset;
+          ctrl.showKey = function (r) { holder.innerHTML = ""; holder.appendChild(line(c, true)); showKey(r); };
+          ctrl.reset = function () { holder.innerHTML = ""; holder.appendChild(line(c, false)); reset(); };
+          return ctrl;
+        },
+        exp: c.exp };
+    });
+    questions.push(
+      { id: "ch08-g01-6", v: 1,
+        q: "第 5 批農藥（0.012 ± 0.004，上限 0.01）如果客戶事先約定的決策規則是「<strong>測值超限即不符合</strong>」，判定變成？",
+        opts: ["不符合：這個規則只看測值 0.012 > 0.01", "還是灰色地帶", "符合，因為區間下緣 0.008 在限值內"],
+        ans: 0, tags: [null, "COMPLIANCE_RULE_MISAPPLIED", "COMPLIANCE_RULE_MISAPPLIED"],
+        exp: "同一批樣品、同一份數據，兩種規則結論相反——這正是 ISO/IEC 17025:2017 要求「決策規則要事先與客戶約定並寫進報告」的原因。規則沒有對錯，事後才選才有問題。" },
+      { id: "ch08-g01-7", v: 1,
+        q: "保守規則下落入灰色地帶的批次，實驗室正確的做法是？",
+        opts: ["依保守精神直接判不符合，退貨最安全", "報告「無法判定」，依約定加測或增加重複次數縮小 U 後再判", "報告時只給測值、不給 U，讓客戶自己決定", "把 k 從 2 改成 1，U 減半就能判定了"],
+        ans: 1, tags: ["COMPLIANCE_RULE_MISAPPLIED", null, "COMPLIANCE_IGNORE_U", "U_VS_UC"],
+        exp: "灰色地帶的意思是「這份數據分不出來」，不是「有罪推定」。縮小 U 的正當方法是加測、增加重複、改善最大的不確定度分量（Ch7 拼圖）；把 k 改小只是改變信賴水準（k = 1 只剩 68%），不是改善。" },
+      { id: "ch08-g01-8", v: 1,
+        q: "鉛的合成標準不確定度 uc = 0.0087 mg/L、測值 0.0851 mg/L、k = 2。依 QUAM §9 的格式，正確的報告寫法是？",
+        opts: ["Pb = (0.085 ± 0.017) mg/L，所述不確定度為擴展不確定度，k = 2，信賴水準約 95%", "Pb = (0.0851 ± 0.01744) mg/L，k = 2", "Pb = (0.085 ± 0.009) mg/L，k = 2", "Pb = 0.0851 mg/L（不確定度另附）"],
+        ans: 0, tags: [null, "UNC_TOO_MANY_DIGITS", "U_VS_UC", "COMPLIANCE_IGNORE_U"],
+        exp: "U = 2 × 0.0087 = 0.0174 → 取 2 位有效數字 0.017；結果位數與 U 對齊 → 0.085。0.009 是把 uc 當成 U 報出去（少乘 k）；五位小數是報太多位；不附 U 的結果無法做符合性判定。" }
+    );
+
+    predictGame(box, {
+      gid: "ch08-compliance",
+      badge: "放行官",
+      stepWord: "批次", scoreWord: "答對",
+      title: "五批樣品排在你桌上：放行、退貨，還是無法判定？",
+      intro: "每一批都附上結果 ± U（k = 2）和法規限值。圖上藍色橫條是整個區間，紅線是限值，綠色區是合格側。" +
+             "先用 8.5 節的<strong>保守決策規則</strong>判定五批，最後三題考規則本身。",
+      questions: questions,
+      revealLabel: "送出判定並揭曉",
+      reveal: function (panel, results) {
+        panel.appendChild(el("h4", null, "五批總表"));
+        var rows = CASES.map(function (c, i) {
+          return "<tr" + (c.ans === 1 ? ' class="hl"' : "") + "><td>" + (i + 1) + "</td><td>" + c.name + "</td><td class=\"num\">" + fmt(c.r - c.U, c.d) + " ~ " + fmt(c.r + c.U, c.d) + "</td><td class=\"num\">" + (c.lower ? "≥ " : "≤ ") + fmt(c.L, c.d) +
+                 "</td><td>" + VERD[c.ans] + "</td><td>" + (results[i].correct ? "✓" : "✗") + "</td></tr>";
+        }).join("");
+        panel.appendChild(el("div", "gtablewrap",
+          '<table class="gtable"><thead><tr><th>批</th><th>樣品</th><th class="num">結果 ± U 的區間</th><th class="num">限值</th><th>保守規則</th><th>你</th></tr></thead><tbody>' + rows + "</tbody></table>"));
+        panel.appendChild(el("div", "callout warn", '<span class="t">⚖️ 放行官的兩句話</span>① 判定看的是<strong>整個區間</strong>落在哪一側，不是測值本身；上限、下限規則對稱。② 灰色地帶三批（鉛、總氮、農藥）不是「有罪」，是「證據不足」——加測、縮小 U，或依事先約定的規則處理。下面的 R 程式 <code>judge()</code> 就是這套規則。'));
+      }
+    });
+  };
+
+  /* ==================================================================
+     Ch15：法官模擬器 — 先猜型一／型二錯誤各會發生幾次，再抽 100 批看
+     H0：這批奶粉蛋白質合格（μ = 35.0 g/100 g）；不合格批真實平均低 δ；one-sample t，SD = 0.15。
+     t 臨界值與理論檢定力由 R 實算（power.t.test type = "one.sample"）寫死。
+     ================================================================== */
+  GAMES["ch15-errors"] = function (box) {
+    var SPEC = 35.0, SD = 0.15;
+    var NS = [3, 5, 8, 10, 15], ALPHAS = [0.10, 0.05, 0.01], DELTAS = [0.1, 0.2, 0.3];
+    var TCRIT = { "0.1": { 3: 2.9200, 5: 2.1318, 8: 1.8946, 10: 1.8331, 15: 1.7613 },
+                  "0.05": { 3: 4.3027, 5: 2.7764, 8: 2.3646, 10: 2.2622, 15: 2.1448 },
+                  "0.01": { 3: 9.9248, 5: 4.6041, 8: 3.4995, 10: 3.2498, 15: 2.9768 } };
+    var POWER = { "0.1": { "0.1": [0.201, 0.343, 0.522, 0.618, 0.791], "0.2": [0.458, 0.787, 0.958, 0.987, 0.999], "0.3": [0.712, 0.975, 1.000, 1.000, 1.000] },
+                  "0.05": { "0.1": [0.107, 0.211, 0.371, 0.469, 0.671], "0.2": [0.267, 0.614, 0.896, 0.962, 0.998], "0.3": [0.471, 0.909, 0.998, 1.000, 1.000] },
+                  "0.01": { "0.1": [0.023, 0.056, 0.135, 0.201, 0.384], "0.2": [0.061, 0.242, 0.619, 0.801, 0.974], "0.3": [0.121, 0.547, 0.951, 0.993, 1.000] } };
+    function randn() { var u = 0, v = 0; while (u === 0) u = Math.random(); while (v === 0) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+    function testBatch(mu, n, tcrit) {
+      var xs = [], m = 0; for (var i = 0; i < n; i++) { var v = mu + SD * randn(); xs.push(v); m += v; } m /= n;
+      var ss = 0; xs.forEach(function (v) { ss += (v - m) * (v - m); });
+      var t = (m - SPEC) / (Math.sqrt(ss / (n - 1)) / Math.sqrt(n));
+      return Math.abs(t) > tcrit;   // true = 拒絕 H0（判不合格）
+    }
+
+    predictGame(box, {
+      gid: "ch15-errors",
+      badge: "法官模擬器",
+      stepWord: "預測", scoreWord: "猜對",
+      title: "三重複、α = 0.05：你會冤枉幾批好貨，放走幾批壞貨？",
+      intro: "延續上面的奶粉例子：H<sub>0</sub>「這批合格」（蛋白質 μ = 35.0 g/100 g），每批用凱氏法測 n 次，做 one-sample t 檢定（α = 0.05）。" +
+             "重複性 SD = 0.15；不合格批的真實平均低了 δ = 0.2。先猜，再親手抽 100 批驗證。",
+      questions: [
+        { id: "ch15-g01-1", v: 1,
+          q: "100 批<strong>其實不合格</strong>的奶粉（真實平均 34.8），每批只測 n = 3 次：你猜有幾批會被檢定「放行」（沒有證據說不合格，型二錯誤）？",
+          num: { lo: 0, hi: 100, okLo: 55, okHi: 90, unit: "批（0–100）", placeholder: "填整數", keyText: "73 批：n = 3 時檢定力只有 0.267，β = 0.733（模擬會有起伏，55~90 都算合理）" },
+          tagFn: function (v) { return v >= 3 && v <= 8 ? "ALPHA_BETA_SWAP" : null; },
+          exp: "α = 0.05 管的是「冤枉好人」，不是「放走壞人」。放走壞人的機率 β 取決於 δ、SD、n：δ = 0.2 只有 SD 的 1.3 倍，三重複的標準誤 0.15/√3 = 0.087，t 臨界值又高達 4.30，所以四分之三的壞批會被放行。猜 5 批左右的同學，是把 α 和 β 弄反了。" },
+        { id: "ch15-g01-2", v: 1,
+          q: "100 批<strong>其實合格</strong>的奶粉（真實平均正好 35.0），同樣 n = 3、α = 0.05：你猜有幾批會被冤枉判成不合格（型一錯誤）？",
+          num: { lo: 0, hi: 100, okLo: 1, okHi: 12, unit: "批（0–100）", placeholder: "填整數", keyText: "5 批：型一錯誤率就是 α = 0.05，與 n、δ 無關（模擬起伏下 1~12 都合理）" },
+          tagFn: function (v) { return v >= 20 ? "ALPHA_BETA_SWAP" : null; },
+          exp: "型一錯誤率是你自己訂的 α：不管 n 多小、SD 多大，長期就是 5% 的合格批會被冤枉。這也是為什麼 α 可以直接控制，β 卻要靠實驗設計（n、SD）才能壓低。" },
+        { id: "ch15-g01-3", v: 1,
+          q: "想同時降低兩種錯誤，唯一有效的方法是？",
+          opts: ["把 α 從 0.05 改成 0.01", "增加重複次數 n，或降低方法的 SD", "把 α 放寬到 0.10", "看到數據偏低之後改用單尾檢定"],
+          ans: 1, tags: [null, null, null, "POSTHOC_ONE_TAIL"],
+          exp: "α 與 β 是蹺蹺板：α 改嚴，β 就變大（模擬器把 α 切到 0.01 試試）；α 放寬則相反。只有增加 n 或降低 SD 能讓兩者一起下降——把模擬器的 n 從 3 調到 10 看看。事後改單尾是 p-hacking。" },
+        { id: "ch15-g01-4", v: 1,
+          q: "檢定力（power）= 1 − β 的意思是？",
+          opts: ["差異真的存在時，檢定能抓到它的機率", "檢定出錯的機率", "H<sub>0</sub> 為真的機率", "1 − p 值"],
+          ans: 0, tags: [null, "POWER_AS_ERROR", "P_IS_PROB_H0", "P_COMPLEMENT_PROB_H1"],
+          exp: "檢定力是「該抓到的抓到」的機率，是正確判決；它不是錯誤率，也和 p 值無關。15.9 節會告訴你想要 80% 的檢定力每組要做幾次（本例 n ≈ 10）。" }
+      ],
+      revealLabel: "送出預測，開始審案",
+      reveal: function (panel) {
+        panel.appendChild(el("h4", null, "法官模擬器：每次審 100 批合格 + 100 批不合格"));
+        var ctrl = el("div", "gctrl");
+        function mkSel(label, vals, def, fmtv) {
+          var s = document.createElement("select");
+          vals.forEach(function (v) { var o = document.createElement("option"); o.value = v; o.textContent = fmtv(v); if (v === def) o.selected = true; s.appendChild(o); });
+          var lab = el("label", null, label + " "); lab.appendChild(s); ctrl.appendChild(lab); return s;
+        }
+        var selN = mkSel("每批測", NS, 3, function (v) { return "n = " + v; });
+        var selA = mkSel("顯著水準", ALPHAS, 0.05, function (v) { return "α = " + v; });
+        var selD = mkSel("不合格批低了", DELTAS, 0.2, function (v) { return "δ = " + v.toFixed(1); });
+        panel.appendChild(ctrl);
+        var row = el("div", "gbtn-row");
+        var b100 = el("button", "qbtn", "審 100 + 100 批"), bR = el("button", "qbtn ghost", "重來");
+        b100.type = bR.type = "button"; row.appendChild(b100); row.appendChild(bR); panel.appendChild(row);
+        var table = el("div", "gtablewrap"); panel.appendChild(table);
+        var dotsWrap = el("div", "gsvgwrap"); panel.appendChild(dotsWrap);
+        var note = el("p", "qnote", "每個點是一批：綠＝判決正確，紅＝判決錯誤（上排：合格批被冤枉＝型一；下排：不合格批被放行＝型二）。統計數字會一直累計，畫面只顯示最近一次的 200 批。");
+        panel.appendChild(note);
+
+        var good = { n: 0, err: 0 }, bad = { n: 0, err: 0 }, last = { g: [], b: [] };
+        function params() {
+          var n = parseInt(selN.value, 10), a = parseFloat(selA.value), d = parseFloat(selD.value);
+          return { n: n, a: a, d: d, tcrit: TCRIT[String(a)][n], power: POWER[String(a)][String(d)][NS.indexOf(n)] };
+        }
+        function render() {
+          var p = params();
+          var aRate = good.n ? good.err / good.n * 100 : null, bRate = bad.n ? bad.err / bad.n * 100 : null;
+          table.innerHTML =
+            '<table class="gtable"><thead><tr><th></th><th>真相：其實合格（H₀ 為真）</th><th>真相：其實不合格（低 ' + p.d.toFixed(1) + '）</th></tr></thead><tbody>' +
+            '<tr><th>判不合格（拒絕 H₀）</th><td class="num" style="color:#C62828"><strong>型一錯誤 ' + good.err + '</strong> / ' + good.n + (aRate === null ? "" : "（" + fmt(aRate, 1) + "%，理論 α = " + (p.a * 100) + "%）") + '</td>' +
+            '<td class="num" style="color:#2E7D32">正確退貨 ' + (bad.n - bad.err) + ' / ' + bad.n + (bRate === null ? "" : "（檢定力 " + fmt(100 - bRate, 1) + "%，理論 " + fmt(p.power * 100, 1) + "%）") + '</td></tr>' +
+            '<tr><th>放行（不拒絕 H₀）</th><td class="num" style="color:#2E7D32">正確放行 ' + (good.n - good.err) + ' / ' + good.n + '</td>' +
+            '<td class="num" style="color:#C62828"><strong>型二錯誤 ' + bad.err + '</strong> / ' + bad.n + (bRate === null ? "" : "（" + fmt(bRate, 1) + "%，理論 β = " + fmt((1 - p.power) * 100, 1) + "%）") + '</td></tr></tbody></table>';
+          dotsWrap.innerHTML = "";
+          if (!last.g.length) return;
+          var W = 640, H = 76, s = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "gsvg", role: "img", "aria-label": "最近 200 批的判決結果" });
+          s.appendChild(svg("text", { x: 4, y: 22, "font-size": 11, fill: "#64748B" }, "合格批"));
+          s.appendChild(svg("text", { x: 4, y: 58, "font-size": 11, fill: "#64748B" }, "不合格批"));
+          [last.g, last.b].forEach(function (arr, row) {
+            arr.forEach(function (err, i) {
+              s.appendChild(svg("circle", { cx: 66 + i * 5.7, cy: row ? 54 : 18, r: 2.3, fill: err ? "#C62828" : "#2E7D32" }));
+            });
+          });
+          s.appendChild(svg("text", { x: 66, y: 40, "font-size": 10, fill: "#C62828" }, "紅 = 型一錯誤（冤枉好貨）"));
+          s.appendChild(svg("text", { x: 66, y: 74, "font-size": 10, fill: "#C62828" }, "紅 = 型二錯誤（放走壞貨）"));
+          dotsWrap.appendChild(s);
+        }
+        function run() {
+          var p = params(); last = { g: [], b: [] };
+          for (var i = 0; i < 100; i++) {
+            var e1 = testBatch(SPEC, p.n, p.tcrit); good.n++; if (e1) good.err++; last.g.push(e1);
+            var e2 = !testBatch(SPEC - p.d, p.n, p.tcrit); bad.n++; if (e2) bad.err++; last.b.push(e2);
+          }
+          render();
+        }
+        function resetSim() { good = { n: 0, err: 0 }; bad = { n: 0, err: 0 }; last = { g: [], b: [] }; render(); }
+        b100.addEventListener("click", run); bR.addEventListener("click", resetSim);
+        [selN, selA, selD].forEach(function (c) { c.addEventListener("change", resetSim); });
+        render();
+        panel.appendChild(el("div", "callout ok", '<span class="t">🔬 三個實驗</span>① n = 3、α = 0.05：按幾次「審 100 + 100 批」，上排紅點約 5 個、下排紅點約 73 個。② 把 α 改成 0.01：上排紅點變少，下排紅點暴增——蹺蹺板。③ 把 n 調到 10：兩排紅點一起變少，這就是 15.9 節「每組 10 次」的由來。'));
+      }
+    });
+  };
+
   /* ---------------- 啟動 ---------------- */
   document.querySelectorAll(".game").forEach(function (box) {
     var id = box.dataset.game, g = GAMES[id];
