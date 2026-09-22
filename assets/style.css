@@ -323,3 +323,17 @@ sup { top: -0.4em; }
 .gbtn-row { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
 .gamebox .qitem input[type=checkbox] { margin-right: 8px; }
 @media (max-width: 600px) { .gamebox, .gpanel { padding-left: 14px; padding-right: 14px; } }
+.gchips { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 10px; }
+.gchip {
+  font: inherit; font-variant-numeric: tabular-nums; padding: 4px 12px; border-radius: 999px; cursor: pointer;
+  background: #fff; border: 2px solid var(--c-line); color: var(--c-ink);
+}
+.gchip:hover { border-color: var(--c-primary-2); }
+.gchip.sel { background: #FFF1D6; border-color: var(--c-accent); font-weight: 700; }
+.gchip.key { outline: 2px solid var(--c-green); outline-offset: 1px; }
+.gchip:disabled { cursor: default; }
+.gdec { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 4px 0; }
+.gamebox .gdec label { display: inline-flex; align-items: center; margin: 0; padding: 5px 10px; }
+.qkeybox { margin-top: 8px; }
+.qkeybox table { margin: 0 0 8px; }
+.qkeybox th { width: 9em; background: #EEF2F7; color: var(--c-ink); text-align: left; font-weight: 600; }

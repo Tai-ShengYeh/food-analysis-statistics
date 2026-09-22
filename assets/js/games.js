@@ -42,22 +42,27 @@
        { id, q, opts, ans, tags, exp }                     單選
        { id, q, opts, ans:[i,j], multi:true, tagFn, exp }  複選（tagFn(選到的索引陣列) → 迷思 key 或 null）
        { id, q, num:{lo,hi,okLo,okHi,unit,placeholder}, tagFn, exp }  數值填空
+       { id, q, mount(div) → { read(), showKey(r), reset() }, exp }   自訂互動（點圖、選點等）
+         read() 回傳 { answered, correct, idx, value, tag }；showKey 在批改後顯示解答並鎖定；reset 還原
   */
   function predictGame(box, spec) {
     var wrap = el("div", "gamebox");
     var head = el("div", "gamehead");
-    head.appendChild(el("span", "badge game", "🎮 猜猜看再揭曉"));
+    head.appendChild(el("span", "badge game", "🎮 " + (spec.badge || "猜猜看再揭曉")));
     head.appendChild(el("h3", null, spec.title));
     var who = el("div", "gwho", whoText());
     head.appendChild(who);
     wrap.appendChild(head);
     if (spec.intro) wrap.appendChild(el("div", "gintro", spec.intro));
 
-    var items = [];
+    var items = [], ctrls = [];
+    var stepWord = spec.stepWord || "預測";
     spec.questions.forEach(function (q, qi) {
       var div = el("div", "qitem");
-      div.appendChild(el("div", "qtext", "預測 " + (qi + 1) + "／" + spec.questions.length + "　" + q.q));
-      if (q.num) {
+      div.appendChild(el("div", "qtext", stepWord + " " + (qi + 1) + "／" + spec.questions.length + "　" + q.q));
+      if (q.mount) {
+        ctrls[qi] = q.mount(div);
+      } else if (q.num) {
         var lab = el("label", "qnum");
         var inp = document.createElement("input");
         inp.type = "number"; inp.className = "qnum-in"; inp.step = q.num.step || 1;
@@ -95,11 +100,14 @@
     box.appendChild(wrap);
 
     var graded = false, warned = false, t0 = null;
-    wrap.addEventListener("input", function () { if (t0 === null) t0 = Date.now(); });
+    ["input", "click"].forEach(function (evn) { wrap.addEventListener(evn, function () { if (t0 === null) t0 = Date.now(); }); });   // 點圖類互動沒有 input 事件
 
-    function readItem(div, q) {
+    function readItem(div, q, qi) {
       var r = { answered: false, correct: false, idx: null, value: null, tag: null };
-      if (q.num) {
+      if (q.mount) {
+        var c0 = ctrls[qi].read();
+        for (var k in c0) r[k] = c0[k];
+      } else if (q.num) {
         var v = div.querySelector("input").value.trim();
         if (v === "") return r;
         var x = parseFloat(v);
@@ -126,15 +134,16 @@
     }
 
     function grade() {
-      var results = spec.questions.map(function (q, qi) { return readItem(items[qi], q); });
+      var results = spec.questions.map(function (q, qi) { return readItem(items[qi], q, qi); });
       var nAns = results.filter(function (r) { return r.answered; }).length;
       if (nAns < results.length && !warned) {
         warned = true;
-        warn.textContent = "還有 " + (results.length - nAns) + " 題沒猜。猜錯不扣分，先猜再揭曉學得最多；確定要跳過就再按一次。";
+        warn.textContent = "還有 " + (results.length - nAns) + " 題沒作答。答錯不扣分，先想再揭曉學得最多；確定要跳過就再按一次。";
         return;
       }
       warn.textContent = "";
       var attempts = (FAS.lsGet(attKey(spec.gid), 0) || 0) + 1;
+      if (spec.beforeGrade) spec.beforeGrade(results);
       FAS.lsSet(attKey(spec.gid), attempts);
       var tEnd = Date.now(), correct = 0;
       results.forEach(function (r, qi) {
@@ -142,7 +151,9 @@
         if (r.correct) correct++;
         div.classList.add("answered", r.correct ? "correct" : "wrong");
         var labels = div.querySelectorAll("label:not(.qnum)");
-        if (q.num) {
+        if (q.mount) {
+          ctrls[qi].showKey(r);
+        } else if (q.num) {
           var k = el("div", "qkey", "實際約 " + q.num.keyText);
           div.insertBefore(k, div.querySelector(".exp"));
         } else if (q.multi) {
@@ -157,7 +168,8 @@
         div.querySelectorAll("input").forEach(function (i) { i.disabled = true; });
         FAS.emit({
           event_type: "answer", game: GAME, game_id: spec.gid, quiz_set: "game", phase: "game",
-          question_id: q.id, item_version: q.v || 1, qtype: "predict",
+          qtype: q.mount ? "interact" : "predict",
+          question_id: q.id, item_version: q.v || 1,
           is_correct: r.answered ? r.correct : null, skipped: !r.answered,
           choice_idx: r.idx, choice_value: r.value, misconception: r.tag, attempts: attempts,
           latency_ms: t0 !== null ? tEnd - t0 : null
@@ -170,7 +182,7 @@
         duration_ms: t0 !== null ? tEnd - t0 : null
       });
       var n = results.length;
-      score.textContent = "猜對 " + correct + " / " + n + "　" +
+      score.textContent = (spec.scoreWord || "猜對") + " " + correct + " / " + n + "　" +
         (correct === n ? "🎯 全中！你的統計直覺很準。" : correct >= n / 2 ? "👍 不錯，看看猜錯的那題為什麼。" : "🔍 沒關係，猜錯正是學會的開始——往下看揭曉。");
       score.className = "qscore " + (correct === n ? "good" : correct >= n / 2 ? "mid" : "low");
       panel.innerHTML = "";
@@ -182,8 +194,9 @@
     }
 
     function reset() {
-      items.forEach(function (div) {
+      items.forEach(function (div, qi) {
         div.classList.remove("answered", "correct", "wrong");
+        if (ctrls[qi]) ctrls[qi].reset();
         div.querySelectorAll("label").forEach(function (l) { l.classList.remove("sel", "key"); });
         div.querySelectorAll("input").forEach(function (i) {
           i.disabled = false;
@@ -420,6 +433,305 @@
           '① 維持 n = 4、95%、t：按「抽 100 次」幾回，漏掉的通常在 2~10 之間，長期逼近 5%。' +
           '② 把 n 改成 16：看「平均半寬」是不是差不多減半。' +
           '③ 切到「硬用 Z」：覆蓋率會掉到 86% 左右——這就是小樣本要用 t 的理由。'));
+      }
+    });
+  };
+
+  /* ==================================================================
+     Ch3：管制圖巡檢員 — 下一個月 25 天的 QC 標準品資料，換你判讀
+     資料由 R 產生（set.seed(31)、rnorm(25, 12, 0.15)，第 5–16 天人為壓到中心線下方、
+     第 17 天 12.34、第 21 天 12.55），規則答案以 R 實算：規則① 第 21 天；規則③ 第 17 天；
+     規則② 第 5–16 天連續 12 點在中心線下方。
+     ================================================================== */
+  GAMES["ch03-qcpatrol"] = function (box) {
+    var QC = [12.008, 11.972, 12.239, 12.145, 11.714, 11.873, 11.881, 11.802, 11.749, 11.830, 11.780, 11.890, 11.914,
+              11.843, 11.851, 11.862, 12.340, 12.128, 12.005, 11.862, 12.550, 11.970, 12.093, 12.114, 11.982];
+    var CL = 12.00, S = 0.15, N = QC.length;
+    var ACTION = [21], WARN = [17], RUN = [5, 16];
+    function setEq(a, b) { if (a.length !== b.length) return false; return a.every(function (x) { return b.indexOf(x) >= 0; }); }
+
+    // 共用畫圖：mode = "play"（可點）| "key"（顯示解答與學生標記的對錯）
+    function chart(state, mode, onClick) {
+      var W = 680, H = 300, L = 46, R = 70, T = 22, B = 34, yLo = 11.45, yHi = 12.65;
+      function X(i) { return L + i / (N - 1) * (W - L - R); }
+      function Y(v) { return T + (yHi - v) / (yHi - yLo) * (H - T - B); }
+      var s = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "gsvg", role: "img", "aria-label": "Shewhart 管制圖，25 天 QC 標準品測值" });
+      s.style.minWidth = "560px";
+      [[CL, "#1F2937", "", "CL 12.00"], [CL + 2 * S, "#F6A21D", "5 3", "+2s 12.30"], [CL - 2 * S, "#F6A21D", "5 3", "−2s 11.70"],
+       [CL + 3 * S, "#C62828", "5 3", "+3s 12.45"], [CL - 3 * S, "#C62828", "5 3", "−3s 11.55"]].forEach(function (ln) {
+        s.appendChild(svg("line", { x1: L, y1: Y(ln[0]), x2: W - R + 4, y2: Y(ln[0]), stroke: ln[1], "stroke-width": ln[2] ? 1.4 : 1.8, "stroke-dasharray": ln[2] }));
+        s.appendChild(svg("text", { x: W - R + 8, y: Y(ln[0]) + 4, "font-size": 11, fill: ln[1] }, ln[3]));
+      });
+      [11.5, 11.7, 12.0, 12.3, 12.5].forEach(function (v) {
+        s.appendChild(svg("text", { x: L - 6, y: Y(v) + 4, "text-anchor": "end", "font-size": 11, fill: "#64748B" }, fmt(v, 1)));
+      });
+      s.appendChild(svg("line", { x1: L, y1: H - B + 6, x2: W - R + 4, y2: H - B + 6, stroke: "#64748B" }));
+      for (var i = 0; i < N; i++) {
+        if ((i + 1) % 2 === 1) s.appendChild(svg("text", { x: X(i), y: H - B + 22, "text-anchor": "middle", "font-size": 11, fill: "#64748B" }, String(i + 1)));
+      }
+      s.appendChild(svg("text", { x: (L + W - R) / 2, y: H - 2, "text-anchor": "middle", "font-size": 11, fill: "#64748B" }, "分析日"));
+      var pts = QC.map(function (v, i) { return X(i) + "," + Y(v); }).join(" ");
+      s.appendChild(svg("polyline", { points: pts, fill: "none", stroke: "#5B8DB8", "stroke-width": 1.5 }));
+      if (mode === "key") {
+        // 規則②：連續同側的區段
+        s.appendChild(svg("rect", { x: X(RUN[0] - 1) - 8, y: Y(CL) + 2, width: X(RUN[1] - 1) - X(RUN[0] - 1) + 16, height: Y(yLo) - Y(CL) - 30, fill: "#6A3FA0", "fill-opacity": 0.08, stroke: "#6A3FA0", "stroke-dasharray": "4 3", rx: 6 }));
+        s.appendChild(svg("text", { x: (X(RUN[0] - 1) + X(RUN[1] - 1)) / 2, y: Y(yLo) - 34, "text-anchor": "middle", "font-size": 12, fill: "#4A2A80", "font-weight": 700 }, "規則②：第 5–16 天連續 12 點在 CL 下方"));
+      }
+      QC.forEach(function (v, i) {
+        var d = i + 1, g = svg("g", { style: mode === "play" ? "cursor:pointer" : "" });
+        var truth = ACTION.indexOf(d) >= 0 ? 1 : WARN.indexOf(d) >= 0 ? 2 : 0;
+        var mark = state[i];
+        if (mode === "key") {
+          if (truth) g.appendChild(svg("circle", { cx: X(i), cy: Y(v), r: 10, fill: "none", stroke: truth === 1 ? "#C62828" : "#F6A21D", "stroke-width": 3 }));
+          if (mark !== truth) {
+            g.appendChild(svg("text", { x: X(i), y: Y(v) - 13, "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: "#C62828" }, mark && !truth ? "✗ 多標" : mark ? "✗ 類別錯" : "✗ 漏標"));
+          } else if (truth) {
+            g.appendChild(svg("text", { x: X(i), y: Y(v) - 13, "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: "#2E7D32" }, "✓"));
+          }
+        } else if (mark) {
+          g.appendChild(svg("circle", { cx: X(i), cy: Y(v), r: 10, fill: "none", stroke: mark === 1 ? "#C62828" : "#F6A21D", "stroke-width": 3 }));
+          g.appendChild(svg("text", { x: X(i), y: Y(v) - 13, "text-anchor": "middle", "font-size": 12, "font-weight": 700, fill: mark === 1 ? "#C62828" : "#8A5A00" }, mark === 1 ? "停線" : "警覺"));
+        }
+        g.appendChild(svg("circle", { cx: X(i), cy: Y(v), r: 4.5, fill: "#0F4C81" }));
+        if (mode === "play") {
+          g.appendChild(svg("circle", { cx: X(i), cy: Y(v), r: 13, fill: "transparent" }));
+          g.appendChild(svg("title", {}, "第 " + d + " 天：" + fmt(v, 3) + "%"));
+          g.addEventListener("click", function () { onClick(i); });
+        }
+        s.appendChild(g);
+      });
+      return s;
+    }
+
+    predictGame(box, {
+      gid: "ch03-qcpatrol",
+      badge: "管制圖巡檢員",
+      stepWord: "任務", scoreWord: "答對",
+      title: "下一個月的 25 天，換你當巡檢員",
+      intro: "上面那個月的圖你已經跟著判讀過了。這是<strong>下一個月</strong>同一個 QC 標準品（蛋白質 12.00%，s = 0.15%）的 25 天測值，" +
+             "中心線與 ±2s、±3s 界限都相同。請照 3.3 節的三條規則巡檢一遍，再按下揭曉對答案。",
+      questions: [
+        { id: "ch03-g01-1", v: 1,
+          q: "在圖上直接標記：點一下＝🔴 <strong>停線</strong>（超出 ±3s，規則①），再點一下＝🟠 <strong>警覺加測</strong>（超出 ±2s 但未達 ±3s，規則③），再點一下取消。只標這兩類，規則②留到下一題。",
+          mount: function (div) {
+            var state = QC.map(function () { return 0; }), locked = false, holder = el("div", "gsvgwrap");
+            function draw(mode) { holder.innerHTML = ""; holder.appendChild(chart(state, mode, function (i) { if (locked) return; state[i] = (state[i] + 1) % 3; draw("play"); })); }
+            var legend = el("p", "qnote", "提示：滑鼠移到點上可看當天數值。界限：+3s = 12.45、+2s = 12.30、−2s = 11.70、−3s = 11.55。");
+            div.appendChild(holder); div.appendChild(legend); draw("play");
+            var key = null;
+            return {
+              read: function () {
+                var A = [], Wn = [];
+                state.forEach(function (m, i) { if (m === 1) A.push(i + 1); else if (m === 2) Wn.push(i + 1); });
+                var answered = A.length + Wn.length > 0;
+                var correct = setEq(A, ACTION) && setEq(Wn, WARN);
+                var tag = null;
+                if (answered && !correct && setEq(A.concat(Wn), ACTION.concat(WARN))) tag = "WARNING_VS_ACTION";
+                return { answered: answered, correct: correct, idx: null, value: state.join(""), tag: tag };
+              },
+              showKey: function () {
+                locked = true; draw("key");
+                key = el("div", "qkey", "解答：第 21 天 12.55 超出 +3s → 🔴 停線；第 17 天 12.34 超出 +2s 未達 +3s → 🟠 警覺加測。其餘各天都在 ±2s 內。");
+                div.insertBefore(key, div.querySelector(".exp"));
+              },
+              reset: function () { locked = false; state = QC.map(function () { return 0; }); if (key) { key.remove(); key = null; } draw("play"); }
+            };
+          },
+          exp: "只有兩天需要依界限處置。但先別鬆一口氣——這個月真正的問題不在「有沒有點超線」，看下一題。" },
+        { id: "ch03-g01-2", v: 1,
+          q: "規則②：這個月有沒有「連續 7 點以上在中心線同一側」的系統性漂移？",
+          opts: ["沒有，這個月只有第 21 天出問題", "有：第 5–16 天連續 12 點都在中心線下方", "有：第 1–4 天連續在中心線上方", "有：第 17–21 天連續在中心線上方"],
+          ans: 1, tags: ["SHEWHART_ONLY_OUT_OF_LIMIT", null, null, null],
+          exp: "第 5 到 16 天共 12 個點全部低於 12.00%，其中沒有任何一點碰到 −2s。只盯界限會完全漏掉它——但連續 12 點同側，若真的沒有偏移，機率只有 (1/2)<sup>11</sup> ≈ 0.05%，" +
+               "這就是系統性偏低（可能是標準品保存、校正或試劑批次改變）。第 1–4 天有 2 點在上、2 點在下；第 17–21 天第 20 天在下方，都不成立。" },
+        { id: "ch03-g01-3", v: 1,
+          q: "第 21 天 12.55% 衝出 +3s 行動界限，當天正確的處置是？",
+          opts: ["重測一次 QC，沒超界就照常出報告", "停線：當天樣品結果暫不發出，找根本原因並記錄，排除後才恢復", "把行動界限放寬到法規允許的 ±0.6%，這樣就沒超界", "把第 21 天這一點刪掉，管制圖就正常了"],
+          ans: 1, tags: ["RETEST_UNTIL_PASS", null, "CONTROL_LIMIT_IS_SPEC", "OUTLIER_DELETE_BY_EYE"],
+          exp: "±3s 是製程自己的能力界限，超出代表「今天的系統和平常不一樣」，重測到過關只是把警訊蓋掉；放寬到規格限值是把管制界限和法規限值混為一談；" +
+               "刪點更是把證據銷毀。正確做法是停線、查根本原因（校正、試劑、儀器、人員）、記錄、確認排除後再恢復，當天樣品要重做。" }
+      ],
+      revealLabel: "送出巡檢結果並揭曉",
+      reveal: function (panel, results) {
+        panel.appendChild(el("h4", null, "這個月的巡檢報告"));
+        var cs = [], acc = 0;
+        QC.forEach(function (v) { acc += v - CL; cs.push(acc); });
+        var W = 680, H = 200, L = 46, R = 70, T = 16, B = 30, yLo = -1.8, yHi = 0.6;
+        function X(i) { return L + i / (N - 1) * (W - L - R); }
+        function Y(v) { return T + (yHi - v) / (yHi - yLo) * (H - T - B); }
+        var s = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "gsvg", role: "img", "aria-label": "CuSum 累積偏差圖" });
+        s.style.minWidth = "560px";
+        s.appendChild(svg("line", { x1: L, y1: Y(0), x2: W - R + 4, y2: Y(0), stroke: "#1F2937", "stroke-dasharray": "5 3" }));
+        [-1.5, -1.0, -0.5, 0, 0.5].forEach(function (v) { s.appendChild(svg("text", { x: L - 6, y: Y(v) + 4, "text-anchor": "end", "font-size": 11, fill: "#64748B" }, fmt(v, 1))); });
+        for (var i = 0; i < N; i += 2) s.appendChild(svg("text", { x: X(i), y: H - B + 18, "text-anchor": "middle", "font-size": 11, fill: "#64748B" }, String(i + 1)));
+        s.appendChild(svg("polyline", { points: cs.map(function (v, i) { return X(i) + "," + Y(v); }).join(" "), fill: "none", stroke: "#2E7D32", "stroke-width": 2 }));
+        cs.forEach(function (v, i) { s.appendChild(svg("circle", { cx: X(i), cy: Y(v), r: 3.5, fill: "#2E7D32" })); });
+        s.appendChild(svg("text", { x: X(4), y: Y(cs[4]) - 10, "font-size": 12, fill: "#4A2A80", "font-weight": 700 }, "第 5 天起一路下滑"));
+        s.appendChild(svg("text", { x: W - R + 8, y: Y(0) + 4, "font-size": 11, fill: "#1F2937" }, "CuSum 0"));
+        var wrap = el("div", "gsvgwrap"); wrap.appendChild(s); panel.appendChild(wrap);
+        panel.appendChild(el("p", "qnote", "CuSum（每天偏差 qc − 12.00 的累積和）：Shewhart 圖上第 5–16 天看起來只是「偏低一點」，CuSum 卻從第 5 天就明顯轉向、一路下滑到 −1.65，第 17 天才因為那個 +2s 的點反彈。"));
+        panel.appendChild(el("div", "gtablewrap",
+          '<table class="gtable"><thead><tr><th>發現</th><th>依據</th><th>處置</th></tr></thead><tbody>' +
+          '<tr class="hl"><td>第 21 天 12.55%</td><td>規則①：超出 +3s（12.45）</td><td>停線、找根本原因、當天樣品重做</td></tr>' +
+          '<tr><td>第 17 天 12.34%</td><td>規則③：超出 +2s（12.30）未達 +3s</td><td>提高警覺、加測一次 QC 確認</td></tr>' +
+          '<tr class="hl"><td>第 5–16 天</td><td>規則②：連續 12 點在中心線下方（沒有任何一點超界）</td><td>當成系統性偏移調查：標準品保存、校正、試劑批次；不必等到超界</td></tr>' +
+          '</tbody></table>'));
+        panel.appendChild(el("div", "callout warn", '<span class="t">🧭 巡檢員的心法</span>管制圖不是「有沒有紅點」的遊戲。單點超界（規則①③）抓的是<strong>突發</strong>事件，連串同側（規則②）與 CuSum 抓的是<strong>緩慢漂移</strong>——後者更常見、也更容易被忽略。3.4 節的其他 QC 手段（空白、加標回收、重複樣）都是為了讓這張圖有東西可畫。'));
+      }
+    });
+  };
+
+  /* ==================================================================
+     Ch5：異常值獵人 — 四組食品分析數據，找出可疑值並用 Dixon Q（90%）判定能不能捨棄
+     臨界值沿用 5.2 節表格；Q、平均與 SD 皆以 R 核算過。
+     ================================================================== */
+  GAMES["ch05-outlier"] = function (box) {
+    var QCRIT = { 3: 0.94, 4: 0.76, 5: 0.64, 6: 0.56, 7: 0.51, 8: 0.47 };
+    var ROUNDS = [
+      { id: "ch05-g01-1", name: "水分 %（n = 4，課本範例）", x: [64.78, 64.53, 64.45, 55.31], d: 2 },
+      { id: "ch05-g01-2", name: "灰分 %（n = 5）", x: [2.31, 2.35, 2.29, 2.33, 2.45], d: 2 },
+      { id: "ch05-g01-3", name: "粗蛋白 %（n = 6）", x: [12.1, 12.4, 12.2, 12.3, 12.0, 13.1], d: 1 },
+      { id: "ch05-g01-4", name: "粗脂肪 %（n = 5）", x: [3.42, 3.51, 3.47, 3.38, 3.55], d: 2 }
+    ];
+    function stats(x) {
+      var m = 0; x.forEach(function (v) { m += v; }); m /= x.length;
+      var ss = 0; x.forEach(function (v) { ss += (v - m) * (v - m); });
+      return { mean: m, sd: x.length > 1 ? Math.sqrt(ss / (x.length - 1)) : NaN };
+    }
+    function dixon(x) {
+      var srt = x.slice().sort(function (a, b) { return a - b; }), n = srt.length;
+      var gLo = srt[1] - srt[0], gHi = srt[n - 1] - srt[n - 2];
+      var lowEnd = gLo > gHi, gap = lowEnd ? gLo : gHi, range = srt[n - 1] - srt[0];
+      var Q = gap / range, crit = QCRIT[n];
+      var suspect = lowEnd ? srt[0] : srt[n - 1];
+      return { sorted: srt, n: n, gap: gap, range: range, Q: Q, crit: crit, reject: Q > crit,
+               suspect: suspect, suspectIdx: x.indexOf(suspect), lowEnd: lowEnd,
+               before: stats(x), after: stats(x.filter(function (v) { return v !== suspect; })) };
+    }
+    ROUNDS.forEach(function (r) { r.t = dixon(r.x); });
+
+    function roundMount(r) {
+      return function (div) {
+        var sel = null, locked = false;
+        var strip = el("div", "gsvgwrap"), chips = el("div", "gchips");
+        function draw() {
+          strip.innerHTML = ""; chips.innerHTML = "";
+          var W = 640, H = 90, L = 34, R = 34, AX = 46;
+          var lo = Math.min.apply(null, r.x), hi = Math.max.apply(null, r.x), pad = (hi - lo) * 0.08 || 1;
+          function X(v) { return L + (v - lo + pad) / (hi - lo + 2 * pad) * (W - L - R); }
+          var s = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "gsvg", role: "img", "aria-label": r.name + " 數據點" });
+          s.appendChild(svg("line", { x1: L, y1: AX, x2: W - R, y2: AX, stroke: "#94A3B8" }));
+          // 數值標籤：太靠近就改放軸下方，再擠就略過（數字另有下方的籌碼可看）
+          var labelY = {}, lastTop = -1e9, lastBot = -1e9;
+          r.x.map(function (v, i) { return [v, i]; }).sort(function (a, b) { return a[0] - b[0]; }).forEach(function (p) {
+            var x = X(p[0]);
+            if (x - lastTop >= 40) { labelY[p[1]] = AX - 18; lastTop = x; }
+            else if (x - lastBot >= 40) { labelY[p[1]] = AX + 26; lastBot = x; }
+          });
+          r.x.forEach(function (v, i) {
+            var isSel = sel === i, isKey = locked && i === r.t.suspectIdx;
+            var g = svg("g", { style: locked ? "" : "cursor:pointer" });
+            if (isKey) g.appendChild(svg("circle", { cx: X(v), cy: AX, r: 12, fill: "none", stroke: r.t.reject ? "#C62828" : "#2E7D32", "stroke-width": 3, "stroke-dasharray": r.t.reject ? "" : "4 3" }));
+            g.appendChild(svg("circle", { cx: X(v), cy: AX, r: isSel ? 8 : 6, fill: isSel ? "#F6A21D" : "#0F4C81", stroke: isSel ? "#8A5A00" : "none", "stroke-width": 2 }));
+            if (labelY[i]) g.appendChild(svg("text", { x: X(v), y: labelY[i], "text-anchor": "middle", "font-size": 11, fill: "#1F2937" }, fmt(v, r.d)));
+            g.appendChild(svg("circle", { cx: X(v), cy: AX, r: 14, fill: "transparent" }));
+            if (!locked) g.addEventListener("click", function () { sel = sel === i ? null : i; draw(); });
+            s.appendChild(g);
+          });
+          strip.appendChild(s);
+          r.x.forEach(function (v, i) {
+            var c = el("button", "gchip" + (sel === i ? " sel" : "") + (locked && i === r.t.suspectIdx ? " key" : ""), fmt(v, r.d));
+            c.type = "button"; c.disabled = locked;
+            c.addEventListener("click", function () { sel = sel === i ? null : i; draw(); });
+            chips.appendChild(c);
+          });
+        }
+        div.appendChild(el("div", "gintro", "點選你認為可疑的那個值（點圖上的點或下面的數字），再選判定："));
+        div.appendChild(strip); div.appendChild(chips);
+        var dec = el("div", "gdec");
+        var opts = [["r", "可捨棄：Q > 臨界值"], ["k", "不可捨棄：Q ≤ 臨界值"], ["n", "根本沒有可疑值，不必檢定"]];
+        var radios = [];
+        opts.forEach(function (o) {
+          var lab = document.createElement("label"), inp = document.createElement("input");
+          inp.type = "radio"; inp.name = "ch05-outlier-" + r.id; inp.value = o[0];
+          lab.appendChild(inp); lab.appendChild(el("span", null, " " + o[1]));
+          dec.appendChild(lab); radios.push(inp);
+        });
+        div.appendChild(dec);
+        draw();
+        var key = null;
+        return {
+          read: function () {
+            var d = null; radios.forEach(function (i) { if (i.checked) d = i.value; });
+            if (!d) return { answered: false, correct: false, idx: null, value: null, tag: null };
+            if (d !== "n" && sel === null) return { answered: false, correct: false, idx: null, value: null, tag: null };
+            var t = r.t, correct, tag = null;
+            if (t.reject) correct = d === "r" && sel === t.suspectIdx;
+            else correct = d === "n" || (d === "k" && sel === t.suspectIdx);
+            if (!correct) {
+              if (d === "r" && !t.reject) tag = "OUTLIER_DELETE_BY_EYE";
+              else if (d !== "n" && sel !== null && sel !== t.suspectIdx && ((d === "r") === t.reject)) tag = "Q_GAP_RANGE_WRONG";
+            }
+            return { answered: true, correct: correct, idx: null, value: "s=" + (sel === null ? "-" : sel) + ";d=" + d, tag: tag };
+          },
+          showKey: function () {
+            locked = true; draw(); radios.forEach(function (i) { i.disabled = true; });
+            var t = r.t;
+            key = el("div", "gtablewrap",
+              '<table class="gtable"><tbody>' +
+              "<tr><th>排序</th><td>" + t.sorted.map(function (v) { return fmt(v, r.d); }).join("、") + "</td></tr>" +
+              "<tr><th>可疑端</th><td>" + fmt(t.suspect, r.d) + "（" + (t.lowEnd ? "最小值" : "最大值") + "，與最近鄰的間距較大）</td></tr>" +
+              "<tr><th>Q = gap ÷ 全距</th><td>" + fmt(t.gap, r.d) + " ÷ " + fmt(t.range, r.d) + " = <strong>" + fmt(t.Q, 3) + "</strong></td></tr>" +
+              "<tr><th>Q<sub>0.90</sub>（n = " + t.n + "）</th><td>" + fmt(t.crit, 2) + "</td></tr>" +
+              "<tr><th>判定</th><td>" + (t.reject ? '<strong style="color:#C62828">Q > 臨界值 → 統計上可捨棄</strong>' : '<strong style="color:#2E7D32">Q ≤ 臨界值 → 不可捨棄，' + fmt(t.suspect, r.d) + ' 只是運氣不好的正常值</strong>') + "</td></tr>" +
+              (t.reject ? "<tr><th>捨棄前 → 後</th><td>平均 " + fmt(t.before.mean, r.d) + " → " + fmt(t.after.mean, r.d) + "；SD " + fmt(t.before.sd, r.d) + " → " + fmt(t.after.sd, r.d) + "</td></tr>" : "") +
+              "</tbody></table>");
+            key.classList.add("qkeybox");
+            div.insertBefore(key, div.querySelector(".exp"));
+          },
+          reset: function () { locked = false; sel = null; radios.forEach(function (i) { i.disabled = false; i.checked = false; }); if (key) { key.remove(); key = null; } draw(); }
+        };
+      };
+    }
+
+    predictGame(box, {
+      gid: "ch05-outlier",
+      badge: "異常值獵人",
+      stepWord: "關卡", scoreWord: "答對",
+      title: "四組數據、四個決定：這個值能不能刪？",
+      intro: "每一關給你一組重複分析的結果。先指出可疑值，再用 5.2 節的 Dixon Q 檢定（90% 信賴）判定能不能捨棄；" +
+             "臨界值：n=3 → 0.94、n=4 → 0.76、n=5 → 0.64、n=6 → 0.56。心算就好，揭曉時會列出完整計算。最後兩關考的是「檢定之後」該怎麼做。",
+      questions: [
+        { id: ROUNDS[0].id, v: 1, q: ROUNDS[0].name, mount: roundMount(ROUNDS[0]),
+          exp: "55.31 離最近鄰 9.14，占全距 9.47 的 97%：Q = 0.965 ≫ 0.76。這就是課本範例，統計上支持捨棄。但要不要真的刪，看第 6 關。" },
+        { id: ROUNDS[1].id, v: 1, q: ROUNDS[1].name, mount: roundMount(ROUNDS[1]),
+          exp: "2.45 看起來明顯偏高，但 Q = 0.10 ÷ 0.16 = 0.625，<strong>沒有</strong>超過 n=5 的臨界值 0.64。「看起來怪」不是理由——這就是要做檢定的原因。" },
+        { id: ROUNDS[2].id, v: 1, q: ROUNDS[2].name, mount: roundMount(ROUNDS[2]),
+          exp: "13.1 的 Q = 0.70 ÷ 1.10 = 0.636 > 0.56，統計上可捨棄；捨棄後 SD 從 0.39 掉到 0.16。注意：剩下的 5 個值<strong>不能</strong>再做一次 Q 檢定（第 5 關）。" },
+        { id: ROUNDS[3].id, v: 1, q: ROUNDS[3].name, mount: roundMount(ROUNDS[3]),
+          exp: "兩端間距都只有 0.04，Q = 0.235，遠低於 0.64——這組數據很正常。選「沒有可疑值」或「不可捨棄」都對；重點是不要為了讓 SD 更漂亮而動它。" },
+        { id: "ch05-g01-5", v: 1,
+          q: "第 3 關捨棄 13.1 之後，剩下的 5 個粗蛋白值可以再做一次 Q 檢定嗎？",
+          opts: ["可以，一直做到沒有異常值為止", "不可以：Q 檢定設計上一次只處理一個可疑值，重複做會越刪越多、SD 越縮越小", "可以，但每組數據最多只能刪一個"],
+          ans: 1, tags: ["OUTLIER_TEST_REPEAT", null, "OUTLIER_QUOTA"],
+          exp: "刪掉一個極端值後全距變小，下一個值的 Q 自然變大，重複檢定就是把正常散布一層層剝掉。Nielsen 說異常值捨棄「非常罕見」；若一組數據有兩個以上可疑值，該懷疑的是方法或操作，不是數據。" },
+        { id: "ch05-g01-6", v: 1,
+          q: "第 1 關的 Q 檢定說「可捨棄」。接下來正確的做法是？",
+          opts: ["直接刪掉，報告用剩下 3 個值算平均就好", "先查實驗紀錄：有可追溯的操作失誤（漏加試劑、樣品灑落）且統計支持，才刪除，並在報告中揭露檢定方法與理由", "只要刪了之後 SD 明顯變小，就代表刪得對", "看起來怪的值本來就該先刪，檢定只是形式"],
+          ans: 1, tags: ["OUTLIER_DELETE_BY_TEST_ONLY", null, "OUTLIER_DELETE_FOR_PRECISION", "OUTLIER_DELETE_BY_EYE"],
+          exp: "檢定只說「它很可疑」，刪除需要「操作失誤紀錄 ＋ 統計支持」兩者兼備，而且要揭露。QUAM §2.4.13：純粹以統計理由拒絕數值通常不明智。SD 變小不是理由，那正是扭曲結果的動機。" }
+      ],
+      revealLabel: "送出判定並揭曉",
+      reveal: function (panel, results) {
+        panel.appendChild(el("h4", null, "四關總表"));
+        var rows = ROUNDS.map(function (r, i) {
+          var t = r.t;
+          return "<tr" + (t.reject ? ' class="hl"' : "") + "><td>" + (i + 1) + "</td><td>" + r.name + "</td><td class=\"num\">" + fmt(t.suspect, r.d) + "</td><td class=\"num\">" + fmt(t.Q, 3) +
+                 "</td><td class=\"num\">" + fmt(t.crit, 2) + "</td><td>" + (t.reject ? "可捨棄" : "不可捨棄") + "</td><td>" + (results[i].correct ? "✓" : "✗") + "</td></tr>";
+        }).join("");
+        panel.appendChild(el("div", "gtablewrap",
+          '<table class="gtable"><thead><tr><th>關</th><th>數據</th><th class="num">可疑值</th><th class="num">Q</th><th class="num">Q<sub>0.90</sub></th><th>判定</th><th>你</th></tr></thead><tbody>' + rows + "</tbody></table>"));
+        panel.appendChild(el("div", "callout danger", '<span class="t">⚖️ 記住順序</span>看圖 → 算 Q（或 Grubbs G）→ 查實驗紀錄 → 兩者都支持才刪 → 報告揭露。任何一步跳過，都是在替自己的數據「美容」。'));
       }
     });
   };

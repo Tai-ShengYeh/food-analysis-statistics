@@ -98,6 +98,8 @@ python scripts/merge_misc_keys.py    # 有新增迷思 key 時：統一描述、
 |---|---|---|---|
 | `ch16-predict` | Ch16 §16.1 之後 | 猜猜看再揭曉 | 先猜 ANOVA 的 p 值區間、F 值量級、Tukey 哪幾對顯著，再揭曉 R 輸出與 F 值尺 |
 | `ch02-cisim` | Ch2 §2.4 之後 | 猜猜看 + 模擬器 | 先猜 100 個 95% CI 漏掉幾個、n 變 4 倍寬度變幾倍、硬用 Z 的覆蓋率，再親手抽樣（n／信心水準／t 或 Z 可切換） |
+| `ch03-qcpatrol` | Ch3 §3.3 之後 | 管制圖巡檢員 | 新的一個月 25 天 QC 資料（R 產生），在 SVG 圖上點選標記停線／警覺，再答規則②連串與超界處置；揭曉顯示對錯標記、CuSum 圖與巡檢報告 |
+| `ch05-outlier` | Ch5 §5.3 之後 | 異常值獵人 | 四組數據各自點出可疑值並以 Dixon Q（90%）判定可否捨棄（含「看起來怪但 Q 不夠」的陷阱關），加兩題「檢定之後怎麼做」；揭曉列出完整 Q 計算與捨棄前後平均／SD |
 
 設計原則：**不需學號也能玩**（有學號且非訪客時事件才上傳）；預測題重用測驗的 `.qitem` 樣式與迷思 tag；揭曉後可「再猜一次」但 `attempts > 1`。
 
@@ -108,4 +110,4 @@ python scripts/merge_misc_keys.py    # 有新增迷思 key 時：統一描述、
 - 按下揭曉 → `reveal`；整局結束 → `attempt_complete`（`final_score`、`total`、`answered`、`duration_ms`）。
 - 模擬器內的操作（抽樣、切換 n）**不**記錄，避免灌爆事件量。
 
-新增遊戲：在 `games.js` 的 `GAMES["chNN-xxx"]` 加一個函式；預測型遊戲用 `predictGame(box, spec)`（單選／複選／數值三種題型），揭曉內容寫在 `spec.reveal(panel, results)`。題目 id 同樣**一經上線永不改、永不重用**。
+新增遊戲：在 `games.js` 的 `GAMES["chNN-xxx"]` 加一個函式；預測型遊戲用 `predictGame(box, spec)`（單選／複選／數值，以及 `mount(div)` 自訂互動題型：回傳 `{read, showKey, reset}`，可做點圖、選點等），揭曉內容寫在 `spec.reveal(panel, results)`；`spec.badge / stepWord / scoreWord` 可改標籤文字。自訂題的事件 `qtype = "interact"`、`choice_value` 為遊戲自訂的字串（如管制圖 25 位 0/1/2 標記、異常值 `s=<索引>;d=<r|k|n>`）。題目 id 同樣**一經上線永不改、永不重用**。
