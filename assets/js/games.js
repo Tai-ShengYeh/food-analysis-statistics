@@ -1,0 +1,433 @@
+/* ==================================================================
+   games.js — 章內互動小遊戲（猜猜看再揭曉 / 模擬器）
+   依賴：assets/app.js（FAS.emit、FAS.sid、FAS.isGuest、FAS.lsGet/lsSet）
+   用法：章內放 <div class="game" data-game="ch16-predict"></div>，
+         本檔的 GAMES 登錄表依 id 渲染；遊戲定義集中在這裡，章節 html 只放佔位。
+   事件：與測驗同一條 Firestore 管線（fas_queue → assess.js），但
+         game = "fas_game"、quiz_set = "game"、phase = "game"、另帶 game_id，
+         讓 scripts/quiz_dashboard.py 能與 fas_quiz 分流，不汙染答對率統計。
+         每題預測 → answer；按下揭曉 → reveal；整局結束 → attempt_complete。
+   設計原則：不需學號也能玩（降低門檻）；有學號且非訪客時事件才會上傳。
+   ================================================================== */
+(function () {
+  if (typeof FAS === "undefined") { console.warn("[games] 找不到 FAS，請先載入 assets/app.js"); return; }
+  var GAMES = {};
+  var GAME = "fas_game";
+
+  /* ---------------- 共用工具 ---------------- */
+  function el(tag, cls, html) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (html !== undefined) e.innerHTML = html;
+    return e;
+  }
+  var SVG_NS = "http://www.w3.org/2000/svg";
+  function svg(tag, attrs, text) {
+    var e = document.createElementNS(SVG_NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function fmt(x, d) { return Number(x).toFixed(d); }
+  function whoText() {
+    var s = FAS.sid(), g = FAS.isGuest();
+    return s && !g ? "🎓 " + s + "：你的猜測會和章末測驗一起讓老師看到全班的分布（只有第一次算），放心大膽猜。"
+                   : "👤 尚未輸入學號（或訪客模式）：猜測只存在這台裝置，不會上傳。";
+  }
+  function attKey(gid) { return "fas_game_att:" + (FAS.sid() || "anon") + ":" + gid; }
+
+  /* ---------------- 猜猜看再揭曉：共用流程 ----------------
+     spec = { gid, title, intro, questions:[...], reveal(panelEl, results), revealLabel }
+     question 三種型態：
+       { id, q, opts, ans, tags, exp }                     單選
+       { id, q, opts, ans:[i,j], multi:true, tagFn, exp }  複選（tagFn(選到的索引陣列) → 迷思 key 或 null）
+       { id, q, num:{lo,hi,okLo,okHi,unit,placeholder}, tagFn, exp }  數值填空
+  */
+  function predictGame(box, spec) {
+    var wrap = el("div", "gamebox");
+    var head = el("div", "gamehead");
+    head.appendChild(el("span", "badge game", "🎮 猜猜看再揭曉"));
+    head.appendChild(el("h3", null, spec.title));
+    var who = el("div", "gwho", whoText());
+    head.appendChild(who);
+    wrap.appendChild(head);
+    if (spec.intro) wrap.appendChild(el("div", "gintro", spec.intro));
+
+    var items = [];
+    spec.questions.forEach(function (q, qi) {
+      var div = el("div", "qitem");
+      div.appendChild(el("div", "qtext", "預測 " + (qi + 1) + "／" + spec.questions.length + "　" + q.q));
+      if (q.num) {
+        var lab = el("label", "qnum");
+        var inp = document.createElement("input");
+        inp.type = "number"; inp.className = "qnum-in"; inp.step = q.num.step || 1;
+        inp.min = q.num.lo; inp.max = q.num.hi; inp.placeholder = q.num.placeholder || "";
+        inp.setAttribute("inputmode", "numeric");
+        lab.appendChild(inp);
+        if (q.num.unit) lab.appendChild(document.createTextNode(" " + q.num.unit));
+        div.appendChild(lab);
+      } else {
+        q.opts.forEach(function (o, oi) {
+          var lab = document.createElement("label");
+          var inp = document.createElement("input");
+          inp.type = q.multi ? "checkbox" : "radio";
+          inp.name = spec.gid + "-" + q.id; inp.value = oi;
+          lab.appendChild(inp);
+          lab.appendChild(el("span", null, " " + o));   // 選項文字由本檔撰寫，可含 <sub> 等 HTML
+          div.appendChild(lab);
+        });
+      }
+      var ex = el("div", "exp", q.exp);
+      div.appendChild(ex);
+      wrap.appendChild(div);
+      items.push(div);
+    });
+
+    var warn = el("div", "qwarn");
+    var row = el("div", "gbtn-row");
+    var btn = el("button", "qbtn", spec.revealLabel || "送出預測並揭曉");
+    btn.type = "button";
+    row.appendChild(btn);
+    var score = el("div", "qscore");
+    var panel = el("div", "gpanel");
+    panel.hidden = true;
+    wrap.appendChild(warn); wrap.appendChild(row); wrap.appendChild(score); wrap.appendChild(panel);
+    box.appendChild(wrap);
+
+    var graded = false, warned = false, t0 = null;
+    wrap.addEventListener("input", function () { if (t0 === null) t0 = Date.now(); });
+
+    function readItem(div, q) {
+      var r = { answered: false, correct: false, idx: null, value: null, tag: null };
+      if (q.num) {
+        var v = div.querySelector("input").value.trim();
+        if (v === "") return r;
+        var x = parseFloat(v);
+        if (isNaN(x)) return r;
+        r.answered = true; r.value = x;
+        r.correct = x >= q.num.okLo && x <= q.num.okHi;
+        if (!r.correct && q.tagFn) r.tag = q.tagFn(x);
+      } else if (q.multi) {
+        var sel = [];
+        div.querySelectorAll("input").forEach(function (i, oi) { if (i.checked) sel.push(oi); });
+        if (!sel.length) return r;
+        r.answered = true;
+        r.value = q.opts.map(function (_, oi) { return sel.indexOf(oi) >= 0 ? "1" : "0"; }).join("");
+        r.correct = sel.length === q.ans.length && q.ans.every(function (a) { return sel.indexOf(a) >= 0; });
+        if (!r.correct && q.tagFn) r.tag = q.tagFn(sel);
+      } else {
+        var c = div.querySelector("input:checked");
+        if (!c) return r;
+        r.answered = true; r.idx = parseInt(c.value, 10);
+        r.correct = r.idx === q.ans;
+        if (!r.correct && q.tags) r.tag = q.tags[r.idx] || null;
+      }
+      return r;
+    }
+
+    function grade() {
+      var results = spec.questions.map(function (q, qi) { return readItem(items[qi], q); });
+      var nAns = results.filter(function (r) { return r.answered; }).length;
+      if (nAns < results.length && !warned) {
+        warned = true;
+        warn.textContent = "還有 " + (results.length - nAns) + " 題沒猜。猜錯不扣分，先猜再揭曉學得最多；確定要跳過就再按一次。";
+        return;
+      }
+      warn.textContent = "";
+      var attempts = (FAS.lsGet(attKey(spec.gid), 0) || 0) + 1;
+      FAS.lsSet(attKey(spec.gid), attempts);
+      var tEnd = Date.now(), correct = 0;
+      results.forEach(function (r, qi) {
+        var q = spec.questions[qi], div = items[qi];
+        if (r.correct) correct++;
+        div.classList.add("answered", r.correct ? "correct" : "wrong");
+        var labels = div.querySelectorAll("label:not(.qnum)");
+        if (q.num) {
+          var k = el("div", "qkey", "實際約 " + q.num.keyText);
+          div.insertBefore(k, div.querySelector(".exp"));
+        } else if (q.multi) {
+          labels.forEach(function (l, oi) {
+            if (l.querySelector("input").checked) l.classList.add("sel");
+            if (q.ans.indexOf(oi) >= 0) l.classList.add("key");
+          });
+        } else {
+          if (r.idx !== null) labels[r.idx].classList.add("sel");
+          labels[q.ans].classList.add("key");
+        }
+        div.querySelectorAll("input").forEach(function (i) { i.disabled = true; });
+        FAS.emit({
+          event_type: "answer", game: GAME, game_id: spec.gid, quiz_set: "game", phase: "game",
+          question_id: q.id, item_version: q.v || 1, qtype: "predict",
+          is_correct: r.answered ? r.correct : null, skipped: !r.answered,
+          choice_idx: r.idx, choice_value: r.value, misconception: r.tag, attempts: attempts,
+          latency_ms: t0 !== null ? tEnd - t0 : null
+        });
+      });
+      FAS.emit({ event_type: "reveal", game: GAME, game_id: spec.gid, quiz_set: "game", phase: "game", question_id: null, attempts: attempts });
+      FAS.emit({
+        event_type: "attempt_complete", game: GAME, game_id: spec.gid, quiz_set: "game", phase: "game", question_id: null,
+        final_score: correct, total: results.length, answered: nAns, attempts: attempts,
+        duration_ms: t0 !== null ? tEnd - t0 : null
+      });
+      var n = results.length;
+      score.textContent = "猜對 " + correct + " / " + n + "　" +
+        (correct === n ? "🎯 全中！你的統計直覺很準。" : correct >= n / 2 ? "👍 不錯，看看猜錯的那題為什麼。" : "🔍 沒關係，猜錯正是學會的開始——往下看揭曉。");
+      score.className = "qscore " + (correct === n ? "good" : correct >= n / 2 ? "mid" : "low");
+      panel.innerHTML = "";
+      spec.reveal(panel, results);
+      panel.hidden = false;
+      graded = true;
+      btn.textContent = "再猜一次（不列入成效）";
+      panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    function reset() {
+      items.forEach(function (div) {
+        div.classList.remove("answered", "correct", "wrong");
+        div.querySelectorAll("label").forEach(function (l) { l.classList.remove("sel", "key"); });
+        div.querySelectorAll("input").forEach(function (i) {
+          i.disabled = false;
+          if (i.type === "radio" || i.type === "checkbox") i.checked = false; else i.value = "";
+        });
+        var k = div.querySelector(".qkey"); if (k) k.remove();
+      });
+      graded = false; warned = false; t0 = null;
+      score.textContent = ""; score.className = "qscore"; warn.textContent = "";
+      panel.hidden = true; panel.innerHTML = "";
+      btn.textContent = spec.revealLabel || "送出預測並揭曉";
+      wrap.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    btn.addEventListener("click", function () { if (graded) reset(); else grade(); });
+    if (typeof fasGates !== "undefined") fasGates.push(function () { who.textContent = whoText(); });
+  }
+
+  /* ==================================================================
+     Ch16：三種溶劑的總多酚 — 先猜 p、F、哪幾對不同，再揭曉 aov() 與 Tukey
+     數字來自本頁 16.4／16.5 節的 R 輸出（Rscript 實跑）。
+     ================================================================== */
+  GAMES["ch16-predict"] = function (box) {
+    var F_OBS = 42.26, F_CRIT = 3.885, P_OBS = "3.69 × 10⁻⁶";
+    var guessF = [1, 5, 40, 400];
+    predictGame(box, {
+      gid: "ch16-predict",
+      title: "三種溶劑真的有差嗎？先下注，再跑 ANOVA",
+      intro: "上面的表格和圖 16-1 你都看過了：甲醇 12.56、乙醇 12.98、丙酮 15.08（mg GAE/g），組內 SD 都在 0.45 左右。" +
+             "在看到 R 輸出之前，先憑直覺回答三個問題——這是統計學家在按 Enter 之前都會做的事。",
+      questions: [
+        { id: "ch16-g01-1", v: 1,
+          q: "整體 ANOVA（H<sub>0</sub>：三組母體平均全部相等）的 p 值會落在哪一區？",
+          opts: ["p > 0.05：資料有重疊，沒有顯著差異", "0.01 < p ≤ 0.05：勉強顯著", "0.001 < p ≤ 0.01：相當顯著", "p ≤ 0.001：非常顯著"],
+          ans: 3, tags: [null, null, null, null],
+          exp: "實際 p = " + P_OBS + "。丙酮比另兩組高出約 2.5，而組內 SD 只有約 0.45——差距是雜訊的 5 倍以上，只要有一組明顯脫隊，整體 F 就會很大、p 就會很小。" +
+               "但請記住：p 很小只說「<strong>至少有一組</strong>不同」，不代表三組彼此都不同（見預測 3）。" },
+        { id: "ch16-g01-2", v: 1,
+          q: "F 值 = 組間均方 ÷ 組內均方。H<sub>0</sub> 為真時 F 平均約等於 1。你猜本例的 F 大約是？",
+          opts: ["約 1（和 H<sub>0</sub> 為真時差不多）", "約 5（剛超過臨界值）", "約 40", "約 400"],
+          ans: 2, tags: [null, null, null, null],
+          exp: "F = 9.114 ÷ 0.216 = <strong>42.26</strong>。F(2, 12) 在 α = 0.05 的臨界值是 3.89，觀測值是臨界值的 10 倍以上。" +
+               "F 約 1 才是「沒差」的長相；約 400 則要組間差距再大 3 倍、或雜訊再小 3 倍才會出現。" },
+        { id: "ch16-g01-3", v: 1, multi: true,
+          q: "Tukey 事後比較會判定哪幾對溶劑「有」顯著差異？（可複選）",
+          opts: ["乙醇 vs 甲醇", "丙酮 vs 甲醇", "丙酮 vs 乙醇"],
+          ans: [1, 2],
+          tagFn: function (sel) { return sel.length === 3 ? "ANOVA_SIG_ALL_DIFFER" : null; },
+          exp: "乙醇 − 甲醇 = 0.42，95% 信賴區間 −0.36 ~ 1.20 <strong>含 0</strong>，p adj = 0.36 → 不顯著；丙酮對另兩者 p adj 都 < 0.0001。" +
+               "所以字母標示是丙酮 <b>a</b>、乙醇 <b>b</b>、甲醇 <b>b</b>。ANOVA 顯著 ≠ 每一對都不同——這是 16.5 節要處理的事。" }
+      ],
+      reveal: function (panel, results) {
+        panel.appendChild(el("h4", null, "揭曉：R 怎麼說"));
+        panel.appendChild(el("div", "gtablewrap",
+          '<table class="gtable"><thead><tr><th></th><th class="num">Df</th><th class="num">Sum Sq</th><th class="num">Mean Sq</th><th class="num">F value</th><th class="num">Pr(&gt;F)</th></tr></thead>' +
+          '<tbody><tr class="hl"><td>solvent（組間）</td><td class="num">2</td><td class="num">18.228</td><td class="num">9.114</td><td class="num"><strong>42.26</strong></td><td class="num"><strong>3.69e-06</strong> ***</td></tr>' +
+          '<tr><td>Residuals（組內）</td><td class="num">12</td><td class="num">2.588</td><td class="num">0.216</td><td></td><td></td></tr></tbody></table>'));
+
+        // F 值尺：H0 期望 1、臨界值 3.89、觀測 42.26、你的猜測
+        var W = 640, H = 120, x0 = 40, x1 = 600, maxF = 60;
+        function X(f) { return x0 + Math.min(f, maxF) / maxF * (x1 - x0); }
+        var s = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "gsvg", role: "img", "aria-label": "F 值尺：H0 期望值 1、臨界值 3.89、觀測值 42.26 與你的猜測" });
+        s.appendChild(svg("line", { x1: x0, y1: 70, x2: x1, y2: 70, stroke: "#64748B", "stroke-width": 2 }));
+        [0, 10, 20, 30, 40, 50, 60].forEach(function (t) {
+          s.appendChild(svg("line", { x1: X(t), y1: 70, x2: X(t), y2: 76, stroke: "#64748B" }));
+          s.appendChild(svg("text", { x: X(t), y: 92, "text-anchor": "middle", "font-size": 12, fill: "#64748B" }, String(t)));
+        });
+        s.appendChild(svg("text", { x: x1 + 6, y: 74, "font-size": 12, fill: "#64748B" }, "F"));
+        // 接受區（F < 臨界值）淡灰底
+        s.appendChild(svg("rect", { x: x0, y: 40, width: X(F_CRIT) - x0, height: 30, fill: "#E2E8F0" }));
+        s.appendChild(svg("line", { x1: X(1), y1: 40, x2: X(1), y2: 70, stroke: "#64748B", "stroke-width": 2 }));
+        s.appendChild(svg("text", { x: X(1), y: 32, "text-anchor": "start", "font-size": 12, fill: "#64748B" }, "H₀ 為真時 F≈1"));
+        s.appendChild(svg("line", { x1: X(F_CRIT), y1: 40, x2: X(F_CRIT), y2: 70, stroke: "#C62828", "stroke-width": 2, "stroke-dasharray": "4 3" }));
+        s.appendChild(svg("text", { x: X(F_CRIT) + 4, y: 58, "font-size": 12, fill: "#C62828" }, "臨界值 3.89（α=0.05）"));
+        s.appendChild(svg("line", { x1: X(F_OBS), y1: 36, x2: X(F_OBS), y2: 70, stroke: "#2E7D32", "stroke-width": 4 }));
+        s.appendChild(svg("text", { x: X(F_OBS), y: 28, "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: "#2E7D32" }, "觀測 F = 42.26"));
+        var r2 = results[1];
+        if (r2.idx !== null) {
+          var g = guessF[r2.idx], gx = g > maxF ? x1 + 2 : X(g);
+          s.appendChild(svg("polygon", { points: (gx - 7) + ",108 " + (gx + 7) + ",108 " + gx + ",96", fill: "#F6A21D" }));
+          s.appendChild(svg("text", { x: Math.min(gx, x1 - 30), y: 118, "text-anchor": "middle", "font-size": 12, fill: "#8A5A00" },
+            "你猜：約 " + g + (g > maxF ? "（超出尺外 →）" : "")));
+        }
+        s.style.minWidth = "520px";                       // 手機上可左右捲動，文字不縮到看不見
+        var sw = el("div", "gsvgwrap"); sw.appendChild(s); panel.appendChild(sw);
+        panel.appendChild(el("p", "gverdict", "整體結論：p ≪ 0.05，拒絕 H₀——三種溶劑的總多酚平均<strong>不全相等</strong>。但哪幾對不同？要看事後比較："));
+        panel.appendChild(el("div", "gtablewrap",
+          '<table class="gtable"><thead><tr><th>Tukey HSD</th><th class="num">diff</th><th class="num">lwr</th><th class="num">upr</th><th class="num">p adj</th><th>判定</th></tr></thead><tbody>' +
+          '<tr><td>Ethanol − Methanol</td><td class="num">0.42</td><td class="num">−0.36</td><td class="num">1.20</td><td class="num">0.357</td><td>區間含 0 → <strong>不顯著</strong></td></tr>' +
+          '<tr class="hl"><td>Acetone − Methanol</td><td class="num">2.52</td><td class="num">1.74</td><td class="num">3.30</td><td class="num">0.0000051</td><td>顯著</td></tr>' +
+          '<tr class="hl"><td>Acetone − Ethanol</td><td class="num">2.10</td><td class="num">1.32</td><td class="num">2.88</td><td class="num">0.0000322</td><td>顯著</td></tr>' +
+          '</tbody></table>' +
+          '<p>字母標示：丙酮 <b>15.08 a</b>、乙醇 <b>12.98 b</b>、甲醇 <b>12.56 b</b>（共用字母＝不顯著）。' +
+          '接下來 16.2–16.5 節會告訴你這些數字是怎麼算出來的，以及為什麼不能直接做三次 t 檢定。</p>'));
+      }
+    });
+  };
+
+  /* ==================================================================
+     Ch2：信賴區間抽樣模擬器 — 先猜 100 個 95% CI 有幾個漏掉真值，再自己抽
+     母體：μ = 65.05%、σ = 0.293%（與 2.4 節 R 模擬相同）。
+     t 分位數用 R 的 qt() 實算後寫死（Rscript 4.6.1，2026-09-22）。
+     ================================================================== */
+  GAMES["ch02-cisim"] = function (box) {
+    var MU = 65.05, SIGMA = 0.293;
+    var T = { // qt(1 - (1-level)/2, df = n-1)
+      90: { 2: 6.3138, 3: 2.9200, 4: 2.3534, 5: 2.1318, 8: 1.8946, 16: 1.7531, 30: 1.6991 },
+      95: { 2: 12.7062, 3: 4.3027, 4: 3.1824, 5: 2.7764, 8: 2.3646, 16: 2.1314, 30: 2.0452 },
+      99: { 2: 63.6567, 3: 9.9248, 4: 5.8409, 5: 4.6041, 8: 3.4995, 16: 2.9467, 30: 2.7564 }
+    };
+    var Z = { 90: 1.6449, 95: 1.9600, 99: 2.5758 };
+    var NS = [2, 3, 4, 5, 8, 16, 30];
+
+    function randn() { // Box–Muller
+      var u = 0, v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+
+    predictGame(box, {
+      gid: "ch02-cisim",
+      title: "100 個 95% 信賴區間，有幾個會漏掉真值？",
+      intro: "上面 R 已經替你跑了 1000 次。現在換你：母體真值 μ = 65.05%、σ = 0.293%，每次抽 n = 4 個水分量測值、算一個 95% CI。" +
+             "先猜，再親手抽樣驗證——把 n、信心水準、t／Z 切來切去，看看哪個猜測是對的。",
+      questions: [
+        { id: "ch02-g01-1", v: 1,
+          q: "抽 100 次（每次 n = 4）、算 100 個 95% 信賴區間，你猜大約有幾個區間會<strong>漏掉</strong>真值 65.05%？",
+          num: { lo: 0, hi: 100, okLo: 2, okHi: 10, unit: "個（0–100）", placeholder: "填整數", keyText: "5 個（100 × 5%；隨機起伏下 2~10 個都正常）" },
+          tagFn: function (x) { return x === 0 ? "CI_TRUE_VALUE_PROB" : null; },
+          exp: "「95%」描述的是<strong>方法的長期表現</strong>：100 個區間裡平均約 5 個會漏掉真值，模擬有隨機起伏，2~10 個都在合理範圍。" +
+               "猜 0 個的同學常是把「95%」想成「這個區間一定對」；猜很多的同學則低估了這個方法——用模擬器多按幾次「抽 100 次」看看。" },
+        { id: "ch02-g01-2", v: 1,
+          q: "其他條件不變，n 從 4 增加到 16，CI 的寬度大約變成原來的？",
+          opts: ["一樣寬：n 只影響平均值，不影響區間", "一半", "四分之一", "兩倍：數據越多、累積的誤差越大"],
+          ans: 1, tags: ["SD_VS_SEM", null, "FORGOT_SQRT_N", "MORE_REPEATS_MORE_ERROR"],
+          exp: "半寬 = t × SD ÷ √n。√16 ÷ √4 = 2，所以光看 √n 寬度就<strong>減半</strong>；t 值又從 3.18 降到 2.13，兩個效果相乘，實際約剩三分之一。" +
+               "以為變四分之一是把 √n 想成 n；要再減半得做到 n = 64——報酬遞減。把模擬器的 n 切到 16 對照一下。" },
+        { id: "ch02-g01-3", v: 1,
+          q: "n = 4 卻硬用 Z = 1.96（而不是 t = 3.18）來算「95%」CI，長期的覆蓋率會是？",
+          opts: ["還是 95%：Z 和 t 只是查表方式不同", "低於 95%", "高於 95%"],
+          ans: 1, tags: ["USED_Z_NOT_T", null, null],
+          exp: "用 R 算：P(|T<sub>3</sub>| < 1.96) = <strong>85.5%</strong>。小樣本的 SD 本身很不準，t 分布把這份額外的不確定度算進去；" +
+               "用 Z 等於假裝 σ 已知，區間太窄、只有約 86% 蓋得到真值。在模擬器把方法切到「Z」就看得到。" }
+      ],
+      revealLabel: "送出預測，開始抽樣",
+      reveal: function (panel) {
+        panel.appendChild(el("h4", null, "抽樣模擬器：每一條橫線是一個信賴區間，紅色＝漏掉真值"));
+        var ctrl = el("div", "gctrl");
+        var selN = document.createElement("select");
+        NS.forEach(function (n) { var o = document.createElement("option"); o.value = n; o.textContent = "n = " + n; if (n === 4) o.selected = true; selN.appendChild(o); });
+        var selL = document.createElement("select");
+        [90, 95, 99].forEach(function (l) { var o = document.createElement("option"); o.value = l; o.textContent = l + "% 信心"; if (l === 95) o.selected = true; selL.appendChild(o); });
+        var labN = el("label", null, "每次抽 "); labN.appendChild(selN);
+        var labL = el("label", null, "信心水準 "); labL.appendChild(selL);
+        var mT = el("label"), mZ = el("label");
+        var rT = document.createElement("input"), rZ = document.createElement("input");
+        rT.type = rZ.type = "radio"; rT.name = rZ.name = "ch02-cisim-method"; rT.value = "t"; rZ.value = "z"; rT.checked = true;
+        mT.appendChild(rT); mT.appendChild(document.createTextNode(" t 分布（正確）"));
+        mZ.appendChild(rZ); mZ.appendChild(document.createTextNode(" 硬用 Z（假裝 σ 已知）"));
+        ctrl.appendChild(labN); ctrl.appendChild(labL); ctrl.appendChild(mT); ctrl.appendChild(mZ);
+        panel.appendChild(ctrl);
+
+        var row = el("div", "gbtn-row");
+        var b1 = el("button", "qbtn ghost", "抽 1 次"), b100 = el("button", "qbtn", "抽 100 次"), bR = el("button", "qbtn ghost", "重來");
+        b1.type = b100.type = bR.type = "button";
+        row.appendChild(b1); row.appendChild(b100); row.appendChild(bR);
+        panel.appendChild(row);
+
+        var stats = el("div", "gstats");
+        panel.appendChild(stats);
+
+        var W = 640, H = 330, x0 = 30, x1 = 610, top = 24, bottom = 306, ROWS = 100;
+        var lo = MU - 1.0, hi = MU + 1.0;
+        function X(v) { return x0 + (Math.min(Math.max(v, lo), hi) - lo) / (hi - lo) * (x1 - x0); }
+        var s = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "gsvg", role: "img", "aria-label": "信賴區間抽樣模擬圖" });
+        var gLines = svg("g", {});
+        s.appendChild(gLines);
+        s.appendChild(svg("line", { x1: X(MU), y1: top - 8, x2: X(MU), y2: bottom + 4, stroke: "#0F4C81", "stroke-width": 2, "stroke-dasharray": "5 3" }));
+        s.appendChild(svg("text", { x: X(MU), y: 12, "text-anchor": "middle", "font-size": 12, fill: "#0F4C81", "font-weight": 700 }, "真值 μ = 65.05%"));
+        s.appendChild(svg("line", { x1: x0, y1: bottom + 6, x2: x1, y2: bottom + 6, stroke: "#64748B" }));
+        [64.2, 64.6, 65.05, 65.5, 65.9].forEach(function (t) {
+          s.appendChild(svg("text", { x: X(t), y: bottom + 22, "text-anchor": "middle", "font-size": 11, fill: "#64748B" }, fmt(t, 2)));
+        });
+        panel.appendChild(s);
+        var hint = el("p", "qnote", "橫軸是水分 %（只畫 64.05–66.05 範圍，太寬的區間會被截斷）。畫面只顯示最近 100 條，統計數字會一直累計。");
+        panel.appendChild(hint);
+
+        var total = 0, hits = 0, sumHalf = 0, recent = [];
+        function crit() {
+          var n = parseInt(selN.value, 10), l = parseInt(selL.value, 10);
+          return rZ.checked ? Z[l] : T[l][n];
+        }
+        function drawOne() {
+          var n = parseInt(selN.value, 10), c = crit();
+          var xs = [], mean = 0;
+          for (var i = 0; i < n; i++) { var v = MU + SIGMA * randn(); xs.push(v); mean += v; }
+          mean /= n;
+          var ss = 0; xs.forEach(function (v) { ss += (v - mean) * (v - mean); });
+          var sd = Math.sqrt(ss / (n - 1)), half = c * sd / Math.sqrt(n);
+          var hit = MU >= mean - half && MU <= mean + half;
+          total++; if (hit) hits++; sumHalf += half;
+          recent.push({ m: mean, h: half, hit: hit });
+          if (recent.length > ROWS) recent.shift();
+        }
+        function render() {
+          while (gLines.firstChild) gLines.removeChild(gLines.firstChild);
+          var rowH = (bottom - top) / ROWS;
+          recent.forEach(function (r, i) {
+            var y = top + i * rowH + rowH / 2;
+            var col = r.hit ? "#5B8DB8" : "#C62828";
+            gLines.appendChild(svg("line", { x1: X(r.m - r.h), y1: y, x2: X(r.m + r.h), y2: y, stroke: col, "stroke-width": r.hit ? 1.6 : 2.4, "stroke-opacity": r.hit ? 0.8 : 1 }));
+            gLines.appendChild(svg("circle", { cx: X(r.m), cy: y, r: 1.6, fill: col }));
+          });
+          var miss = total - hits, cov = total ? hits / total * 100 : null;
+          var l = parseInt(selL.value, 10);
+          var covCls = cov === null ? "" : Math.abs(cov - l) <= 3 ? "ok" : "bad";
+          stats.innerHTML =
+            '<div class="gstat"><b>' + total + '</b><span>抽樣次數</span></div>' +
+            '<div class="gstat"><b>' + hits + '</b><span>蓋到真值</span></div>' +
+            '<div class="gstat' + (miss && total >= 20 && miss / total > (100 - l) / 100 * 1.6 ? " bad" : "") + '"><b>' + miss + '</b><span>漏掉真值</span></div>' +
+            '<div class="gstat ' + covCls + '"><b>' + (cov === null ? "–" : fmt(cov, 1) + "%") + '</b><span>覆蓋率（目標 ' + l + '%）</span></div>' +
+            '<div class="gstat"><b>' + (total ? "±" + fmt(sumHalf / total, 3) : "–") + '</b><span>平均半寬（%）</span></div>' +
+            '<div class="gstat"><b>' + fmt(crit(), 3) + '</b><span>' + (rZ.checked ? "Z 值" : "t 值 (df=" + (parseInt(selN.value, 10) - 1) + ")") + '</span></div>';
+        }
+        function resetSim() { total = 0; hits = 0; sumHalf = 0; recent = []; render(); }
+        b1.addEventListener("click", function () { drawOne(); render(); });
+        b100.addEventListener("click", function () { for (var i = 0; i < 100; i++) drawOne(); render(); });
+        bR.addEventListener("click", resetSim);
+        [selN, selL, rT, rZ].forEach(function (c) { c.addEventListener("change", resetSim); });
+        render();
+        panel.appendChild(el("div", "callout ok",
+          '<span class="t">🔬 三個實驗</span>' +
+          '① 維持 n = 4、95%、t：按「抽 100 次」幾回，漏掉的通常在 2~10 之間，長期逼近 5%。' +
+          '② 把 n 改成 16：看「平均半寬」是不是差不多減半。' +
+          '③ 切到「硬用 Z」：覆蓋率會掉到 86% 左右——這就是小樣本要用 t 的理由。'));
+      }
+    });
+  };
+
+  /* ---------------- 啟動 ---------------- */
+  document.querySelectorAll(".game").forEach(function (box) {
+    var id = box.dataset.game, g = GAMES[id];
+    if (g) { try { g(box); } catch (e) { console.error("[games] " + id + " 渲染失敗：", e); } }
+    else console.warn("[games] 找不到小遊戲：" + id);
+  });
+})();

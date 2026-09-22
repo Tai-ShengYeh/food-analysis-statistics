@@ -290,3 +290,36 @@ sup { top: -0.4em; }
 .xlbtn { display: inline-block; background: #1D6F42; color: #fff; text-decoration: none; font-weight: 600;
   padding: 6px 14px; border-radius: 8px; margin-right: 8px; }
 .xlbtn:hover { background: #155232; }
+
+/* ---------- 章內小遊戲（assets/js/games.js） ---------- */
+.gamebox {
+  background: var(--c-card); border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 20px 24px; margin: 26px 0; border-top: 5px solid #6A3FA0;
+}
+.gamehead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.gamehead h3 { margin: 0; font-size: 1.2rem; color: #4A2A80; }
+.badge.game { background: #EFE6FA; color: #4A2A80; }
+.gwho { flex-basis: 100%; font-size: .86rem; color: var(--c-muted); }
+.gintro { margin: 6px 0 10px; }
+.gpanel { margin-top: 16px; padding: 14px 16px; border-radius: 12px; background: #F7F4FC; border: 1px solid #E3D9F3; }
+.gpanel h4 { margin: 0 0 8px; color: #4A2A80; font-size: 1.05rem; }
+.gpanel table { margin: 8px 0 12px; }
+.gctrl { display: flex; gap: 10px 18px; flex-wrap: wrap; align-items: center; margin: 8px 0; font-size: .93rem; }
+.gctrl select { font: inherit; padding: 4px 8px; border: 2px solid var(--c-line); border-radius: 8px; background: #fff; }
+.gctrl label { display: inline-flex; align-items: center; gap: 4px; }
+.gsvg { width: 100%; height: auto; display: block; background: #fff; border-radius: 10px; border: 1px solid var(--c-line); margin: 8px 0; }
+.gstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin: 10px 0; }
+.gstat { background: #fff; border: 1px solid var(--c-line); border-radius: 10px; padding: 6px 10px; text-align: center; }
+.gstat b { display: block; font-size: 1.25rem; color: var(--c-primary); font-variant-numeric: tabular-nums; }
+.gstat span { font-size: .78rem; color: var(--c-muted); }
+.gstat.bad b { color: var(--c-red); }
+.gstat.ok b { color: var(--c-green); }
+.gsvgwrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.gtablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.gtablewrap table { min-width: 340px; }
+.gtable { font-size: .9rem; }
+.gtable td, .gtable th { padding: 5px 10px; }
+.gverdict { font-weight: 600; margin: 10px 0 4px; }
+.gbtn-row { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+.gamebox .qitem input[type=checkbox] { margin-right: 8px; }
+@media (max-width: 600px) { .gamebox, .gpanel { padding-left: 14px; padding-right: 14px; } }

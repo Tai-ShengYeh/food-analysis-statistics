@@ -5,7 +5,7 @@
 //
 // 沿用既有 firestore.rules 的 student_events 白名單（不需改規則）：
 //   course_id ∈ 白名單、event_type ∈ {answer, attempt_complete, self_check, …}、timestamp == request.time
-// 本站事件以 chapter 前綴 "FAS-"、game "fas_quiz"、site "fas" 與其他課程區隔。
+// 本站事件以 chapter 前綴 "FAS-"、game "fas_quiz"（測驗）／"fas_game"（章內小遊戲）、site "fas" 與其他課程區隔。
 // 前端只能 create、不能 read；讀取用教師端 scripts/quiz_dashboard.py（service account）。
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js';
@@ -39,7 +39,7 @@ function toDoc(ev) {
     course_id: COURSE_ID,
     class_id: String(ev.class_id || 'A').slice(0, 10),
     chapter: ('FAS-' + String(ev.chapter_id || '').toUpperCase()).slice(0, 20),
-    game: GAME,
+    game: String(ev.game || GAME).slice(0, 30),        // 測驗 fas_quiz；章內小遊戲 fas_game（assets/js/games.js）
     event_type: ev.event_type,
     timestamp: serverTimestamp(),
     // 與既有 student_events 相容的欄位
@@ -52,7 +52,7 @@ function toDoc(ev) {
     choice_idx: nz(ev.choice_idx), choice_value: nz(ev.choice_value), skipped: nz(ev.skipped),
     latency_ms: nz(ev.latency_ms), duration_ms: nz(ev.duration_ms), answered: nz(ev.answered),
     free_text: ev.free_text ? String(ev.free_text).slice(0, 200) : null,
-    session_id: nz(ev.session_id), client_ts: nz(ev.client_ts),
+    session_id: nz(ev.session_id), client_ts: nz(ev.client_ts), game_id: nz(ev.game_id),
     // 線上規則（2026-09-01 版）另外要求 session 字串；與 session_id 同值，讓兩套規則都能通過
     session: String(ev.session_id || '').slice(0, 40)
   };

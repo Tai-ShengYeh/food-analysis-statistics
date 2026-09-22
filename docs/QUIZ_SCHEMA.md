@@ -81,3 +81,31 @@ const QUIZ = [
 node scripts/check_quiz.js           # 格式、配額、tag、數值題容許範圍；有 ✗ 就不要上線
 python scripts/merge_misc_keys.py    # 有新增迷思 key 時：統一描述、更新 docs/MISCONCEPTIONS.md
 ```
+
+## 章內小遊戲（`assets/js/games.js`）
+
+每章可在內文中插入互動小遊戲，放一個佔位即可，遊戲定義集中在 `assets/js/games.js` 的 `GAMES` 登錄表：
+
+```html
+<div class="game" data-game="ch16-predict"></div>
+...
+<script src="assets/app.js"></script><script src="assets/js/showout.js"></script><script src="assets/js/games.js"></script>
+```
+
+目前有兩個原型：
+
+| id | 章 | 型式 | 內容 |
+|---|---|---|---|
+| `ch16-predict` | Ch16 §16.1 之後 | 猜猜看再揭曉 | 先猜 ANOVA 的 p 值區間、F 值量級、Tukey 哪幾對顯著，再揭曉 R 輸出與 F 值尺 |
+| `ch02-cisim` | Ch2 §2.4 之後 | 猜猜看 + 模擬器 | 先猜 100 個 95% CI 漏掉幾個、n 變 4 倍寬度變幾倍、硬用 Z 的覆蓋率，再親手抽樣（n／信心水準／t 或 Z 可切換） |
+
+設計原則：**不需學號也能玩**（有學號且非訪客時事件才上傳）；預測題重用測驗的 `.qitem` 樣式與迷思 tag；揭曉後可「再猜一次」但 `attempts > 1`。
+
+事件走同一條 `fas_queue → assess.js → student_events` 管線，但用以下欄位與測驗分流（`scripts/quiz_dashboard.py` 目前會略過 `game != "fas_quiz"` 的事件，不影響答對率統計）：
+
+- `game = "fas_game"`、`game_id = "<chNN-xxx>"`、`quiz_set = "game"`、`phase = "game"`。
+- 每題預測 → `answer`：`question_id = chNN-gNN-N`（例 `ch16-g01-3`）、`qtype = "predict"`、`is_correct`、`choice_idx`／`choice_value`（複選題為 `"011"` 位元字串、數值題為數字）、`misconception`、`attempts`、`latency_ms`。
+- 按下揭曉 → `reveal`；整局結束 → `attempt_complete`（`final_score`、`total`、`answered`、`duration_ms`）。
+- 模擬器內的操作（抽樣、切換 n）**不**記錄，避免灌爆事件量。
+
+新增遊戲：在 `games.js` 的 `GAMES["chNN-xxx"]` 加一個函式；預測型遊戲用 `predictGame(box, spec)`（單選／複選／數值三種題型），揭曉內容寫在 `spec.reveal(panel, results)`。題目 id 同樣**一經上線永不改、永不重用**。

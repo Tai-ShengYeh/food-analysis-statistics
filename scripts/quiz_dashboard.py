@@ -179,9 +179,15 @@ def filter_and_dedupe(events, args):
     dropped_test = 0
     dropped_class = 0
     dropped_since = 0
+    dropped_game = 0
 
     for ev in events:
         if ev.get("site") != SITE:
+            continue
+        # 章內小遊戲（assets/js/games.js，game == "fas_game"）與測驗分流：
+        # 目前儀表板只分析測驗題；遊戲事件先略過，待另做 game 報表（見 docs/QUIZ_SCHEMA.md「章內小遊戲」）。
+        if ev.get("game", "fas_quiz") != "fas_quiz":
+            dropped_game += 1
             continue
         sid = ev.get("student_id")
         if not args.include_test and is_test_account(sid):
@@ -211,6 +217,7 @@ def filter_and_dedupe(events, args):
         "dropped_test": dropped_test,
         "dropped_class": dropped_class,
         "dropped_since": dropped_since,
+        "dropped_game": dropped_game,
     }
     return out, stats
 
